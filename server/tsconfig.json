@@ -21,7 +21,6 @@
     "verbatimModuleSyntax": true,
     "lib": ["ESNext"],
     "types": ["bun-types"],
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }

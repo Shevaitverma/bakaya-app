@@ -98,17 +98,16 @@ userSchema.index({ createdAt: -1 });
 userSchema.index({ role: 1, isActive: 1 });
 
 // Auto-compute name from firstName + lastName
-userSchema.pre("validate", function (next) {
+userSchema.pre("validate", function () {
   if (this.firstName || this.lastName) {
     this.name = [this.firstName, this.lastName].filter(Boolean).join(" ");
   }
-  next();
 });
 
 // Hash password before saving
-userSchema.pre("save", async function (next) {
+userSchema.pre("save", async function () {
   if (!this.isModified("password")) {
-    return next();
+    return;
   }
 
   // Using Bun's built-in password hashing
@@ -116,7 +115,6 @@ userSchema.pre("save", async function (next) {
     algorithm: "bcrypt",
     cost: 12,
   });
-  next();
 });
 
 // Compare password method
