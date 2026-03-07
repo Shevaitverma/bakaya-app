@@ -23,6 +23,7 @@ class AuthService {
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
+    console.log('[AUTH API] Fetching:', url);
 
     try {
       const response = await fetch(url, {

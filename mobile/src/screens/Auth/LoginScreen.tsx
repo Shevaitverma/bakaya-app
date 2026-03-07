@@ -66,11 +66,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       await login(email.trim(), password, username.trim());
       // Navigation will be handled by the navigation logic based on auth state
     } catch (err) {
-      Alert.alert(
-        'Login Failed',
-        error || 'An error occurred. Please try again.',
-        [{ text: 'OK' }]
-      );
+      const message =
+        err instanceof Error ? err.message : 'An error occurred. Please try again.';
+      Alert.alert('Login Failed', message, [{ text: 'OK' }]);
     }
   };
 

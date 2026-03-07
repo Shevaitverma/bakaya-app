@@ -13,7 +13,8 @@
       "package": "com.bakaya.app",
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
-      }
+      },
+      "usesCleartextTraffic": true
     },
     "plugins": ["expo-splash-screen"]
   }
