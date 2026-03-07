@@ -1,0 +1,313 @@
+/* ============================================
+   Expenses Page Styles
+   Mirrors mobile ExpenseDetailScreen
+   ============================================ */
+
+/* --- Page Shell --- */
+.page {
+  min-height: 100vh;
+  background: var(--color-surface);
+}
+
+/* --- Header --- */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg);
+  background: var(--color-primary);
+}
+
+.backBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: var(--color-text-on-primary);
+  font-size: var(--font-size-xl);
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.backBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.headerCenter {
+  text-align: center;
+  flex: 1;
+}
+
+.headerTitle {
+  font-size: var(--font-size-display);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-on-primary);
+  letter-spacing: -1px;
+}
+
+.totalRow {
+  margin-top: var(--spacing-xs);
+}
+
+.totalLabel {
+  font-size: var(--font-size-md);
+  color: var(--color-text-on-primary);
+  opacity: 0.9;
+  margin-bottom: var(--spacing-xs);
+}
+
+.totalValue {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-on-primary);
+  letter-spacing: -0.5px;
+}
+
+.headerPlaceholder {
+  width: 40px;
+}
+
+/* --- Content --- */
+.content {
+  max-width: var(--max-width);
+  margin-inline: auto;
+  padding: var(--spacing-lg);
+}
+
+/* --- Expense List (table-like) --- */
+.expenseList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* --- Expense Card --- */
+.expenseCard {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-card);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-fast);
+}
+
+.expenseCard:hover {
+  box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 600px) {
+  .expenseCard {
+    grid-template-columns: auto 1fr auto;
+    gap: var(--spacing-sm);
+  }
+  .expenseDelete {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+}
+
+.categoryIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--color-light-grey);
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.expenseInfo {
+  min-width: 0;
+}
+
+.expenseTitle {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expenseMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.expenseCategory {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: rgba(216, 27, 96, 0.08);
+  color: var(--color-primary);
+  border-radius: var(--radius-round);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.expenseAmount {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-error);
+  letter-spacing: -0.4px;
+  white-space: nowrap;
+}
+
+.expenseDelete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--color-text-tertiary);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-lg);
+  transition: color var(--transition-fast), background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.expenseDelete:hover {
+  color: var(--color-error);
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.15);
+}
+
+/* --- Empty State --- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-3xl) var(--spacing-lg);
+  text-align: center;
+  gap: var(--spacing-md);
+}
+
+.emptyIcon {
+  font-size: 3rem;
+  color: var(--color-text-tertiary);
+}
+
+.emptyTitle {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.emptySubtitle {
+  font-size: var(--font-size-md);
+  color: var(--color-text-tertiary);
+}
+
+/* --- FAB --- */
+.fab {
+  position: fixed;
+  bottom: var(--spacing-lg);
+  right: var(--spacing-lg);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-on-primary);
+  background: var(--color-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast),
+    background var(--transition-fast);
+  z-index: 50;
+  text-decoration: none;
+}
+
+.fab:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glass);
+}
+
+/* --- Confirm Dialog Overlay --- */
+.dialogOverlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 200;
+  animation: fadeIn 200ms ease both;
+}
+
+.dialog {
+  width: 90%;
+  max-width: 400px;
+  background: var(--color-card);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-xl);
+  box-shadow: var(--shadow-glass);
+}
+
+.dialogTitle {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.dialogMessage {
+  font-size: var(--font-size-md);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  margin-bottom: var(--spacing-lg);
+}
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+}
+
+.dialogCancel {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  background: var(--color-light-grey);
+  border: none;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.dialogCancel:hover {
+  background: var(--color-stone-grey);
+}
+
+.dialogConfirm {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-white);
+  background: var(--color-error);
+  border: none;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.dialogConfirm:hover {
+  background: #DC2626;
+}

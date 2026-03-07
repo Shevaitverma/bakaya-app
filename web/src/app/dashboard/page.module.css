@@ -1,0 +1,261 @@
+/* ============================================
+   Dashboard Page Styles
+   Mirrors the mobile HomeScreen layout
+   ============================================ */
+
+/* --- Page Shell --- */
+.page {
+  min-height: 100vh;
+  background: var(--color-surface);
+}
+
+/* --- Top Header (primary bg) --- */
+.header {
+  background: var(--color-primary);
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg);
+}
+
+.headerInner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  max-width: var(--max-width);
+  margin-inline: auto;
+}
+
+.titleBlock {
+  flex: 1;
+}
+
+.greeting {
+  font-size: var(--font-size-md);
+  color: var(--color-text-on-primary);
+  opacity: 0.9;
+  margin-bottom: var(--spacing-xs);
+}
+
+.pageTitle {
+  font-size: var(--font-size-display);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-on-primary);
+  letter-spacing: -1px;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.newGroupBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.newGroupBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+.logoutBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  font-size: var(--font-size-lg);
+  color: var(--color-text-on-primary);
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+
+.logoutBtn:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* --- Summary Card --- */
+.summaryCard {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  margin-top: var(--spacing-md);
+  max-width: var(--max-width);
+  margin-inline: auto;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+}
+
+.summaryIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-sm);
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.summaryContent {
+  flex: 1;
+}
+
+.summaryLabel {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-on-primary);
+  opacity: 0.9;
+  letter-spacing: 0.1px;
+  margin-bottom: 2px;
+}
+
+.summaryAmount {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-on-primary);
+  letter-spacing: -0.4px;
+}
+
+/* --- Content Area --- */
+.content {
+  max-width: var(--max-width);
+  margin-inline: auto;
+  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-xl);
+}
+
+.sectionHeader {
+  margin-bottom: var(--spacing-md);
+}
+
+.sectionTitle {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  letter-spacing: -0.5px;
+  margin-bottom: var(--spacing-xs);
+}
+
+.sectionSubtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* --- Group Cards Grid --- */
+.groupsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-sm);
+}
+
+@media (min-width: 640px) {
+  .groupsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 960px) {
+  .groupsGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* --- Group Card --- */
+.groupCard {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-card);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  text-decoration: none;
+  color: inherit;
+}
+
+.groupCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.groupIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  font-size: 1.35rem;
+  flex-shrink: 0;
+}
+
+.groupIconPrimary {
+  background: rgba(216, 27, 96, 0.1);
+}
+
+.groupIconBlue {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.groupInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.groupTitle {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  letter-spacing: -0.2px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.groupAmountRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+}
+
+.groupAmountLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.groupAmount {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.4px;
+}
+
+.amountRed {
+  color: var(--color-error);
+}
+
+.amountGreen {
+  color: var(--color-success);
+}
+
+.groupChevron {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+}

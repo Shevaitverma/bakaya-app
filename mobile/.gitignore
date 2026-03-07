@@ -1,0 +1,25 @@
+node_modules/
+.expo/
+dist/
+*.tsbuildinfo
+
+# Native builds
+android/
+ios/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo

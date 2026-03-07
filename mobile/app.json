@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Bakaya",
+    "slug": "bakaya",
+    "version": "1.0.0",
+    "scheme": "bakaya",
+    "platforms": ["ios", "android"],
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.bakaya.app"
+    },
+    "android": {
+      "package": "com.bakaya.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "plugins": ["expo-splash-screen"]
+  }
+}
