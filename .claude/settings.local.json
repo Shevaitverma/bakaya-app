@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.expo.dev)",
+      "WebFetch(domain:bun.com)",
+      "WebFetch(domain:typescript-eslint.io)",
+      "Bash(bun install:*)",
+      "Bash(bunx tsc:*)",
+      "Bash(timeout 5 bun run:*)",
+      "Bash(netstat:*)",
+      "Bash(tasklist:*)",
+      "Bash(taskkill:*)",
+      "Bash(bun run:*)",
+      "Bash(rm:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx:*)",
+      "Bash(xargs grep:*)",
+      "Bash(grep:*)",
+      "WebFetch(domain:expo.dev)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(powershell:*)",
+      "Bash(expo:*)",
+      "Bash(node:*)",
+      "Bash(curl:*)",
+      "Bash(echo === CREATE EXPENSE ===:*)",
+      "Bash(kill %1:*)",
+      "Bash(bun:*)",
+      "Bash(pkill:*)",
+      "Bash(cp:*)",
+      "Bash(mkdir:*)",
+      "Bash(echo:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(ipconfig:*)",
+      "Bash(npm install:*)",
+      "Bash(npm view:*)"
+    ]
+  }
+}

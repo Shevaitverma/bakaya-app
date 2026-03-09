@@ -1,0 +1,52 @@
+services:
+
+  server:
+    build:
+      context: ../../server
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8080:8080"
+    env_file:
+      - ../../server/.env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - bakaya-net
+
+  web:
+    build:
+      context: ../../web
+      dockerfile: Dockerfile
+      args:
+        NEXT_OUTPUT: standalone
+    ports:
+      - "127.0.0.1:3000:3000"
+    env_file:
+      - ../../web/.env.local
+    restart: unless-stopped
+    depends_on:
+      server:
+        condition: service_healthy
+    networks:
+      - bakaya-net
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - server
+      - web
+    restart: unless-stopped
+    networks:
+      - bakaya-net
+
+networks:
+  bakaya-net:
