@@ -30,19 +30,6 @@ data "aws_ami" "ubuntu" {
 }
 
 # ---------------------------------------------------------------------------
-# Key Pair
-# ---------------------------------------------------------------------------
-
-resource "aws_key_pair" "this" {
-  key_name   = "${var.project_name}-${var.environment}"
-  public_key = var.public_key
-
-  tags = merge(local.common_tags, {
-    Name = "${var.project_name}-${var.environment}-key"
-  })
-}
-
-# ---------------------------------------------------------------------------
 # IAM Role & Instance Profile
 # ---------------------------------------------------------------------------
 
@@ -90,7 +77,7 @@ resource "aws_instance" "this" {
   instance_type          = var.instance_type
   subnet_id              = var.subnet_id
   vpc_security_group_ids = [var.security_group_id]
-  key_name               = aws_key_pair.this.key_name
+  key_name               = var.key_pair_name
   iam_instance_profile   = aws_iam_instance_profile.this.name
 
   root_block_device {

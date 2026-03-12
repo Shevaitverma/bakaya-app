@@ -4,20 +4,20 @@
 # Never commit terraform.tfvars to version control.
 # -----------------------------------------------------------------------------
 
-aws_region    = "us-east-1"
+aws_region    = "ap-south-1"
 project_name  = "bakaya"
 environment   = "production"
 instance_type = "t3.small"
 vpc_cidr      = "10.0.0.0/16"
 
-# SSH public key content (e.g., output of: cat ~/.ssh/bakaya-ec2.pub)
-ssh_public_key = "ssh-ed25519 AAAA... your-email@example.com"
+# Name of the key pair created in AWS Console (EC2 → Key Pairs)
+key_pair_name = "your-key-pair-name"
 
 # Restrict SSH access to specific IPs (recommended)
-ssh_allowed_cidrs = ["203.0.113.0/32"]
+# ssh_allowed_cidrs = ["YOUR_IP/32"]
 
 # ACM certificate ARN for HTTPS (provision via AWS Console or CLI first)
-certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+# certificate_arn = "arn:aws:acm:ap-south-1:ACCOUNT_ID:certificate/CERTIFICATE_ID"
 
 # Domain name for the application
-domain_name = "bakaya.example.com"
+# domain_name = "bakaya.example.com"

@@ -1,4 +1,12 @@
 ################################################################################
+# Availability Zones (auto-detect from current region)
+################################################################################
+
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+################################################################################
 # VPC
 ################################################################################
 
@@ -37,11 +45,11 @@ resource "aws_subnet" "public" {
 
   vpc_id                  = aws_vpc.this.id
   cidr_block              = var.public_subnet_cidrs[count.index]
-  availability_zone       = var.availability_zones[count.index]
+  availability_zone       = data.aws_availability_zones.available.names[count.index]
   map_public_ip_on_launch = true
 
   tags = {
-    Name        = "${var.project_name}-${var.environment}-public-${var.availability_zones[count.index]}"
+    Name        = "${var.project_name}-${var.environment}-public-${data.aws_availability_zones.available.names[count.index]}"
     Project     = var.project_name
     Environment = var.environment
   }

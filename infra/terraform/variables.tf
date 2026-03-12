@@ -5,7 +5,6 @@
 variable "aws_region" {
   description = "AWS region for all resources"
   type        = string
-  default     = "us-east-1"
 }
 
 variable "project_name" {
@@ -20,10 +19,9 @@ variable "environment" {
   default     = "production"
 }
 
-variable "ssh_public_key" {
-  description = "SSH public key content for EC2 access (e.g., contents of ~/.ssh/id_ed25519.pub)"
+variable "key_pair_name" {
+  description = "Name of an existing AWS key pair for EC2 SSH access"
   type        = string
-  sensitive   = true
 }
 
 variable "ssh_allowed_cidrs" {

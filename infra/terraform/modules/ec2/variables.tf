@@ -28,10 +28,9 @@ variable "security_group_id" {
   type        = string
 }
 
-variable "public_key" {
-  description = "SSH public key material for the EC2 key pair."
+variable "key_pair_name" {
+  description = "Name of an existing AWS key pair for SSH access."
   type        = string
-  sensitive   = true
 }
 
 variable "root_volume_size" {

@@ -30,10 +30,7 @@ EC2 Instance (Ubuntu 22.04, Docker)
 
 - [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.5
 - AWS CLI configured with credentials (`aws configure`)
-- An SSH key pair for EC2 access:
-  ```bash
-  ssh-keygen -t ed25519 -f ~/.ssh/bakaya-ec2
-  ```
+- An EC2 key pair created in the AWS Console (EC2 → Key Pairs → Create key pair)
 - An ACM certificate for your domain (provision via AWS Console or CLI)
 
 ## Quick Start
@@ -44,7 +41,7 @@ cd infra/terraform
 # 1. Create your variables file
 cp terraform.tfvars.example terraform.tfvars
 
-# 2. Fill in your values (SSH key, certificate ARN, etc.)
+# 2. Fill in your values (key pair name, certificate ARN, etc.)
 #    editor terraform.tfvars
 
 # 3. Initialize Terraform
@@ -64,7 +61,7 @@ terraform apply
 | `aws_region` | AWS region | `us-east-1` |
 | `project_name` | Project name for naming/tagging | `bakaya` |
 | `environment` | Deployment environment | `production` |
-| `ssh_public_key` | SSH public key content **(required)** | — |
+| `key_pair_name` | Name of an existing AWS key pair **(required)** | — |
 | `ssh_allowed_cidrs` | CIDRs allowed to SSH into EC2 | `[]` |
 | `instance_type` | EC2 instance type | `t3.small` |
 | `certificate_arn` | ACM certificate ARN for HTTPS | `""` |
