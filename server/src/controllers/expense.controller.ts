@@ -1,7 +1,9 @@
 import { getAuthUser } from "@/middleware/auth";
-import { createExpenseSchema, expenseQuerySchema } from "@/schemas/expense.schema";
+import { createExpenseSchema, updateExpenseSchema, expenseQuerySchema } from "@/schemas/expense.schema";
 import * as expenseService from "@/services/expense.service";
-import { successResponse, badRequestResponse, notFoundResponse } from "@/utils/response";
+import { createDefaultProfile } from "@/services/profile.service";
+import { User } from "@/models/User";
+import { successResponse, badRequestResponse, notFoundResponse, forbiddenResponse } from "@/utils/response";
 import { createPaginationMeta } from "@/utils/pagination";
 import { logger } from "@/utils/logger";
 import { z } from "zod";
@@ -28,11 +30,40 @@ export async function getPersonalExpenses(req: Request): Promise<Response> {
   }
 }
 
+export async function getPersonalExpense(req: Request, params?: Record<string, string>): Promise<Response> {
+  try {
+    const { userId } = getAuthUser(req);
+    const expenseId = params?.id;
+    if (!expenseId) return badRequestResponse("Expense ID is required");
+
+    const expense = await expenseService.findExpenseById(expenseId);
+    if (!expense) return notFoundResponse("Expense not found");
+
+    // Validate ownership
+    if (expense.userId.toString() !== userId) {
+      return forbiddenResponse("Not authorized to access this expense");
+    }
+
+    return successResponse(expense);
+  } catch (error) {
+    logger.error("Get personal expense error", { error });
+    throw error;
+  }
+}
+
 export async function createPersonalExpense(req: Request): Promise<Response> {
   try {
     const { userId } = getAuthUser(req);
     const body = await req.json();
     const input = createExpenseSchema.parse(body);
+
+    // If no profileId provided, auto-assign to default profile (create if needed)
+    if (!input.profileId) {
+      const user = await User.findById(userId).select("firstName lastName name");
+      const userName = user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(" ") || undefined;
+      const defaultProfile = await createDefaultProfile(userId, userName);
+      input.profileId = defaultProfile._id.toString();
+    }
 
     const expense = await expenseService.createExpense(userId, input);
 
@@ -47,6 +78,33 @@ export async function createPersonalExpense(req: Request): Promise<Response> {
       return badRequestResponse("Invalid request body");
     }
     logger.error("Create expense error", { error });
+    throw error;
+  }
+}
+
+export async function updatePersonalExpense(req: Request, params?: Record<string, string>): Promise<Response> {
+  try {
+    const { userId } = getAuthUser(req);
+    const expenseId = params?.id;
+    if (!expenseId) return badRequestResponse("Expense ID is required");
+
+    const body = await req.json();
+    const input = updateExpenseSchema.parse(body);
+
+    const expense = await expenseService.updateExpense(userId, expenseId, input);
+    if (!expense) return notFoundResponse("Expense not found");
+
+    logger.info("Expense updated", { userId, expenseId });
+
+    return successResponse(expense);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return badRequestResponse("Invalid expense data");
+    }
+    if (error instanceof SyntaxError) {
+      return badRequestResponse("Invalid request body");
+    }
+    logger.error("Update expense error", { error });
     throw error;
   }
 }

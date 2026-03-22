@@ -4,7 +4,10 @@
     "slug": "bakaya",
     "version": "1.0.0",
     "scheme": "bakaya",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.bakaya.app"
@@ -14,8 +17,12 @@
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
       },
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "googleServicesFile": "./google-services.json"
     },
-    "plugins": ["expo-splash-screen"]
+    "plugins": [
+      "expo-splash-screen",
+      "expo-web-browser"
+    ]
   }
 }

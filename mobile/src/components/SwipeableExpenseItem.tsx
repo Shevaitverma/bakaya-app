@@ -122,7 +122,7 @@ const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({
     });
   }, [item._id, onDelete, onSwipeEnd, translateX]);
 
-  const categoryIcon = getCategoryIcon(item.category);
+  const categoryIcon = getCategoryIcon(item.category ?? 'other');
 
   return (
     <View style={styles.container}>

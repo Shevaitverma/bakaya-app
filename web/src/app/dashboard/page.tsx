@@ -1,199 +1,239 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { clearToken } from "@/lib/api-client";
-import { expensesApi } from "@/lib/api/expenses";
-import { groupsApi, type GroupsData } from "@/lib/api/groups";
+import { useRouter } from "next/navigation";
+import { ApiError, clearToken } from "@/lib/api-client";
+import { expensesApi, type Expense } from "@/lib/api/expenses";
+import { groupsApi, type Group } from "@/lib/api/groups";
+import { profilesApi } from "@/lib/api/profiles";
+import type { Profile } from "@/types/profile";
 import styles from "./page.module.css";
 
-interface DashboardGroup {
-  id: string;
-  title: string;
-  amount: number;
-  isMyExpense: boolean;
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+
+  if (isToday) return "Today";
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear();
+
+  if (isYesterday) return "Yesterday";
+
+  return date.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
 }
 
 export default function DashboardPage() {
   const router = useRouter();
   const [userName, setUserName] = useState("User");
-  const [isAuthChecked, setIsAuthChecked] = useState(false);
-  const [groups, setGroups] = useState<DashboardGroup[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const stored = localStorage.getItem("bakaya_user");
-    if (!stored) {
-      router.push("/login");
-      return;
+    if (stored) {
+      try {
+        const user = JSON.parse(stored);
+        const fullName = typeof user.name === "string" ? user.name : "User";
+        const firstName = fullName.split(" ")[0] || "User";
+        setUserName(firstName);
+      } catch {
+        // ignore
+      }
     }
-    try {
-      const user = JSON.parse(stored);
-      const fullName = typeof user.name === "string" ? user.name : "User";
-      const firstName = fullName.split(" ")[0] || "User";
-      setUserName(firstName);
-      setIsAuthChecked(true);
-    } catch {
-      localStorage.removeItem("bakaya_user");
-      clearToken();
-      router.push("/login");
-    }
-  }, [router]);
+  }, []);
 
   useEffect(() => {
-    if (!isAuthChecked) return;
-
     async function fetchDashboardData() {
       try {
-        const [expenseData, groupsData] = await Promise.all([
-          expensesApi.list({ limit: 1 }),
-          groupsApi.list().catch(() => ({ groups: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0, hasNext: false, hasPrev: false } }) as GroupsData),
+        const handle401 = (error: unknown) => {
+          if (error instanceof ApiError && error.status === 401) {
+            localStorage.removeItem("bakaya_user");
+            clearToken();
+            router.push("/login");
+          }
+          return null;
+        };
+
+        const [expenseData, groupsData, profilesData] = await Promise.all([
+          expensesApi.list({ limit: 5 }).catch(handle401),
+          groupsApi.list().catch(handle401),
+          profilesApi.getProfiles().catch(handle401),
         ]);
 
-        const dashboardGroups: DashboardGroup[] = [
-          {
-            id: "my-expense",
-            title: "My Expense",
-            amount: expenseData.totalExpenseAmount,
-            isMyExpense: true,
-          },
-          ...groupsData.groups.map((g) => ({
-            id: g._id,
-            title: g.name,
-            amount: 0,
-            isMyExpense: false,
-          })),
-        ];
-
-        setGroups(dashboardGroups);
+        if (expenseData) {
+          setRecentExpenses(expenseData.expenses);
+        }
+        if (groupsData) {
+          setGroups(groupsData.groups);
+        }
+        if (profilesData) {
+          setProfiles(profilesData.profiles ?? []);
+        }
       } catch {
-        setGroups([
-          { id: "my-expense", title: "My Expense", amount: 0, isMyExpense: true },
-        ]);
+        // graceful fallback — dashboard still renders
       } finally {
         setIsLoading(false);
       }
     }
 
     fetchDashboardData();
-  }, [isAuthChecked]);
+  }, [router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("bakaya_user");
-    clearToken();
-    router.push("/login");
-  };
-
-  const totalOwed = groups
-    .filter((g) => !g.isMyExpense)
-    .reduce((sum, g) => sum + g.amount, 0);
-
-  if (!isAuthChecked) {
-    return null;
-  }
+  const defaultProfile = profiles.find((p) => p.isDefault);
 
   return (
     <div className={styles.page}>
-      {/* ---------- Header (primary background) ---------- */}
-      <header className={styles.header}>
-        <div className={styles.headerInner}>
-          <div className={styles.titleBlock}>
-            <p className={styles.greeting}>Hello, {userName}</p>
-            <h1 className={styles.pageTitle}>Your Groups</h1>
-          </div>
+      {/* Page Header */}
+      <div className={styles.pageHeader}>
+        <p className={styles.greeting}>Hello, {userName}</p>
+        <h1 className={styles.pageTitle}>Dashboard</h1>
+      </div>
 
-          <div className={styles.headerActions}>
-            <Link href="/dashboard/groups/new" className={styles.newGroupBtn}>
-              <span aria-hidden>+</span> New Group
-            </Link>
-            <button
-              className={styles.logoutBtn}
-              aria-label="Logout"
-              title="Logout"
-              onClick={handleLogout}
-            >
-              <span aria-hidden>⏻</span>
-            </button>
-          </div>
-        </div>
+      {/* Add Expense CTA */}
+      <Link href="/dashboard/expenses/new" className={styles.addExpenseCta}>
+        <span className={styles.ctaIcon}>+</span>
+        Add Expense
+      </Link>
 
-        {/* Summary Card */}
-        <div className={styles.summaryCard}>
-          <div className={styles.summaryIcon}>
-            <span aria-hidden>💰</span>
-          </div>
-          <div className={styles.summaryContent}>
-            <p className={styles.summaryLabel}>Total Owed</p>
-            <p className={styles.summaryAmount}>
-              ₹{totalOwed.toFixed(2)}
-            </p>
-          </div>
-        </div>
-      </header>
-
-      {/* ---------- Content ---------- */}
-      <main className={styles.content}>
+      {/* Profiles Section */}
+      <section className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Expense Groups</h2>
-          <p className={styles.sectionSubtitle}>
-            {groups.length} {groups.length === 1 ? "group" : "groups"}
-          </p>
+          <h2 className={styles.sectionTitle}>Profiles</h2>
+          <Link href="/dashboard/profiles" className={styles.sectionLink}>
+            View All
+          </Link>
+        </div>
+        <div className={styles.profileChips}>
+          {profiles.map((profile) => (
+            <Link
+              key={profile._id}
+              href={`/dashboard/profiles/${profile._id}`}
+              className={`${styles.profileChip} ${
+                profile.isDefault ? styles.profileChipActive : ""
+              }`}
+            >
+              <span
+                className={styles.profileChipDot}
+                style={{ backgroundColor: profile.color || "var(--color-primary)" }}
+              />
+              {profile.name}
+              {profile.isDefault ? " (Self)" : ""}
+            </Link>
+          ))}
+          <Link href="/dashboard/profiles/new" className={styles.addProfileChip}>
+            + Add
+          </Link>
+        </div>
+      </section>
+
+      {/* Recent Expenses Section */}
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Recent Expenses</h2>
+          <Link href="/dashboard/expenses" className={styles.sectionLink}>
+            View All
+          </Link>
         </div>
 
         {isLoading ? (
-          <p style={{ textAlign: "center", padding: "2rem", opacity: 0.6 }}>
-            Loading...
-          </p>
+          <p className={styles.loadingText}>Loading...</p>
+        ) : recentExpenses.length === 0 ? (
+          <div className={styles.emptyState}>
+            <p>No expenses yet. Add your first expense!</p>
+          </div>
         ) : (
-          <div className={styles.groupsGrid}>
-            {groups.map((group) => {
-              const href = group.isMyExpense
-                ? "/dashboard/expenses"
-                : `/dashboard/groups/${group.id}`;
+          <div className={styles.expensesTable}>
+            {recentExpenses.map((expense) => {
+              // Find the profile that matches the expense's profileId
+              const expenseProfile = expense.profileId
+                ? profiles.find((p) => p._id === expense.profileId)
+                : defaultProfile;
 
               return (
-                <Link key={group.id} href={href} className={styles.groupCard}>
-                  {/* Icon */}
-                  <div
-                    className={`${styles.groupIcon} ${
-                      group.isMyExpense
-                        ? styles.groupIconPrimary
-                        : styles.groupIconBlue
-                    }`}
-                  >
-                    <span aria-hidden>{group.isMyExpense ? "💳" : "👥"}</span>
-                  </div>
-
-                  {/* Info */}
-                  <div className={styles.groupInfo}>
-                    <p className={styles.groupTitle}>{group.title}</p>
-                    <div className={styles.groupAmountRow}>
-                      <span className={styles.groupAmountLabel}>
-                        {group.isMyExpense ? "Your expense" : "You owe"}
-                      </span>
-                      <span
-                        className={`${styles.groupAmount} ${
-                          group.amount > 0
-                            ? styles.amountRed
-                            : styles.amountGreen
-                        }`}
-                      >
-                        ₹{group.amount.toFixed(2)}
-                      </span>
+                <div key={expense._id} className={styles.expenseRow}>
+                  <div className={styles.expenseInfo}>
+                    <p className={styles.expenseTitle}>{expense.title}</p>
+                    <div className={styles.expenseMeta}>
+                      {expense.category && (
+                        <span className={styles.expenseCategory}>
+                          {expense.category}
+                        </span>
+                      )}
+                      {expenseProfile && (
+                        <span className={styles.expenseProfile}>
+                          <span
+                            className={styles.expenseProfileDot}
+                            style={{
+                              backgroundColor:
+                                expenseProfile.color || "var(--color-primary)",
+                            }}
+                          />
+                          {expenseProfile.name}
+                        </span>
+                      )}
                     </div>
                   </div>
-
-                  {/* Chevron */}
-                  <span className={styles.groupChevron} aria-hidden>
-                    ›
+                  <span className={styles.expenseAmount}>
+                    &#8377;{expense.amount.toLocaleString("en-IN")}
                   </span>
-                </Link>
+                  <span className={styles.expenseDate}>
+                    {formatDate(expense.createdAt)}
+                  </span>
+                </div>
               );
             })}
           </div>
         )}
-      </main>
+      </section>
+
+      {/* Groups Section */}
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>My Groups</h2>
+          <Link href="/dashboard/groups" className={styles.sectionLink}>
+            View All
+          </Link>
+        </div>
+
+        {isLoading ? (
+          <p className={styles.loadingText}>Loading...</p>
+        ) : (
+          <div className={styles.groupsGrid}>
+            {groups.map((group) => (
+              <Link
+                key={group._id}
+                href={`/dashboard/groups/${group._id}`}
+                className={styles.groupCard}
+              >
+                <div className={styles.groupIcon}>
+                  <span aria-hidden>&#128101;</span>
+                </div>
+                <p className={styles.groupName}>{group.name}</p>
+                <span className={styles.groupMembers}>
+                  {group.members.length}{" "}
+                  {group.members.length === 1 ? "member" : "members"}
+                </span>
+              </Link>
+            ))}
+            <Link href="/dashboard/groups/new" className={styles.newGroupCard}>
+              <span className={styles.newGroupIcon}>+</span>
+              New Group
+            </Link>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

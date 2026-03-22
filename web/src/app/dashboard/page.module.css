@@ -1,182 +1,283 @@
 /* ============================================
-   Dashboard Page Styles
-   Mirrors the mobile HomeScreen layout
+   Dashboard Home Page Styles
+   Redesigned: Add Expense CTA, Profile Chips,
+   Recent Expenses, Groups
    ============================================ */
 
 /* --- Page Shell --- */
 .page {
-  min-height: 100vh;
-  background: var(--color-surface);
-}
-
-/* --- Top Header (primary bg) --- */
-.header {
-  background: var(--color-primary);
-  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg);
-}
-
-.headerInner {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  padding: var(--spacing-lg);
   max-width: var(--max-width);
   margin-inline: auto;
+  animation: fadeIn 400ms ease both;
 }
 
-.titleBlock {
-  flex: 1;
+/* --- Page Header --- */
+.pageHeader {
+  margin-bottom: var(--spacing-lg);
 }
 
 .greeting {
   font-size: var(--font-size-md);
-  color: var(--color-text-on-primary);
-  opacity: 0.9;
+  color: var(--color-text-secondary);
   margin-bottom: var(--spacing-xs);
 }
 
 .pageTitle {
   font-size: var(--font-size-display);
   font-weight: var(--font-weight-bold);
-  color: var(--color-text-on-primary);
+  color: var(--color-text-primary);
   letter-spacing: -1px;
 }
 
-.headerActions {
+/* --- Add Expense CTA --- */
+.addExpenseCta {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--spacing-sm);
-}
-
-.newGroupBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-size: var(--font-size-md);
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-primary);
-  background: var(--color-white);
+  color: var(--color-text-on-primary);
+  background: linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-end));
+  border: none;
   border-radius: var(--radius-lg);
+  cursor: pointer;
   box-shadow: var(--shadow-md);
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  text-decoration: none;
 }
 
-.newGroupBtn:hover {
+.addExpenseCta:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-lg);
 }
 
-.logoutBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  font-size: var(--font-size-lg);
-  color: var(--color-text-on-primary);
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: var(--radius-md);
-  transition: background var(--transition-fast);
+.addExpenseCta:active {
+  transform: scale(0.99);
 }
 
-.logoutBtn:hover {
-  background: rgba(255, 255, 255, 0.35);
-}
-
-/* --- Summary Card --- */
-.summaryCard {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  margin-top: var(--spacing-md);
-  max-width: var(--max-width);
-  margin-inline: auto;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-md);
-}
-
-.summaryIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-sm);
-  font-size: 1.15rem;
-  flex-shrink: 0;
-}
-
-.summaryContent {
-  flex: 1;
-}
-
-.summaryLabel {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-on-primary);
-  opacity: 0.9;
-  letter-spacing: 0.1px;
-  margin-bottom: 2px;
-}
-
-.summaryAmount {
+.ctaIcon {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
-  color: var(--color-text-on-primary);
-  letter-spacing: -0.4px;
 }
 
-/* --- Content Area --- */
-.content {
-  max-width: var(--max-width);
-  margin-inline: auto;
-  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-xl);
+/* --- Section --- */
+.section {
+  margin-bottom: var(--spacing-xl);
 }
 
 .sectionHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   margin-bottom: var(--spacing-md);
 }
 
 .sectionTitle {
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
-  letter-spacing: -0.5px;
-  margin-bottom: var(--spacing-xs);
+  letter-spacing: -0.3px;
 }
 
-.sectionSubtitle {
+.sectionLink {
   font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
 }
 
-/* --- Group Cards Grid --- */
+.sectionLink:hover {
+  color: var(--color-primary-dark);
+  text-decoration: underline;
+}
+
+/* --- Profile Chips --- */
+.profileChips {
+  display: flex;
+  gap: var(--spacing-sm);
+  overflow-x: auto;
+  padding-bottom: var(--spacing-xs);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.profileChips::-webkit-scrollbar {
+  display: none;
+}
+
+.profileChip {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-card);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-round);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+  text-decoration: none;
+}
+
+.profileChip:hover {
+  background: var(--color-light-grey);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.profileChipActive {
+  background: rgba(216, 27, 96, 0.08);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.profileChipDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-round);
+  flex-shrink: 0;
+}
+
+.addProfileChip {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: none;
+  border: 1px dashed rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-round);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  text-decoration: none;
+}
+
+.addProfileChip:hover {
+  background: var(--color-light-grey);
+  color: var(--color-text-primary);
+}
+
+/* --- Loading / Empty States --- */
+.loadingText {
+  text-align: center;
+  padding: var(--spacing-xl);
+  font-size: var(--font-size-md);
+  color: var(--color-text-tertiary);
+}
+
+.emptyState {
+  text-align: center;
+  padding: var(--spacing-xl) var(--spacing-md);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-md);
+}
+
+/* --- Recent Expenses Table --- */
+.expensesTable {
+  width: 100%;
+  background: var(--color-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.expenseRow {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-md);
+  gap: var(--spacing-md);
+  transition: background var(--transition-fast);
+}
+
+.expenseRow:not(:last-child) {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.expenseRow:hover {
+  background: var(--color-light-grey);
+}
+
+.expenseInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.expenseTitle {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expenseMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: 2px;
+}
+
+.expenseCategory {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.expenseProfile {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.expenseProfileDot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-round);
+  flex-shrink: 0;
+}
+
+.expenseAmount {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  letter-spacing: -0.3px;
+}
+
+.expenseDate {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  min-width: 60px;
+  text-align: right;
+}
+
+/* --- Groups Grid --- */
 .groupsGrid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: var(--spacing-sm);
 }
 
-@media (min-width: 640px) {
-  .groupsGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 960px) {
-  .groupsGrid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-/* --- Group Card --- */
 .groupCard {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--spacing-sm);
   padding: var(--spacing-md);
   background: var(--color-card);
@@ -198,64 +299,87 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-md);
-  font-size: 1.35rem;
+  font-size: 1.15rem;
   flex-shrink: 0;
-}
-
-.groupIconPrimary {
-  background: rgba(216, 27, 96, 0.1);
-}
-
-.groupIconBlue {
   background: rgba(59, 130, 246, 0.1);
 }
 
-.groupInfo {
-  flex: 1;
-  min-width: 0;
-}
-
-.groupTitle {
+.groupName {
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
-  letter-spacing: -0.2px;
-  margin-bottom: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.groupAmountRow {
-  display: flex;
-  align-items: baseline;
-  gap: var(--spacing-xs);
-}
-
-.groupAmountLabel {
+.groupMembers {
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
 }
 
-.groupAmount {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: -0.4px;
-}
-
-.amountRed {
-  color: var(--color-error);
-}
-
-.amountGreen {
-  color: var(--color-success);
-}
-
-.groupChevron {
-  color: var(--color-text-tertiary);
+.newGroupCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: none;
+  border: 1px dashed rgba(0, 0, 0, 0.12);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
-  flex-shrink: 0;
+  font-weight: var(--font-weight-medium);
+  transition: background var(--transition-fast), color var(--transition-fast);
+  min-height: 120px;
+}
+
+.newGroupCard:hover {
+  background: var(--color-light-grey);
+  color: var(--color-text-primary);
+}
+
+.newGroupIcon {
+  font-size: var(--font-size-2xl);
+  color: var(--color-text-tertiary);
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+  .page {
+    padding: var(--spacing-md);
+    /* Make room for the mobile hamburger */
+    padding-top: calc(var(--spacing-md) + 56px);
+  }
+
+  .groupsGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .groupsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .expenseRow {
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+  }
+
+  .expenseDate {
+    width: 100%;
+    text-align: left;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

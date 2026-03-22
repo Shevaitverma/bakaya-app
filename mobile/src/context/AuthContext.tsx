@@ -1,19 +1,23 @@
 /**
  * Authentication Context for managing auth state
+ *
+ * Provides login, register, googleLogin, logout, and token refresh.
  */
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { authService } from '../services/authService';
 import { storage } from '../utils/storage';
 import type {
   User,
   LoginResponse,
   RegisterResponse,
+  GoogleAuthResponse,
+  RefreshTokenResponse,
   AuthState,
 } from '../types/auth';
 
 interface AuthContextType extends AuthState {
-  login: (email: string, password: string, username?: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   register: (
     email: string,
     username: string,
@@ -21,7 +25,9 @@ interface AuthContextType extends AuthState {
     firstName: string,
     lastName: string
   ) => Promise<void>;
+  googleLogin: (firebaseIdToken: string) => Promise<void>;
   logout: () => void;
+  refreshSession: () => Promise<boolean>;
   error: string | null;
 }
 
@@ -36,7 +42,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isLoading, setIsLoading] = useState(true); // Start with true to check for persisted session
   const [error, setError] = useState<string | null>(null);
 
-  // Load persisted session on app start
+  // Keep a ref so the refresh callback always reads the latest token
+  const refreshTokenRef = useRef<string | null>(null);
+  refreshTokenRef.current = refreshToken;
+
+  // ---- helper: persist session ----
+
+  const applySession = useCallback(
+    async (userData: User, access: string, refresh: string) => {
+      setUser(userData);
+      setAccessToken(access);
+      setRefreshToken(refresh);
+      await storage.saveUser(userData);
+      await storage.saveTokens(access, refresh);
+    },
+    []
+  );
+
+  // ---- Load persisted session on app start ----
+
   useEffect(() => {
     const loadSession = async () => {
       try {
@@ -61,26 +85,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     loadSession();
   }, []);
 
+  // ---- Token refresh ----
+
+  /**
+   * Attempt to refresh the session using the stored refresh token.
+   * Returns true on success, false otherwise (caller should redirect to login).
+   */
+  const refreshSession = useCallback(async (): Promise<boolean> => {
+    const currentRefresh = refreshTokenRef.current;
+    if (!currentRefresh) return false;
+
+    try {
+      const response: RefreshTokenResponse = await authService.refreshTokens(currentRefresh);
+
+      if (response.success && response.data) {
+        const { user: updatedUser, accessToken: newAccess, refreshToken: newRefresh } = response.data;
+        await applySession(updatedUser, newAccess, newRefresh);
+        console.log('[AUTH] Token refreshed successfully');
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('[AUTH] Token refresh failed:', err);
+      return false;
+    }
+  }, [applySession]);
+
+  // ---- Auth actions ----
+
   const login = useCallback(
-    async (email: string, password: string, username: string = '') => {
+    async (email: string, password: string) => {
       setIsLoading(true);
       setError(null);
       try {
-        const response: LoginResponse = await authService.login(
-          email,
-          password,
-          username
-        );
+        const response: LoginResponse = await authService.login(email, password);
 
         if (response.success && response.data) {
-          const { user, accessToken, refreshToken } = response.data;
-          setUser(user);
-          setAccessToken(accessToken);
-          setRefreshToken(refreshToken);
-
-          // Persist session
-          await storage.saveUser(user);
-          await storage.saveTokens(accessToken, refreshToken);
+          const { user: u, accessToken: at, refreshToken: rt } = response.data;
+          await applySession(u, at, rt);
         } else {
           throw new Error('Login failed');
         }
@@ -93,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setIsLoading(false);
       }
     },
-    []
+    [applySession]
   );
 
   const register = useCallback(
@@ -107,14 +149,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsLoading(true);
       setError(null);
       try {
-        console.log('[AUTH CONTEXT] Calling register with:', {
-          email,
-          username,
-          hasPassword: !!password,
-          firstName,
-          lastName,
-        });
-
         const response: RegisterResponse = await authService.register({
           email,
           username,
@@ -123,51 +157,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           lastName,
         });
 
-        console.log('[AUTH CONTEXT] Register response:', JSON.stringify(response, null, 2));
-        console.log('[AUTH CONTEXT] Response type:', typeof response);
-        console.log('[AUTH CONTEXT] Response.success:', response?.success);
-        console.log('[AUTH CONTEXT] Response.data:', response?.data);
-        console.log('[AUTH CONTEXT] Response.data.user:', response?.data?.user);
-
-        // Validate response structure
-        if (!response || typeof response !== 'object') {
-          console.error('[AUTH CONTEXT] Invalid response structure:', response);
-          throw new Error('Invalid response from server');
-        }
-
-        if (response.success && response.data && response.data.user) {
-          console.log('[AUTH CONTEXT] Registration successful, setting user');
-          setUser(response.data.user);
-          setError(null); // Clear any previous errors on success
-          // Registration doesn't return tokens, so user needs to login
+        // Server register returns { success, data: User } (user object directly, not nested under data.user)
+        if (response.success && response.data) {
+          setUser(response.data);
+          setError(null);
+          // Registration doesn't return tokens - user needs to login
         } else {
-          console.error('[AUTH CONTEXT] Registration failed - invalid response structure');
-          // Extract error message from response if available
-          const errorMsg =
-            (response as any)?.message ||
-            (response as any)?.error ||
-            'Registration failed: Invalid response from server';
-          console.error('[AUTH CONTEXT] Error message:', errorMsg);
-          throw new Error(errorMsg);
+          throw new Error('Registration failed: Invalid response from server');
         }
       } catch (err) {
-        console.error('[AUTH CONTEXT] Register catch block - Error:', err);
-        console.error('[AUTH CONTEXT] Error type:', typeof err);
-        console.error('[AUTH CONTEXT] Error constructor:', err?.constructor?.name);
-        console.error('[AUTH CONTEXT] Error message:', err instanceof Error ? err.message : String(err));
-        console.error('[AUTH CONTEXT] Full error object:', JSON.stringify(err, null, 2));
-
         let errorMessage = 'An error occurred during registration';
         if (err instanceof Error) {
           errorMessage = err.message;
         } else if (typeof err === 'string') {
           errorMessage = err;
-        } else if (err && typeof err === 'object') {
-          // Try to extract message from error object
-          errorMessage = (err as any)?.message || (err as any)?.error || JSON.stringify(err);
         }
-
-        console.error('[AUTH CONTEXT] Setting error message:', errorMessage);
         setError(errorMessage);
         throw err;
       } finally {
@@ -175,6 +179,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     },
     []
+  );
+
+  const googleLogin = useCallback(
+    async (firebaseIdToken: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response: GoogleAuthResponse = await authService.googleLogin(firebaseIdToken);
+
+        if (response.success && response.data) {
+          const { user: u, accessToken: at, refreshToken: rt } = response.data;
+          await applySession(u, at, rt);
+          console.log('[AUTH] Google login successful');
+        } else {
+          throw new Error('Google login failed');
+        }
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : 'An error occurred during Google sign-in';
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [applySession]
   );
 
   const logout = useCallback(async () => {
@@ -195,7 +225,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     isLoading,
     login,
     register,
+    googleLogin,
     logout,
+    refreshSession,
     error,
   };
 

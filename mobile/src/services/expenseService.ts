@@ -3,7 +3,16 @@
  */
 
 import { API_CONFIG } from '../constants/api';
-import type { PersonalExpensesResponse, CreateExpenseRequest, CreateExpenseResponse } from '../types/expense';
+import type {
+  PersonalExpensesResponse,
+  SingleExpenseResponse,
+  CreateExpenseRequest,
+  CreateExpenseResponse,
+  UpdateExpenseRequest,
+  UpdateExpenseResponse,
+  DeleteExpenseResponse,
+  ExpenseQueryParams,
+} from '../types/expense';
 
 class ExpenseService {
   private baseUrl: string;
@@ -160,12 +169,27 @@ class ExpenseService {
     }
   }
 
+  /**
+   * GET /personal-expenses
+   * Fetch all personal expenses with optional filtering and pagination.
+   * Supports all server query params: page, limit, category, profileId, startDate, endDate.
+   */
   async getPersonalExpenses(
     page: number = 1,
     limit: number = 20,
-    token: string
+    token: string,
+    filters?: Omit<ExpenseQueryParams, 'page' | 'limit'>
   ): Promise<PersonalExpensesResponse> {
-    const endpoint = `${API_CONFIG.ENDPOINTS.EXPENSES.PERSONAL_EXPENSES}?page=${page}&limit=${limit}`;
+    const params = new URLSearchParams();
+    params.set('page', String(page));
+    params.set('limit', String(limit));
+
+    if (filters?.profileId) params.set('profileId', filters.profileId);
+    if (filters?.category) params.set('category', filters.category);
+    if (filters?.startDate) params.set('startDate', filters.startDate);
+    if (filters?.endDate) params.set('endDate', filters.endDate);
+
+    const endpoint = `${API_CONFIG.ENDPOINTS.EXPENSES.PERSONAL_EXPENSES}?${params.toString()}`;
     const fullUrl = `${this.baseUrl}${endpoint}`;
 
     console.log('[ExpenseService] getPersonalExpenses called', {
@@ -173,6 +197,7 @@ class ExpenseService {
       fullUrl,
       page,
       limit,
+      filters: filters || 'none',
       hasToken: !!token,
       tokenLength: token?.length || 0,
       timestamp: new Date().toISOString(),
@@ -186,6 +211,28 @@ class ExpenseService {
     });
   }
 
+  /**
+   * GET /personal-expenses/:id
+   * Fetch a single personal expense by ID.
+   */
+  async getExpense(
+    expenseId: string,
+    token: string
+  ): Promise<SingleExpenseResponse> {
+    const endpoint = API_CONFIG.ENDPOINTS.EXPENSES.SINGLE_EXPENSE(expenseId);
+
+    return this.request<SingleExpenseResponse>(endpoint, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  /**
+   * POST /personal-expenses
+   * Create a new personal expense.
+   */
   async createExpense(
     expenseData: CreateExpenseRequest,
     token: string
@@ -201,13 +248,37 @@ class ExpenseService {
     });
   }
 
+  /**
+   * PUT /personal-expenses/:id
+   * Update an existing personal expense. All fields are optional.
+   */
+  async updateExpense(
+    expenseId: string,
+    expenseData: UpdateExpenseRequest,
+    token: string
+  ): Promise<UpdateExpenseResponse> {
+    const endpoint = API_CONFIG.ENDPOINTS.EXPENSES.SINGLE_EXPENSE(expenseId);
+
+    return this.request<UpdateExpenseResponse>(endpoint, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(expenseData),
+    });
+  }
+
+  /**
+   * DELETE /personal-expenses/:id
+   * Delete a personal expense by ID.
+   */
   async deleteExpense(
     expenseId: string,
     token: string
-  ): Promise<{ success: boolean; data: { message: string }; meta: { timestamp: string } }> {
-    const endpoint = `${API_CONFIG.ENDPOINTS.EXPENSES.PERSONAL_EXPENSES}/${expenseId}`;
+  ): Promise<DeleteExpenseResponse> {
+    const endpoint = API_CONFIG.ENDPOINTS.EXPENSES.SINGLE_EXPENSE(expenseId);
 
-    return this.request<{ success: boolean; data: { message: string }; meta: { timestamp: string } }>(endpoint, {
+    return this.request<DeleteExpenseResponse>(endpoint, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${token}`,

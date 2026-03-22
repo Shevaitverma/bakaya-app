@@ -178,6 +178,73 @@
   cursor: not-allowed;
 }
 
+/* --- Divider --- */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background: #D0D0D0;
+}
+
+.dividerText {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* --- Google Button --- */
+.googleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-md);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  background: var(--color-white);
+  border: 1px solid #D0D0D0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.googleBtn:hover {
+  background: #F5F5F5;
+  box-shadow: var(--shadow-sm);
+}
+
+.googleBtn:active {
+  transform: scale(0.99);
+}
+
+.googleBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.googleIcon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.spinnerDark {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  border-top-color: var(--color-text-primary);
+  border-radius: 50%;
+  animation: spin 600ms linear infinite;
+}
+
 /* --- Spinner --- */
 .spinner {
   width: 20px;
@@ -211,4 +278,13 @@
 .footerLink:hover {
   color: var(--color-primary-dark);
   text-decoration: underline;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }

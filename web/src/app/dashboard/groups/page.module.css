@@ -1,0 +1,124 @@
+.page {
+  padding: var(--spacing-lg);
+  max-width: var(--max-width);
+  margin-inline: auto;
+  animation: fadeIn 400ms ease both;
+}
+
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.pageTitle {
+  font-size: var(--font-size-display);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.createBtn {
+  padding: 0.5rem 1.25rem;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.createBtn:hover {
+  opacity: 0.9;
+}
+
+.loadingText {
+  text-align: center;
+  padding: 3rem;
+  opacity: 0.6;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 4rem 1rem;
+}
+
+.emptyIcon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.emptyTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.emptySubtitle {
+  color: var(--color-text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.emptyAction {
+  display: inline-block;
+  padding: 0.6rem 1.5rem;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.groupsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.groupCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.groupCard:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.groupIcon {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.groupName {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--color-text-primary);
+  margin-bottom: 0.25rem;
+  text-align: center;
+}
+
+.groupDescription {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.groupMembers {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

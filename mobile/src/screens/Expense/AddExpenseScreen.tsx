@@ -2,7 +2,7 @@
  * Add Expense Screen
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,32 +22,14 @@ import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { Theme } from '../../constants/theme';
 import { expenseService } from '../../services/expenseService';
+import { profileService } from '../../services/profileService';
 import { getCategoryIcon } from '../../utils/categoryIcons';
+import { CATEGORIES } from '../../constants/categories';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { MainStackParamList } from '../../navigation/types';
+import type { HomeStackParamList } from '../../navigation/types';
+import type { Profile } from '../../types/profile';
 
-type AddExpenseScreenProps = NativeStackScreenProps<MainStackParamList, 'AddExpense'>;
-
-// Available categories
-const CATEGORIES = [
-  'Food',
-  'Accessory',
-  'Transport',
-  'Shopping',
-  'Bills',
-  'Entertainment',
-  'Groceries',
-  'Healthcare',
-  'Education',
-  'Travel',
-  'Utilities',
-  'Clothing',
-  'Restaurant',
-  'Gas',
-  'Insurance',
-  'Rent',
-  'Other',
-];
+type AddExpenseScreenProps = NativeStackScreenProps<HomeStackParamList, 'AddExpense'>;
 
 export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -58,11 +40,37 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation }
   const [category, setCategory] = useState('');
   const [notes, setNotes] = useState('');
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState('');
   const [errors, setErrors] = useState<{
     title?: string;
     amount?: string;
     category?: string;
   }>({});
+
+  // Fetch profiles on mount
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      if (!accessToken) return;
+      try {
+        const response = await profileService.getProfiles(accessToken);
+        if (response.success && response.data?.profiles) {
+          const fetchedProfiles = response.data.profiles;
+          setProfiles(fetchedProfiles);
+          // Pre-select the default profile
+          const defaultProfile = fetchedProfiles.find((p) => p.isDefault);
+          if (defaultProfile) {
+            setSelectedProfileId(defaultProfile._id);
+          }
+        }
+      } catch (err) {
+        // Silently fail — profile selection is optional
+        console.warn('Failed to load profiles:', err);
+      }
+    };
+
+    fetchProfiles();
+  }, [accessToken]);
 
   const validateForm = (): boolean => {
     const newErrors: { title?: string; amount?: string; category?: string } = {};
@@ -105,6 +113,7 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation }
         amount: parseFloat(amount),
         category: category.trim(),
         notes: notes.trim() || undefined,
+        profileId: selectedProfileId || undefined,
       };
 
       const response = await expenseService.createExpense(expenseData, accessToken);
@@ -175,6 +184,45 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation }
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         <View style={styles.form}>
+          {/* Profile Selector */}
+          {profiles.length > 0 && (
+            <View style={styles.profileContainer}>
+              <Text style={styles.profileLabel}>Profile</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.profileChipsRow}>
+                {profiles.map((profile) => {
+                  const isSelected = selectedProfileId === profile._id;
+                  return (
+                    <TouchableOpacity
+                      key={profile._id}
+                      style={[
+                        styles.profileChip,
+                        isSelected && styles.profileChipSelected,
+                      ]}
+                      onPress={() => setSelectedProfileId(profile._id)}
+                      activeOpacity={0.7}>
+                      <View
+                        style={[
+                          styles.profileColorDot,
+                          { backgroundColor: profile.color || Theme.colors.grey },
+                        ]}
+                      />
+                      <Text
+                        style={[
+                          styles.profileChipText,
+                          isSelected && styles.profileChipTextSelected,
+                        ]}>
+                        {profile.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
           {/* Title Input */}
           <Input
             label="Title"
@@ -380,6 +428,51 @@ const styles = StyleSheet.create({
   },
   form: {
     flex: 1,
+  },
+  profileContainer: {
+    marginBottom: Theme.spacing.md,
+  },
+  profileLabel: {
+    fontSize: Theme.typography.fontSize.medium,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.medium,
+    marginBottom: Theme.spacing.xs,
+  },
+  profileChipsRow: {
+    flexDirection: 'row',
+    gap: Theme.spacing.sm,
+    paddingVertical: Theme.spacing.xs,
+  },
+  profileChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Theme.spacing.md,
+    paddingVertical: Theme.spacing.sm,
+    borderRadius: Theme.borderRadius.round,
+    borderWidth: 1.5,
+    borderColor: '#D0D0D0',
+    backgroundColor: Theme.colors.white,
+    gap: Theme.spacing.sm,
+  },
+  profileChipSelected: {
+    borderColor: Theme.colors.primary,
+    backgroundColor: Theme.colors.primaryLight + '20',
+  },
+  profileColorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: Theme.borderRadius.round,
+  },
+  profileChipText: {
+    fontSize: Theme.typography.fontSize.medium,
+    color: Theme.colors.textSecondary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.medium,
+  },
+  profileChipTextSelected: {
+    color: Theme.colors.primary,
+    fontWeight: Theme.typography.fontWeight.semibold,
   },
   categoryContainer: {
     marginBottom: Theme.spacing.md,

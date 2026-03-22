@@ -21,8 +21,9 @@ function getBaseUrl(): string {
     return `http://${ip}:8080/api/v1`;
   }
 
-  // Fallback: use the dev machine's local IP
-  return 'http://192.168.1.4:8080/api/v1';
+  // Fallback: Android emulator uses 10.0.2.2 to reach host; iOS simulator uses localhost
+  const fallbackHost = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
+  return `http://${fallbackHost}:8080/api/v1`;
 }
 
 export const API_CONFIG = {
@@ -31,12 +32,27 @@ export const API_CONFIG = {
     AUTH: {
       LOGIN: '/auth/login',
       REGISTER: '/auth/register',
+      GOOGLE: '/auth/google',
+      REFRESH: '/auth/refresh',
     },
     EXPENSES: {
       PERSONAL_EXPENSES: '/personal-expenses',
+      SINGLE_EXPENSE: (id: string) => `/personal-expenses/${id}`,
     },
     GROUPS: {
       LIST: '/groups',
+      SINGLE: (id: string) => `/groups/${id}`,
+      EXPENSES: (id: string) => `/groups/${id}/expenses`,
+      SINGLE_EXPENSE: (id: string, expenseId: string) => `/groups/${id}/expenses/${expenseId}`,
+      BALANCES: (id: string) => `/groups/${id}/balances`,
+      SETTLEMENTS: (id: string) => `/groups/${id}/settlements`,
+      SINGLE_SETTLEMENT: (id: string, settlementId: string) => `/groups/${id}/settlements/${settlementId}`,
+      MEMBERS: (id: string) => `/groups/${id}/members`,
+      SINGLE_MEMBER: (id: string, memberId: string) => `/groups/${id}/members/${memberId}`,
+    },
+    PROFILES: {
+      LIST: '/profiles',
+      SINGLE: (id: string) => `/profiles/${id}`,
     },
   },
   HEADERS: {

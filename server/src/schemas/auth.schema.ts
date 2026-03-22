@@ -23,5 +23,19 @@ export const loginSchema = z.object({
   fcmToken: z.string().optional(),
 });
 
+export const googleAuthSchema = z.object({
+  credential: z.string().min(1, "Google credential is required"),
+  deviceId: z.string().optional(),
+  os: z.string().optional(),
+  osVersion: z.string().optional(),
+  fcmToken: z.string().optional(),
+});
+
+export const refreshTokenSchema = z.object({
+  refreshToken: z.string().min(1, "Refresh token is required"),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type GoogleAuthInput = z.infer<typeof googleAuthSchema>;
+export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;

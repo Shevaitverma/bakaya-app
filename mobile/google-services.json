@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "620625375728",
+    "project_id": "ztas-bakaya-app",
+    "storage_bucket": "ztas-bakaya-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:620625375728:android:8efe60e04788147a26ad35",
+        "android_client_info": {
+          "package_name": "com.bakaya.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "620625375728-hnvdhflj4aftqf2ffpjgs2dvbbb9oaph.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bakaya.app",
+            "certificate_hash": "5bb1d8242c5a40ce358f644245e1775bdb5c4431"
+          }
+        },
+        {
+          "client_id": "620625375728-7kfiqncl330uq8le05va9mbu16iaekfk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhpHDayPeTHvyz_wD5W6OsVQvSNICVhBc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "620625375728-7kfiqncl330uq8le05va9mbu16iaekfk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -3,7 +3,19 @@
  */
 
 import { API_CONFIG } from '../constants/api';
-import type { GroupsResponse } from '../types/group';
+import type {
+  GroupsResponse,
+  GroupResponse,
+  GroupExpensesResponse,
+  GroupBalancesResponse,
+  SettlementsResponse,
+  CreateGroupExpenseRequest,
+  CreateSettlementRequest,
+  CreateGroupRequest,
+  UpdateGroupRequest,
+  UpdateGroupExpenseRequest,
+  GroupExpense,
+} from '../types/group';
 
 class GroupService {
   private baseUrl: string;
@@ -82,6 +94,234 @@ class GroupService {
 
     return this.request<GroupsResponse>(endpoint, {
       method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  async createGroup(
+    data: CreateGroupRequest,
+    token: string
+  ): Promise<GroupResponse> {
+    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.LIST;
+
+    return this.request<GroupResponse>(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getGroup(
+    id: string,
+    token: string
+  ): Promise<GroupResponse> {
+    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SINGLE(id);
+
+    return this.request<GroupResponse>(endpoint, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  async getGroupExpenses(
+    groupId: string,
+    page: number = 1,
+    limit: number = 20,
+    token: string
+  ): Promise<GroupExpensesResponse> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.GROUPS.EXPENSES(groupId)}?page=${page}&limit=${limit}`;
+
+    return this.request<GroupExpensesResponse>(endpoint, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  async createGroupExpense(
+    groupId: string,
+    data: CreateGroupExpenseRequest,
+    token: string
+  ): Promise<{ success: boolean; data: any; meta: { timestamp: string } }> {
+    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.EXPENSES(groupId);
+
+    return this.request<{ success: boolean; data: any; meta: { timestamp: string } }>(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteGroupExpense(
+    groupId: string,
+    expenseId: string,
+    token: string
+  ): Promise<{ success: boolean; data: { message: string }; meta: { timestamp: string } }> {
+    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SINGLE_EXPENSE(groupId, expenseId);
+
+    return this.request<{ success: boolean; data: { message: string }; meta: { timestamp: string } }>(endpoint, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  async getGroupBalances(
+    groupId: string,
+    token: string
+  ): Promise<GroupBalancesResponse> {
+    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.BALANCES(groupId);
+
+    return this.request<GroupBalancesResponse>(endpoint, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  async getSettlements(
+    groupId: string,
+    token: string
+  ): Promise<SettlementsResponse> {
+    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SETTLEMENTS(groupId);
+
+    return this.request<SettlementsResponse>(endpoint, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  async addMember(
+    groupId: string,
+    email: string,
+    token: string
+  ): Promise<GroupResponse> {
+    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.MEMBERS(groupId);
+
+    return this.request<GroupResponse>(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async createSettlement(
+    groupId: string,
+    data: CreateSettlementRequest,
+    token: string
+  ): Promise<{ success: boolean; data: any; meta: { timestamp: string } }> {
+    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SETTLEMENTS(groupId);
+
+    return this.request<{ success: boolean; data: any; meta: { timestamp: string } }>(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateGroup(
+    id: string,
+    data: UpdateGroupRequest,
+    token: string
+  ): Promise<GroupResponse> {
+    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SINGLE(id);
+
+    return this.request<GroupResponse>(endpoint, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteGroup(
+    id: string,
+    token: string
+  ): Promise<{ success: boolean; data: { deleted: boolean }; meta: { timestamp: string } }> {
+    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SINGLE(id);
+
+    return this.request<{ success: boolean; data: { deleted: boolean }; meta: { timestamp: string } }>(endpoint, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  async removeMember(
+    groupId: string,
+    memberId: string,
+    token: string
+  ): Promise<{ success: boolean; data: { removed: boolean }; meta: { timestamp: string } }> {
+    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SINGLE_MEMBER(groupId, memberId);
+
+    return this.request<{ success: boolean; data: { removed: boolean }; meta: { timestamp: string } }>(endpoint, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  async getGroupExpense(
+    groupId: string,
+    expenseId: string,
+    token: string
+  ): Promise<{ success: boolean; data: GroupExpense; meta: { timestamp: string } }> {
+    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SINGLE_EXPENSE(groupId, expenseId);
+
+    return this.request<{ success: boolean; data: GroupExpense; meta: { timestamp: string } }>(endpoint, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  async updateGroupExpense(
+    groupId: string,
+    expenseId: string,
+    data: UpdateGroupExpenseRequest,
+    token: string
+  ): Promise<{ success: boolean; data: GroupExpense; meta: { timestamp: string } }> {
+    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SINGLE_EXPENSE(groupId, expenseId);
+
+    return this.request<{ success: boolean; data: GroupExpense; meta: { timestamp: string } }>(endpoint, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteSettlement(
+    groupId: string,
+    settlementId: string,
+    token: string
+  ): Promise<{ success: boolean; data: { deleted: boolean }; meta: { timestamp: string } }> {
+    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SINGLE_SETTLEMENT(groupId, settlementId);
+
+    return this.request<{ success: boolean; data: { deleted: boolean }; meta: { timestamp: string } }>(endpoint, {
+      method: 'DELETE',
       headers: {
         Authorization: `Bearer ${token}`,
       },

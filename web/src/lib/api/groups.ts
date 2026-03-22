@@ -1,4 +1,5 @@
 import { api } from "../api-client";
+import type { Settlement } from "@/types/settlement";
 
 export interface GroupMember {
   userId: {
@@ -85,11 +86,24 @@ export interface CreateGroupExpenseInput {
   amount: number;
   category?: string;
   notes?: string;
+  paidBy?: string;
   splitAmong?: GroupExpenseSplit[];
 }
 
 export interface GroupBalances {
   balances: Record<string, number>;
+}
+
+export interface SettlementsData {
+  settlements: Settlement[];
+  pagination: Pagination;
+}
+
+export interface CreateSettlementInput {
+  paidBy: string;
+  paidTo: string;
+  amount: number;
+  notes?: string;
 }
 
 export const groupsApi = {
@@ -143,5 +157,17 @@ export const groupsApi = {
 
   getBalances(groupId: string): Promise<GroupBalances> {
     return api.get<GroupBalances>(`/api/v1/groups/${groupId}/balances`);
+  },
+
+  getSettlements(groupId: string): Promise<SettlementsData> {
+    return api.get<SettlementsData>(`/api/v1/groups/${groupId}/settlements`);
+  },
+
+  createSettlement(groupId: string, data: CreateSettlementInput): Promise<Settlement> {
+    return api.post<Settlement>(`/api/v1/groups/${groupId}/settlements`, data);
+  },
+
+  deleteSettlement(groupId: string, settlementId: string): Promise<{ deleted: boolean }> {
+    return api.delete<{ deleted: boolean }>(`/api/v1/groups/${groupId}/settlements/${settlementId}`);
   },
 };

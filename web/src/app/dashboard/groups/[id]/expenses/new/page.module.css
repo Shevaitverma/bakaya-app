@@ -1,6 +1,7 @@
 /* ============================================
    Add Group Expense Page Styles
-   Mirrors Add Expense page layout
+   Mirrors Add Expense page layout with
+   paid-by, split-between, split type
    ============================================ */
 
 /* --- Page Shell --- */
@@ -110,6 +111,177 @@
 .errorText {
   font-size: var(--font-size-sm);
   color: var(--color-error);
+}
+
+/* --- Select (Paid By) --- */
+.select {
+  width: 100%;
+  padding: var(--spacing-md);
+  font-size: var(--font-size-md);
+  color: var(--color-text-primary);
+  background: #F0F0F0;
+  border: 1px solid #D0D0D0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  appearance: auto;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(216, 27, 96, 0.1);
+}
+
+/* --- Split Header --- */
+.splitHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.splitActions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.splitToggle {
+  padding: 2px 10px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary);
+  background: rgba(216, 27, 96, 0.06);
+  border: 1px solid rgba(216, 27, 96, 0.15);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.splitToggle:hover {
+  background: rgba(216, 27, 96, 0.12);
+}
+
+/* --- Split Type Label --- */
+.splitTypeLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+  background: rgba(216, 27, 96, 0.08);
+  border-radius: var(--radius-round);
+  width: fit-content;
+}
+
+/* --- Member Checkbox List --- */
+.memberCheckboxList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.memberCheckbox {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-card);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  user-select: none;
+}
+
+.memberCheckbox:hover {
+  background: var(--color-light-grey);
+}
+
+.memberCheckboxChecked {
+  border-color: rgba(216, 27, 96, 0.2);
+  background: rgba(216, 27, 96, 0.03);
+}
+
+.checkboxInput {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.checkboxAvatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-text-on-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  flex-shrink: 0;
+}
+
+.checkboxInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.checkboxName {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checkboxAmount {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.checkboxMark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  border: 2px solid #D0D0D0;
+  font-size: var(--font-size-sm);
+  color: transparent;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.checkboxMarkChecked {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+/* --- Split Summary --- */
+.splitSummary {
+  margin-top: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-light-grey);
+  border-radius: var(--radius-md);
+  text-align: center;
 }
 
 /* --- Category Picker (trigger) --- */

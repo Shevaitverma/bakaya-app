@@ -34,6 +34,10 @@ export interface LoginResponse {
   device: unknown;
 }
 
+export interface GoogleAuthInput {
+  credential: string;
+}
+
 export const authApi = {
   login(data: LoginInput): Promise<LoginResponse> {
     return api.post<LoginResponse>("/api/v1/auth/login", data);
@@ -41,5 +45,15 @@ export const authApi = {
 
   register(data: RegisterInput): Promise<AuthUser> {
     return api.post<AuthUser>("/api/v1/auth/register", data);
+  },
+
+  googleLogin(data: GoogleAuthInput): Promise<LoginResponse> {
+    return api.post<LoginResponse>("/api/v1/auth/google", data);
+  },
+
+  refreshToken(token: string): Promise<LoginResponse> {
+    return api.post<LoginResponse>("/api/v1/auth/refresh", {
+      refreshToken: token,
+    });
   },
 };

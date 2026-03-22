@@ -1,6 +1,7 @@
 import { GroupExpense } from "@/models/GroupExpense";
 import { Group } from "@/models/Group";
-import type { CreateGroupExpenseInput } from "@/schemas/groupExpense.schema";
+import { Settlement } from "@/models/Settlement";
+import type { CreateGroupExpenseInput, UpdateGroupExpenseInput } from "@/schemas/groupExpense.schema";
 import { createPaginationMeta } from "@/utils/pagination";
 import mongoose from "mongoose";
 import { logger } from "@/utils/logger";
@@ -71,6 +72,55 @@ export async function findGroupExpenses(
   };
 }
 
+export async function findGroupExpenseById(
+  groupId: string,
+  expenseId: string
+) {
+  return GroupExpense.findOne({
+    _id: expenseId,
+    groupId: new mongoose.Types.ObjectId(groupId),
+  }).populate("paidBy", "email firstName lastName name");
+}
+
+export async function updateGroupExpense(
+  groupId: string,
+  expenseId: string,
+  userId: string,
+  input: UpdateGroupExpenseInput
+) {
+  const group = await Group.findById(groupId);
+  if (!group) throw new Error("Group not found");
+
+  const isMember = group.members.some(
+    (m) => m.userId.toString() === userId
+  );
+  if (!isMember) throw new Error("Not a member of this group");
+
+  const expense = await GroupExpense.findOne({
+    _id: expenseId,
+    groupId: new mongoose.Types.ObjectId(groupId),
+  });
+  if (!expense) return null;
+
+  // If amount changed and splitAmong not provided, recalculate equal split
+  if (input.amount !== undefined && !input.splitAmong) {
+    const perPerson = input.amount / group.members.length;
+    input.splitAmong = group.members.map((m) => ({
+      userId: m.userId.toString(),
+      amount: Math.round(perPerson * 100) / 100,
+    }));
+  }
+
+  const updated = await GroupExpense.findOneAndUpdate(
+    { _id: expenseId, groupId: new mongoose.Types.ObjectId(groupId) },
+    { $set: input },
+    { new: true, runValidators: true }
+  ).populate("paidBy", "email firstName lastName name");
+
+  if (updated) logger.info("Group expense updated", { groupId, expenseId });
+  return updated;
+}
+
 export async function deleteGroupExpense(
   groupId: string,
   expenseId: string,
@@ -83,9 +133,12 @@ export async function deleteGroupExpense(
 }
 
 export async function getGroupBalances(groupId: string) {
-  const expenses = await GroupExpense.find({
-    groupId: new mongoose.Types.ObjectId(groupId),
-  });
+  const groupObjectId = new mongoose.Types.ObjectId(groupId);
+
+  const [expenses, settlements] = await Promise.all([
+    GroupExpense.find({ groupId: groupObjectId }),
+    Settlement.find({ groupId: groupObjectId }),
+  ]);
 
   // Calculate how much each person paid and how much they owe
   const balances: Record<string, number> = {};
@@ -100,6 +153,16 @@ export async function getGroupBalances(groupId: string) {
       const debtor = split.userId.toString();
       balances[debtor] = (balances[debtor] || 0) - split.amount;
     }
+  }
+
+  // Factor in settlements
+  for (const settlement of settlements) {
+    const paidById = settlement.paidBy.toString();
+    const paidToId = settlement.paidTo.toString();
+    // The payer reduces their debt (or increases their credit)
+    balances[paidById] = (balances[paidById] || 0) + settlement.amount;
+    // The receiver's credit is reduced (they received what was owed)
+    balances[paidToId] = (balances[paidToId] || 0) - settlement.amount;
   }
 
   return balances;

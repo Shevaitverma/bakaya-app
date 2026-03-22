@@ -1,110 +1,202 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  ScrollView,
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../context/AuthContext';
 import { Theme } from '../../constants/theme';
 import GroupCard from '../../components/GroupCard';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import { Group } from '../../interfaces/group';
-import type { MainStackParamList } from '../../navigation/types';
+import type { HomeStackParamList } from '../../navigation/types';
 import { groupService } from '../../services/groupService';
+import { profileService } from '../../services/profileService';
+import { expenseService } from '../../services/expenseService';
 import type { GroupsResponse } from '../../types/group';
+import type { Profile, ProfilesResponse } from '../../types/profile';
+import type { Expense, PersonalExpensesResponse } from '../../types/expense';
 
-type HomeScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'Home'>;
+type HomeScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'Home'>;
+
+// Default profile colors when no color is assigned
+const PROFILE_COLORS = [
+  '#D81B60', '#E91E63', '#9C27B0', '#673AB7',
+  '#3F51B5', '#2196F3', '#00BCD4', '#009688',
+  '#4CAF50', '#FF9800', '#FF5722', '#795548',
+];
+
+const getProfileColor = (profile: Profile, index: number): string => {
+  return profile.color ?? PROFILE_COLORS[index % PROFILE_COLORS.length] ?? '#D81B60';
+};
+
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+
+  return date.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+  });
+};
+
+const getCategoryIcon = (category: string): string => {
+  const map: Record<string, string> = {
+    food: 'utensils',
+    transport: 'car',
+    shopping: 'bag-shopping',
+    entertainment: 'film',
+    bills: 'file-invoice',
+    health: 'heart-pulse',
+    education: 'graduation-cap',
+    travel: 'plane',
+    groceries: 'cart-shopping',
+    rent: 'house',
+  };
+  return map[category.toLowerCase()] || 'receipt';
+};
 
 const HomeScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { logout, user, accessToken } = useAuth();
 
+  // Data states
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  // Loading states (independent per section)
+  const [profilesLoading, setProfilesLoading] = useState(true);
+  const [expensesLoading, setExpensesLoading] = useState(true);
+  const [groupsLoading, setGroupsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Logout dialog
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
 
-  useEffect(() => {
-    fetchGroups();
-  }, []);
+  const fetchAllData = useCallback(async () => {
+    if (!accessToken) return;
 
-  const fetchGroups = async () => {
-    if (!accessToken) {
-      setError('Authentication required');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-      const response: GroupsResponse = await groupService.getGroups(
-        1,
-        20,
-        accessToken
-      );
-
-      if (response.success && response.data) {
-        // Map API groups to Group interface
-        const apiGroups: Group[] = response.data.groups.map((group) => ({
-          id: group._id,
-          title: group.name,
-          amount: 10, // Hardcoded as requested
-          imageUri: undefined, // Hardcoded as requested
-        }));
-
-        // Add "My Expense" as the first item
-        const myExpenseGroup: Group = {
-          id: 'my-expense',
-          title: 'My Expense',
-          amount: 1111,
-          imageUri: undefined,
-        };
-
-        setGroups([myExpenseGroup, ...apiGroups]);
-      } else {
-        throw new Error('Failed to fetch groups');
+    const fetchProfiles = async () => {
+      try {
+        setProfilesLoading(true);
+        const response: ProfilesResponse = await profileService.getProfiles(accessToken);
+        if (response.success && response.data) {
+          setProfiles(response.data.profiles);
+        }
+      } catch (err) {
+        console.error('Error fetching profiles:', err);
+      } finally {
+        setProfilesLoading(false);
       }
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'An error occurred while fetching groups';
-      setError(errorMessage);
-      console.error('Error fetching groups:', errorMessage);
-      // Set default groups on error
-      setGroups([
-        {
-          id: 'my-expense',
-          title: 'My Expense',
-          amount: 0.0,
-        },
-      ]);
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    const fetchExpenses = async () => {
+      try {
+        setExpensesLoading(true);
+        const response: PersonalExpensesResponse = await expenseService.getPersonalExpenses(1, 5, accessToken);
+        if (response.success && response.data) {
+          setRecentExpenses(response.data.expenses);
+        }
+      } catch (err) {
+        console.error('Error fetching expenses:', err);
+      } finally {
+        setExpensesLoading(false);
+      }
+    };
+
+    const fetchGroups = async () => {
+      try {
+        setGroupsLoading(true);
+        const response: GroupsResponse = await groupService.getGroups(1, 20, accessToken);
+        if (response.success && response.data) {
+          const apiGroups: Group[] = response.data.groups.map((group) => ({
+            id: group._id,
+            title: group.name,
+            amount: 10,
+            imageUri: undefined,
+          }));
+          setGroups(apiGroups);
+        }
+      } catch (err) {
+        console.error('Error fetching groups:', err);
+      } finally {
+        setGroupsLoading(false);
+      }
+    };
+
+    await Promise.all([fetchProfiles(), fetchExpenses(), fetchGroups()]);
+  }, [accessToken]);
+
+  // Fetch data on mount
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
+
+  // Refetch when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchAllData();
+    }, [fetchAllData])
+  );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchAllData();
+    setRefreshing(false);
+  }, [fetchAllData]);
+
+  const handleAddExpense = () => {
+    navigation.navigate('AddExpense');
   };
 
-  const handleAddGroup = () => {
-    // TODO: Implement add group functionality
-    console.log('Add group pressed');
+  const handleProfilePress = (profile: Profile) => {
+    navigation.navigate('ProfileExpenses', {
+      profileId: profile._id,
+      profileName: profile.name,
+      profileColor: profile.color,
+    });
+  };
+
+  const handleAddProfile = () => {
+    // Navigate to Me tab's AddProfile screen
+    // Use the parent navigator to switch to MeTab
+    const parentNav = navigation.getParent();
+    if (parentNav) {
+      parentNav.navigate('MeTab', { screen: 'AddProfile' });
+    }
   };
 
   const handleGroupPress = (group: Group) => {
-    if (group.title === 'My Expense') {
-      navigation.navigate('ExpenseDetail');
-    } else {
-      // TODO: Implement navigation to other group details
-      console.log('Group pressed:', group.id);
-    }
+    navigation.navigate('GroupDetail', {
+      groupId: group.id,
+      groupName: group.title,
+    });
+  };
+
+  const handleCreateGroup = () => {
+    navigation.navigate('CreateGroup');
+  };
+
+  const handleViewAllExpenses = () => {
+    navigation.navigate('ExpenseDetail');
   };
 
   const handleLogout = () => {
@@ -122,8 +214,71 @@ const HomeScreen = () => {
     setShowLogoutDialog(false);
   };
 
-  const renderGroupCard = ({ item }: { item: Group }) => (
+  // --- Section Renderers ---
+
+  const renderProfileChip = (profile: Profile, index: number) => {
+    const color = getProfileColor(profile, index);
+    return (
+      <TouchableOpacity
+        key={profile._id}
+        style={styles.profileChip}
+        onPress={() => handleProfilePress(profile)}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.profileDot, { backgroundColor: color }]} />
+        <Text style={styles.profileChipText} numberOfLines={1}>
+          {profile.name}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderAddProfileChip = () => (
+    <TouchableOpacity
+      key="add-profile"
+      style={[styles.profileChip, styles.addProfileChip]}
+      onPress={handleAddProfile}
+      activeOpacity={0.7}
+    >
+      <FontAwesome6
+        name="plus"
+        size={12}
+        color={Theme.colors.primary}
+        solid
+      />
+      <Text style={[styles.profileChipText, styles.addProfileChipText]}>
+        Add
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const renderExpenseRow = (expense: Expense) => (
+    <View key={expense._id} style={styles.expenseRow}>
+      <View style={styles.expenseIconWrapper}>
+        <FontAwesome6
+          name={getCategoryIcon(expense.category ?? 'other') as any}
+          size={16}
+          color={Theme.colors.primary}
+          solid
+        />
+      </View>
+      <View style={styles.expenseDetails}>
+        <Text style={styles.expenseTitle} numberOfLines={1}>
+          {expense.title}
+        </Text>
+        <Text style={styles.expenseCategory}>
+          {expense.category} {'\u00B7'} {formatDate(expense.createdAt)}
+        </Text>
+      </View>
+      <Text style={styles.expenseAmount}>
+        {'\u20B9'}{expense.amount.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+      </Text>
+    </View>
+  );
+
+  const renderGroupCard = (item: Group) => (
     <GroupCard
+      key={item.id}
       title={item.title}
       amount={item.amount}
       imageUri={item.imageUri}
@@ -131,112 +286,188 @@ const HomeScreen = () => {
     />
   );
 
-  const totalOwed = groups
-    .filter((group) => group.title !== 'My Expense')
-    .reduce((sum, group) => sum + group.amount, 0);
+  const renderSectionLoading = () => (
+    <View style={styles.sectionLoadingContainer}>
+      <ActivityIndicator size="small" color={Theme.colors.primary} />
+      <Text style={styles.sectionLoadingText}>Loading...</Text>
+    </View>
+  );
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
 
-      {/* Modern Header with Glassmorphism */}
+      {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + Theme.spacing.md }]}>
         <View style={styles.headerContent}>
           <View style={styles.titleContainer}>
             <Text style={styles.greeting}>
               Hello{user?.firstName ? `, ${user.firstName}` : ''}
             </Text>
-            <Text style={styles.title}>Your Groups</Text>
+            <Text style={styles.title}>Bakaya</Text>
           </View>
 
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={handleAddGroup}
-              activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
+            <FontAwesome6
+              name="right-from-bracket"
+              size={18}
+              color={Theme.colors.textOnPrimary}
+              solid
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Scrollable Content */}
+      <View style={styles.contentWrapper}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: insets.bottom + Theme.spacing.xxl },
+          ]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[Theme.colors.primary]}
+              tintColor={Theme.colors.primary}
+            />
+          }
+        >
+          {/* --- Add Expense CTA --- */}
+          <TouchableOpacity
+            style={styles.addExpenseButton}
+            onPress={handleAddExpense}
+            activeOpacity={0.85}
+          >
+            <View style={styles.addExpenseIconCircle}>
               <FontAwesome6
                 name="plus"
                 size={18}
                 color={Theme.colors.primary}
-                style={styles.addIcon}
-                solid
-              />
-              <Text style={styles.addButtonText}>New Group</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.logoutButton}
-              onPress={handleLogout}
-              activeOpacity={0.8}>
-              <FontAwesome6
-                name="right-from-bracket"
-                size={18}
-                color={Theme.colors.textOnPrimary}
-                solid
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Summary Card */}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryIconWrapper}>
-            <View style={styles.summaryIconContainer}>
-              <FontAwesome6
-                name="wallet"
-                size={18}
-                color={Theme.colors.white}
                 solid
               />
             </View>
-          </View>
-          <View style={styles.summaryContent}>
-            <Text style={styles.summaryLabel}>Total Owed</Text>
-            <Text style={styles.summaryAmount}>₹{totalOwed.toFixed(2)}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Content Area */}
-      <View style={styles.contentWrapper}>
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Theme.colors.primary} />
-            <Text style={styles.loadingText}>Loading groups...</Text>
-          </View>
-        ) : error && groups.length === 0 ? (
-          <View style={styles.errorContainer}>
+            <View style={styles.addExpenseTextContainer}>
+              <Text style={styles.addExpenseTitle}>Add Expense</Text>
+              <Text style={styles.addExpenseSubtitle}>Track a new personal expense</Text>
+            </View>
             <FontAwesome6
-              name="triangle-exclamation"
-              size={48}
-              color={Theme.colors.error}
+              name="chevron-right"
+              size={14}
+              color={Theme.colors.textOnPrimary}
               solid
             />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={fetchGroups}>
-              <Text style={styles.retryButtonText}>Retry</Text>
-            </TouchableOpacity>
+          </TouchableOpacity>
+
+          {/* --- Profiles Section --- */}
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Profiles</Text>
+            {profilesLoading ? (
+              renderSectionLoading()
+            ) : profiles.length === 0 ? (
+              <View style={styles.emptyStateRow}>
+                <Text style={styles.emptyStateText}>No profiles yet.</Text>
+                <TouchableOpacity onPress={handleAddProfile}>
+                  <Text style={styles.emptyStateLink}>Create one</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.profileChipsContainer}
+              >
+                {profiles.map((profile, index) => renderProfileChip(profile, index))}
+                {renderAddProfileChip()}
+              </ScrollView>
+            )}
           </View>
-        ) : (
-          <FlatList
-            data={groups}
-            renderItem={renderGroupCard}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={[
-              styles.listContent,
-              { paddingBottom: insets.bottom + Theme.spacing.lg }
-            ]}
-            showsVerticalScrollIndicator={false}
-            ListHeaderComponent={
-              <View style={styles.listHeader}>
-                <Text style={styles.sectionTitle}>Expense Groups</Text>
-                <Text style={styles.sectionSubtitle}>
-                  {groups.length} {groups.length === 1 ? 'group' : 'groups'}
+
+          {/* --- Recent Expenses Section --- */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionHeaderLabel}>Recent Expenses</Text>
+              {recentExpenses.length > 0 && (
+                <TouchableOpacity onPress={handleViewAllExpenses}>
+                  <Text style={styles.viewAllLink}>View All</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {expensesLoading ? (
+              renderSectionLoading()
+            ) : recentExpenses.length === 0 ? (
+              <View style={styles.emptyStateCard}>
+                <FontAwesome6
+                  name="receipt"
+                  size={28}
+                  color={Theme.colors.textTertiary}
+                  solid
+                />
+                <Text style={styles.emptyStateCardText}>
+                  No expenses yet. Tap "Add Expense" to get started!
                 </Text>
               </View>
-            }
-          />
-        )}
+            ) : (
+              <View style={styles.expensesCard}>
+                {recentExpenses.map((expense, index) => (
+                  <React.Fragment key={expense._id}>
+                    {renderExpenseRow(expense)}
+                    {index < recentExpenses.length - 1 && (
+                      <View style={styles.expenseDivider} />
+                    )}
+                  </React.Fragment>
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* --- My Groups Section --- */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionHeaderLabel}>My Groups</Text>
+              <TouchableOpacity
+                style={[styles.profileChip, styles.addProfileChip]}
+                onPress={handleCreateGroup}
+                activeOpacity={0.7}
+              >
+                <FontAwesome6
+                  name="plus"
+                  size={12}
+                  color={Theme.colors.primary}
+                  solid
+                />
+                <Text style={[styles.profileChipText, styles.addProfileChipText]}>
+                  Create
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {groupsLoading ? (
+              renderSectionLoading()
+            ) : groups.length === 0 ? (
+              <View style={styles.emptyStateCard}>
+                <FontAwesome6
+                  name="users"
+                  size={28}
+                  color={Theme.colors.textTertiary}
+                  solid
+                />
+                <Text style={styles.emptyStateCardText}>
+                  No groups yet. Create a group to split expenses with friends.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.groupsList}>
+                {groups.map((group) => renderGroupCard(group))}
+              </View>
+            )}
+          </View>
+        </ScrollView>
       </View>
 
       <ConfirmationDialog
@@ -259,6 +490,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Theme.colors.primary,
   },
+
+  // --- Header ---
   header: {
     paddingHorizontal: Theme.spacing.md,
     paddingBottom: Theme.spacing.lg,
@@ -268,12 +501,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: Theme.spacing.md,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Theme.spacing.sm,
   },
   titleContainer: {
     flex: 1,
@@ -293,25 +520,6 @@ const styles = StyleSheet.create({
     fontWeight: Theme.typography.fontWeight.bold,
     letterSpacing: -1,
   },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Theme.colors.white,
-    paddingHorizontal: Theme.spacing.md,
-    paddingVertical: Theme.spacing.sm,
-    borderRadius: Theme.borderRadius.lg,
-    ...Theme.shadows.medium,
-    gap: Theme.spacing.xs,
-  },
-  addIcon: {
-    marginRight: -2,
-  },
-  addButtonText: {
-    fontSize: Theme.typography.fontSize.medium,
-    color: Theme.colors.primary,
-    fontFamily: Theme.typography.fontFamily,
-    fontWeight: Theme.typography.fontWeight.semibold,
-  },
   logoutButton: {
     width: 40,
     height: 40,
@@ -322,46 +530,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  summaryCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: Theme.borderRadius.md,
-    padding: Theme.spacing.md,
-    marginTop: Theme.spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  summaryIconWrapper: {
-    marginRight: Theme.spacing.sm,
-  },
-  summaryIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: Theme.borderRadius.sm,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  summaryContent: {
-    flex: 1,
-  },
-  summaryLabel: {
-    fontSize: Theme.typography.fontSize.small,
-    color: Theme.colors.textOnPrimary,
-    fontFamily: Theme.typography.fontFamily,
-    fontWeight: Theme.typography.fontWeight.medium,
-    marginBottom: 2,
-    opacity: 0.9,
-    letterSpacing: 0.1,
-  },
-  summaryAmount: {
-    fontSize: Theme.typography.fontSize.xlarge,
-    color: Theme.colors.textOnPrimary,
-    fontFamily: Theme.typography.fontFamily,
-    fontWeight: Theme.typography.fontWeight.bold,
-    letterSpacing: -0.4,
-  },
+
+  // --- Content wrapper ---
   contentWrapper: {
     flex: 1,
     backgroundColor: Theme.colors.surface,
@@ -369,64 +539,229 @@ const styles = StyleSheet.create({
     borderTopRightRadius: Theme.borderRadius.xl,
     overflow: 'hidden',
   },
-  listHeader: {
-    paddingHorizontal: Theme.spacing.md,
+  scrollContent: {
     paddingTop: Theme.spacing.lg,
-    paddingBottom: Theme.spacing.md,
   },
-  sectionTitle: {
-    fontSize: Theme.typography.fontSize.xlarge,
+
+  // --- Add Expense CTA ---
+  addExpenseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Theme.colors.primary,
+    marginHorizontal: Theme.spacing.md,
+    paddingVertical: Theme.spacing.md,
+    paddingHorizontal: Theme.spacing.md,
+    borderRadius: Theme.borderRadius.lg,
+    ...Theme.shadows.large,
+  },
+  addExpenseIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: Theme.borderRadius.round,
+    backgroundColor: Theme.colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Theme.spacing.sm,
+  },
+  addExpenseTextContainer: {
+    flex: 1,
+  },
+  addExpenseTitle: {
+    fontSize: Theme.typography.fontSize.large,
+    color: Theme.colors.textOnPrimary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.bold,
+    marginBottom: 2,
+  },
+  addExpenseSubtitle: {
+    fontSize: Theme.typography.fontSize.small,
+    color: Theme.colors.textOnPrimary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.regular,
+    opacity: 0.85,
+  },
+
+  // --- Sections ---
+  section: {
+    marginTop: Theme.spacing.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Theme.spacing.md,
+    marginBottom: Theme.spacing.sm,
+  },
+  sectionLabel: {
+    fontSize: Theme.typography.fontSize.large,
     color: Theme.colors.textPrimary,
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.bold,
-    marginBottom: Theme.spacing.xs,
-    letterSpacing: -0.5,
+    paddingHorizontal: Theme.spacing.md,
+    marginBottom: Theme.spacing.sm,
+    letterSpacing: -0.3,
   },
-  sectionSubtitle: {
+  sectionHeaderLabel: {
+    fontSize: Theme.typography.fontSize.large,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.bold,
+    letterSpacing: -0.3,
+  },
+  viewAllLink: {
+    fontSize: Theme.typography.fontSize.medium,
+    color: Theme.colors.primary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.semibold,
+  },
+
+  // --- Profile chips ---
+  profileChipsContainer: {
+    paddingHorizontal: Theme.spacing.md,
+    gap: Theme.spacing.sm,
+  },
+  profileChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Theme.colors.cardBackground,
+    paddingHorizontal: Theme.spacing.md,
+    paddingVertical: Theme.spacing.sm,
+    borderRadius: Theme.borderRadius.round,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    ...Theme.shadows.small,
+    gap: Theme.spacing.xs,
+  },
+  addProfileChip: {
+    borderStyle: 'dashed',
+    borderColor: Theme.colors.primary,
+    backgroundColor: 'rgba(216, 27, 96, 0.05)',
+  },
+  profileDot: {
+    width: 10,
+    height: 10,
+    borderRadius: Theme.borderRadius.round,
+  },
+  profileChipText: {
+    fontSize: Theme.typography.fontSize.medium,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.medium,
+    maxWidth: 100,
+  },
+  addProfileChipText: {
+    color: Theme.colors.primary,
+    fontWeight: Theme.typography.fontWeight.semibold,
+  },
+
+  // --- Expense rows ---
+  expensesCard: {
+    backgroundColor: Theme.colors.cardBackground,
+    marginHorizontal: Theme.spacing.md,
+    borderRadius: Theme.borderRadius.lg,
+    padding: Theme.spacing.sm,
+    ...Theme.shadows.small,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  expenseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Theme.spacing.sm,
+    paddingHorizontal: Theme.spacing.sm,
+  },
+  expenseIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: Theme.borderRadius.md,
+    backgroundColor: 'rgba(216, 27, 96, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Theme.spacing.sm,
+  },
+  expenseDetails: {
+    flex: 1,
+  },
+  expenseTitle: {
+    fontSize: Theme.typography.fontSize.medium,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.semibold,
+    marginBottom: 2,
+  },
+  expenseCategory: {
     fontSize: Theme.typography.fontSize.small,
     color: Theme.colors.textSecondary,
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.regular,
   },
-  listContent: {
-    paddingTop: Theme.spacing.sm,
+  expenseAmount: {
+    fontSize: Theme.typography.fontSize.large,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.bold,
+    marginLeft: Theme.spacing.sm,
+    letterSpacing: -0.3,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  expenseDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
+    marginHorizontal: Theme.spacing.sm,
+  },
+
+  // --- Groups ---
+  groupsList: {
+    gap: 0,
+  },
+
+  // --- Loading ---
+  sectionLoadingContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: Theme.spacing.md,
+    justifyContent: 'center',
+    paddingVertical: Theme.spacing.lg,
+    gap: Theme.spacing.sm,
   },
-  loadingText: {
+  sectionLoadingText: {
     fontSize: Theme.typography.fontSize.medium,
     color: Theme.colors.textSecondary,
     fontFamily: Theme.typography.fontFamily,
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
+
+  // --- Empty states ---
+  emptyStateRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Theme.spacing.lg,
-    gap: Theme.spacing.md,
+    paddingHorizontal: Theme.spacing.md,
+    gap: Theme.spacing.xs,
   },
-  errorText: {
+  emptyStateText: {
+    fontSize: Theme.typography.fontSize.medium,
+    color: Theme.colors.textSecondary,
+    fontFamily: Theme.typography.fontFamily,
+  },
+  emptyStateLink: {
+    fontSize: Theme.typography.fontSize.medium,
+    color: Theme.colors.primary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.semibold,
+  },
+  emptyStateCard: {
+    backgroundColor: Theme.colors.cardBackground,
+    marginHorizontal: Theme.spacing.md,
+    borderRadius: Theme.borderRadius.lg,
+    padding: Theme.spacing.lg,
+    alignItems: 'center',
+    gap: Theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  emptyStateCardText: {
     fontSize: Theme.typography.fontSize.medium,
     color: Theme.colors.textSecondary,
     fontFamily: Theme.typography.fontFamily,
     textAlign: 'center',
-  },
-  retryButton: {
-    backgroundColor: Theme.colors.primary,
-    paddingHorizontal: Theme.spacing.lg,
-    paddingVertical: Theme.spacing.md,
-    borderRadius: Theme.borderRadius.lg,
-    marginTop: Theme.spacing.sm,
-  },
-  retryButtonText: {
-    fontSize: Theme.typography.fontSize.medium,
-    color: Theme.colors.textOnPrimary,
-    fontFamily: Theme.typography.fontFamily,
-    fontWeight: Theme.typography.fontWeight.semibold,
+    lineHeight: 20,
   },
 });
 

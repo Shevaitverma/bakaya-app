@@ -7,7 +7,7 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { AuthNavigator } from './AuthNavigator';
-import { MainNavigator } from './MainNavigator';
+import { MainTabNavigator } from './MainTabNavigator';
 import { Theme } from '../constants/theme';
 import type { RootStackParamList } from './types';
 
@@ -32,7 +32,7 @@ export const RootNavigator: React.FC = () => {
         animation: 'fade',
       }}>
       {isAuthenticated ? (
-        <Stack.Screen name="Main" component={MainNavigator} />
+        <Stack.Screen name="Main" component={MainTabNavigator} />
       ) : (
         <Stack.Screen name="Auth" component={AuthNavigator} />
       )}

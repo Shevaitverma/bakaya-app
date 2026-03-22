@@ -1,0 +1,233 @@
+.page {
+  padding: var(--spacing-lg);
+  max-width: var(--max-width);
+  margin-inline: auto;
+  animation: fadeIn 400ms ease both;
+}
+
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.pageTitle {
+  font-size: var(--font-size-display);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.createBtn {
+  padding: 0.5rem 1.25rem;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.createBtn:hover { opacity: 0.9; }
+
+.loadingText {
+  text-align: center;
+  padding: 3rem;
+  opacity: 0.6;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 4rem 1rem;
+}
+
+.emptyTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.emptySubtitle {
+  color: var(--color-text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.emptyAction {
+  display: inline-block;
+  padding: 0.6rem 1.5rem;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.profilesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.profileCard {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  transition: box-shadow 0.2s;
+}
+
+.profileCard:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.profileLink {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  flex: 1;
+  text-decoration: none;
+  color: inherit;
+}
+
+.profileAvatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.profileInfo {
+  min-width: 0;
+}
+
+.profileName {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.defaultBadge {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  padding: 0.125rem 0.5rem;
+  border-radius: 1rem;
+  background: var(--color-primary-bg, #fce4ec);
+  color: var(--color-primary);
+}
+
+.profileRelation {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  text-transform: capitalize;
+}
+
+.editBtn {
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  padding: 0.375rem;
+  font-size: 0.875rem;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: color 0.2s, background 0.2s;
+}
+
+.editBtn:hover {
+  color: var(--color-primary);
+  background: rgba(216, 27, 96, 0.06);
+}
+
+.deleteBtn {
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  padding: 0.375rem;
+  font-size: 0.875rem;
+  border-radius: var(--radius-sm);
+  transition: color 0.2s, background 0.2s;
+}
+
+.deleteBtn:hover {
+  color: var(--color-error, #ef4444);
+  background: var(--color-error-bg, #fef2f2);
+}
+
+/* Dialog */
+.dialogOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.dialog {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  width: 90%;
+  max-width: 400px;
+}
+
+.dialogTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.dialogMessage {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.dialogError {
+  color: var(--color-error, #ef4444);
+  font-size: 0.8125rem;
+  margin-bottom: 0.75rem;
+}
+
+.dialogActions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.dialogCancel {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  cursor: pointer;
+}
+
+.dialogConfirm {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-error, #ef4444);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

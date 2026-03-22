@@ -19,9 +19,9 @@ import type { Expense, PersonalExpensesResponse } from '../../types/expense';
 import SwipeableExpenseItem from '../../components/SwipeableExpenseItem';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { MainStackParamList } from '../../navigation/types';
+import type { HomeStackParamList } from '../../navigation/types';
 
-type ExpenseDetailScreenProps = NativeStackScreenProps<MainStackParamList, 'ExpenseDetail'>;
+type ExpenseDetailScreenProps = NativeStackScreenProps<HomeStackParamList, 'ExpenseDetail'>;
 
 const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();

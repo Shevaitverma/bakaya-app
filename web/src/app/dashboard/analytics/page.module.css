@@ -1,0 +1,43 @@
+.page {
+  padding: var(--spacing-lg);
+  max-width: var(--max-width);
+  margin-inline: auto;
+  animation: fadeIn 400ms ease both;
+}
+
+.pageTitle {
+  font-size: var(--font-size-display);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-xl);
+}
+
+.comingSoon {
+  text-align: center;
+  padding: 5rem 1rem;
+}
+
+.icon {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: 1.5rem;
+}
+
+.heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.subtitle {
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+  max-width: 400px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

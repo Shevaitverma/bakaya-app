@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { clearToken, ApiError } from "@/lib/api-client";
 import { expensesApi } from "@/lib/api/expenses";
+import { profilesApi } from "@/lib/api/profiles";
+import type { Profile } from "@/types/profile";
 import styles from "./page.module.css";
 
 /** 17 categories matching the mobile app */
@@ -59,12 +61,15 @@ export default function AddExpensePage() {
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [notes, setNotes] = useState("");
+  const [selectedProfileId, setSelectedProfileId] = useState("");
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{
     title?: string;
     amount?: string;
     category?: string;
+    profile?: string;
     server?: string;
   }>({});
   const [isAuthChecked, setIsAuthChecked] = useState(false);
@@ -87,6 +92,19 @@ export default function AddExpensePage() {
       router.push("/login");
     }
   }, [router]);
+
+  // Fetch profiles and pre-select default
+  useEffect(() => {
+    if (!isAuthChecked) return;
+    profilesApi.getProfiles().then((data) => {
+      const list = data.profiles ?? [];
+      setProfiles(list);
+      const defaultProfile = list.find((p) => p.isDefault);
+      if (defaultProfile) setSelectedProfileId(defaultProfile._id);
+    }).catch(() => {
+      // profiles API not ready — continue without
+    });
+  }, [isAuthChecked]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -140,6 +158,7 @@ export default function AddExpensePage() {
       await expensesApi.create({
         title: title.trim(),
         amount: parseFloat(amount),
+        profileId: selectedProfileId || undefined,
         category: category.trim(),
         notes: notes.trim() || undefined,
       });
@@ -194,6 +213,43 @@ export default function AddExpensePage() {
           {errors.server && (
             <div style={{ color: "var(--color-error, #ef4444)", background: "var(--color-error-bg, #fef2f2)", padding: "0.75rem 1rem", borderRadius: "0.5rem", fontSize: "0.875rem", marginBottom: "0.5rem" }}>
               {errors.server}
+            </div>
+          )}
+
+          {/* Profile Selector */}
+          {profiles.length > 0 && (
+            <div className={styles.field}>
+              <label className={styles.label}>Who is this for?</label>
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                {profiles.map((profile) => (
+                  <button
+                    key={profile._id}
+                    type="button"
+                    onClick={() => setSelectedProfileId(profile._id)}
+                    style={{
+                      padding: "0.5rem 1rem",
+                      borderRadius: "2rem",
+                      border: selectedProfileId === profile._id ? "2px solid var(--color-primary, #D81B60)" : "1px solid #ddd",
+                      background: selectedProfileId === profile._id ? "var(--color-primary-bg, #fce4ec)" : "transparent",
+                      cursor: "pointer",
+                      fontSize: "0.875rem",
+                      fontWeight: selectedProfileId === profile._id ? 600 : 400,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.375rem",
+                    }}
+                  >
+                    <span style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      backgroundColor: profile.color || "var(--color-primary, #D81B60)",
+                      display: "inline-block",
+                    }} />
+                    {profile.name}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 

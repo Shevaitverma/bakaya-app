@@ -17,8 +17,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { useAuth } from '../../context/AuthContext';
+import { useGoogleSignIn } from '../../hooks/useGoogleSignIn';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
+import { GoogleSignInButton } from '../../components/GoogleSignInButton';
 import { Theme } from '../../constants/theme';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
@@ -32,7 +34,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   navigation,
 }) => {
   const insets = useSafeAreaInsets();
-  const { register, isLoading, error } = useAuth();
+  const { register, googleLogin, isLoading, error } = useAuth();
+  const { signIn: googleSignIn, isLoading: isGoogleLoading } = useGoogleSignIn();
 
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -194,6 +197,24 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    if (isGoogleLoading || isLoading) return;
+
+    try {
+      const firebaseIdToken = await googleSignIn();
+      if (!firebaseIdToken) {
+        // User cancelled the sign-in flow
+        return;
+      }
+      await googleLogin(firebaseIdToken);
+      // Navigation will be handled by the navigation logic based on auth state
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Google sign-in failed. Please try again.';
+      Alert.alert('Google Sign-In Failed', message, [{ text: 'OK' }]);
+    }
+  };
+
   const handleNavigateToLogin = () => {
     navigation.navigate('Login');
   };
@@ -339,6 +360,21 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               loading={isLoading}
               style={styles.registerButton}
             />
+
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Google Sign-In */}
+            <GoogleSignInButton
+              onPress={handleGoogleSignIn}
+              isLoading={isGoogleLoading}
+              disabled={isLoading}
+              label="Sign up with Google"
+            />
           </View>
 
           {/* Footer */}
@@ -398,6 +434,22 @@ const styles = StyleSheet.create({
   },
   registerButton: {
     marginTop: Theme.spacing.md,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: Theme.spacing.lg,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#D0D0D0',
+  },
+  dividerText: {
+    paddingHorizontal: Theme.spacing.md,
+    fontSize: Theme.typography.fontSize.medium,
+    color: Theme.colors.textSecondary,
+    fontFamily: Theme.typography.fontFamily,
   },
   footer: {
     flexDirection: 'row',

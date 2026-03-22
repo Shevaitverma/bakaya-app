@@ -18,6 +18,9 @@ const envSchema = z.object({
   JWT_EXPIRES_IN: z.string().default("15m"),
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
 
+  // Firebase
+  FIREBASE_PROJECT_ID: z.string().default(""),
+
   // Security
   CORS_ORIGIN: z.string().default("*"),
   RATE_LIMIT_MAX: z.coerce.number().default(100),

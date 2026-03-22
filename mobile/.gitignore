@@ -23,3 +23,7 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# EAS Build
+keystore/*.keystore
+credentials.json

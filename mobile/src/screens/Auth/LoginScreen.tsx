@@ -17,8 +17,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { useAuth } from '../../context/AuthContext';
+import { useGoogleSignIn } from '../../hooks/useGoogleSignIn';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
+import { GoogleSignInButton } from '../../components/GoogleSignInButton';
 import { Theme } from '../../constants/theme';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
@@ -27,11 +29,11 @@ type LoginScreenProps = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { login, isLoading, error } = useAuth();
+  const { login, googleLogin, isLoading, error } = useAuth();
+  const { signIn: googleSignIn, isLoading: isGoogleLoading } = useGoogleSignIn();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{
     email?: string;
@@ -63,12 +65,30 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     }
 
     try {
-      await login(email.trim(), password, username.trim());
+      await login(email.trim(), password);
       // Navigation will be handled by the navigation logic based on auth state
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'An error occurred. Please try again.';
       Alert.alert('Login Failed', message, [{ text: 'OK' }]);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (isGoogleLoading || isLoading) return;
+
+    try {
+      const firebaseIdToken = await googleSignIn();
+      if (!firebaseIdToken) {
+        // User cancelled the sign-in flow
+        return;
+      }
+      await googleLogin(firebaseIdToken);
+      // Navigation will be handled by the navigation logic based on auth state
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Google sign-in failed. Please try again.';
+      Alert.alert('Google Sign-In Failed', message, [{ text: 'OK' }]);
     }
   };
 
@@ -106,15 +126,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               onChangeText={setEmail}
               error={errors.email}
               keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            <Input
-              label="Username (Optional)"
-              placeholder="Enter your username"
-              value={username}
-              onChangeText={setUsername}
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -157,6 +168,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               onPress={handleLogin}
               loading={isLoading}
               style={styles.loginButton}
+            />
+
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Google Sign-In */}
+            <GoogleSignInButton
+              onPress={handleGoogleSignIn}
+              isLoading={isGoogleLoading}
+              disabled={isLoading}
+              label="Sign in with Google"
             />
           </View>
 
@@ -213,6 +239,22 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     marginTop: Theme.spacing.md,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: Theme.spacing.lg,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#D0D0D0',
+  },
+  dividerText: {
+    paddingHorizontal: Theme.spacing.md,
+    fontSize: Theme.typography.fontSize.medium,
+    color: Theme.colors.textSecondary,
+    fontFamily: Theme.typography.fontFamily,
   },
   footer: {
     flexDirection: 'row',

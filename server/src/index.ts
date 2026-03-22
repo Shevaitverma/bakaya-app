@@ -5,6 +5,7 @@ import { handleCorsPreFlight, addCorsHeaders } from "@/middleware/cors";
 import { checkRateLimit, getRateLimitHeaders } from "@/middleware/rateLimit";
 import { getOrCreateRequestId, addRequestIdHeader } from "@/middleware/requestId";
 import { addSecurityHeaders } from "@/middleware/security";
+import { handleSwaggerRoute } from "@/plugins/swagger.plugin";
 import { logger } from "@/utils/logger";
 
 async function main() {
@@ -18,16 +19,72 @@ async function main() {
 
     async fetch(req: Request): Promise<Response> {
       const requestId = getOrCreateRequestId(req);
+      const url = new URL(req.url);
+      const startTime = performance.now();
+      const method = req.method;
+      const pathname = url.pathname;
+
+      // Determine if this is a health-check path (logged at debug to avoid noise)
+      const isHealthCheck = pathname === "/health" || pathname === "/ready" || pathname === "/live";
+
+      // Helper: log the completed request at the appropriate level
+      const logRequest = (response: Response, handler: string) => {
+        const duration = performance.now() - startTime;
+        const meta = {
+          method,
+          pathname,
+          status: response.status,
+          duration: `${duration.toFixed(2)}ms`,
+          handler,
+          requestId,
+        };
+
+        if (isHealthCheck) {
+          logger.debug("Request completed", meta);
+        } else {
+          // Console.log as fallback in case Winston transport has issues in Bun
+          console.log(`[${method}] ${pathname} → ${response.status} (${duration.toFixed(2)}ms)`);
+          logger.info("Request completed", meta);
+        }
+      };
+
+      // Handle Swagger routes first (before rate limiting and with special CORS handling)
+      if (url.pathname.startsWith("/api-docs")) {
+        if (req.method === "OPTIONS") {
+          const corsResponse = handleCorsPreFlight(req);
+          if (corsResponse) {
+            logRequest(corsResponse, "cors-preflight:swagger");
+            return corsResponse;
+          }
+        }
+
+        const swaggerResponse = await handleSwaggerRoute(req);
+        if (swaggerResponse) {
+          let response = addCorsHeaders(swaggerResponse, req);
+          response = addSecurityHeaders(response);
+          logRequest(response, "swagger");
+          return response;
+        }
+      }
 
       // Handle CORS preflight
       const corsResponse = handleCorsPreFlight(req);
       if (corsResponse) {
+        logRequest(corsResponse, "cors-preflight");
         return corsResponse;
       }
 
       // Check rate limit
       const rateLimitResponse = checkRateLimit(req);
       if (rateLimitResponse) {
+        logger.warn("Rate limit exceeded", {
+          method,
+          pathname,
+          status: rateLimitResponse.status,
+          duration: `${(performance.now() - startTime).toFixed(2)}ms`,
+          handler: "rate-limit",
+          requestId,
+        });
         return rateLimitResponse;
       }
 
@@ -46,11 +103,14 @@ async function main() {
         headers.set(key, value as string);
       });
 
-      return new Response(response.body, {
+      const finalResponse = new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
         headers,
       });
+
+      logRequest(finalResponse, "router");
+      return finalResponse;
     },
 
     error(error: Error): Response {

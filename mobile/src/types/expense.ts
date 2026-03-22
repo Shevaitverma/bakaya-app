@@ -5,9 +5,10 @@
 export interface Expense {
   _id: string;
   userId: string;
+  profileId?: string;
   title: string;
   amount: number;
-  category: string;
+  category?: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -37,11 +38,20 @@ export interface PersonalExpensesResponse {
   };
 }
 
+export interface SingleExpenseResponse {
+  success: boolean;
+  data: Expense;
+  meta: {
+    timestamp: string;
+  };
+}
+
 export interface CreateExpenseRequest {
   title: string;
   amount: number;
-  category: string;
+  category?: string;
   notes?: string;
+  profileId?: string;
 }
 
 export interface CreateExpenseResponse {
@@ -50,4 +60,38 @@ export interface CreateExpenseResponse {
   meta: {
     timestamp: string;
   };
+}
+
+export interface UpdateExpenseRequest {
+  title?: string;
+  amount?: number;
+  profileId?: string;
+  category?: string;
+  notes?: string;
+}
+
+export interface UpdateExpenseResponse {
+  success: boolean;
+  data: Expense;
+  meta: {
+    timestamp: string;
+  };
+}
+
+export interface DeleteExpenseResponse {
+  success: boolean;
+  data: { deleted: boolean };
+  meta: {
+    timestamp: string;
+  };
+}
+
+/** Query parameters supported by GET /personal-expenses */
+export interface ExpenseQueryParams {
+  page?: number;
+  limit?: number;
+  category?: string;
+  profileId?: string;
+  startDate?: string;
+  endDate?: string;
 }

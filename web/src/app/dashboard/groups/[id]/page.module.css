@@ -1,6 +1,7 @@
 /* ============================================
    Group Detail Page Styles
-   Mirrors Expenses page layout with members
+   Mirrors Expenses page layout with members,
+   balances, settlements
    ============================================ */
 
 /* --- Page Shell --- */
@@ -93,6 +94,286 @@
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.sectionHeader .sectionTitle {
+  margin-bottom: 0;
+}
+
+/* --- Balances Section --- */
+.balanceList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.balanceEmpty {
+  padding: var(--spacing-lg);
+  text-align: center;
+  background: var(--color-card);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-lg);
+}
+
+.balanceEmptyText {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-md);
+}
+
+.balanceCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-card);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.balanceInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex: 1;
+  min-width: 0;
+}
+
+.balanceIndicator {
+  width: 4px;
+  height: 36px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.balanceIndicatorPositive {
+  background: #22c55e;
+}
+
+.balanceIndicatorNegative {
+  background: var(--color-error, #ef4444);
+}
+
+.balanceText {
+  font-size: var(--font-size-md);
+  color: var(--color-text-primary);
+  line-height: 1.4;
+}
+
+.balanceAmount {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.3px;
+}
+
+.balanceAmountPositive {
+  color: #22c55e;
+}
+
+.balanceAmountNegative {
+  color: var(--color-error, #ef4444);
+}
+
+.settleBtn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+  background: rgba(216, 27, 96, 0.08);
+  border: 1px solid rgba(216, 27, 96, 0.2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.settleBtn:hover {
+  background: rgba(216, 27, 96, 0.15);
+}
+
+/* --- Settle Up Inline Form --- */
+.settleForm {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-lg);
+  background: var(--color-card);
+  border: 1px solid rgba(216, 27, 96, 0.15);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.settleFormTitle {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.settleFormError {
+  color: var(--color-error, #ef4444);
+  background: var(--color-error-bg, #fef2f2);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.settleFormFields {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+@media (max-width: 600px) {
+  .settleFormFields {
+    flex-direction: column;
+  }
+}
+
+.settleField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  flex: 1;
+}
+
+.settleLabel {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.settleInput {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-md);
+  color: var(--color-text-primary);
+  background: #F0F0F0;
+  border: 1px solid #D0D0D0;
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.settleInput::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.settleInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(216, 27, 96, 0.1);
+}
+
+.settleFormActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+}
+
+.settleCancelBtn {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  background: var(--color-light-grey);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.settleCancelBtn:hover {
+  background: var(--color-stone-grey);
+}
+
+.settleConfirmBtn {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-on-primary);
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.settleConfirmBtn:hover {
+  background: var(--color-primary-dark);
+}
+
+.settleConfirmBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* --- Settlements Section --- */
+.settlementList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.settlementCard {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-card);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-fast);
+}
+
+.settlementCard:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.settlementIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(34, 197, 94, 0.1);
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.settlementInfo {
+  min-width: 0;
+}
+
+.settlementText {
+  font-size: var(--font-size-md);
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+}
+
+.settlementMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  flex-wrap: wrap;
+}
+
+.settlementNotes {
+  font-style: italic;
+}
+
+.settlementAmount {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: #22c55e;
+  letter-spacing: -0.4px;
+  white-space: nowrap;
 }
 
 /* --- Add Member --- */

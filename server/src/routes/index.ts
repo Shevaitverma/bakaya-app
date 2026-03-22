@@ -6,8 +6,21 @@ import {
   updateUser,
   deleteUser,
 } from "@/controllers/user.controller";
-import { login, register } from "@/controllers/auth.controller";
-import { getPersonalExpenses, createPersonalExpense, deletePersonalExpense } from "@/controllers/expense.controller";
+import { login, register, googleAuth, refreshTokenHandler } from "@/controllers/auth.controller";
+import {
+  getPersonalExpenses,
+  getPersonalExpense,
+  createPersonalExpense,
+  updatePersonalExpense,
+  deletePersonalExpense,
+} from "@/controllers/expense.controller";
+import {
+  getProfiles,
+  getProfile,
+  createProfile as createProfileHandler,
+  updateProfile as updateProfileHandler,
+  deleteProfile as deleteProfileHandler,
+} from "@/controllers/profile.controller";
 import {
   getGroups,
   getGroup,
@@ -19,10 +32,23 @@ import {
 } from "@/controllers/group.controller";
 import {
   getGroupExpenses,
+  getGroupExpense as getGroupExpenseHandler,
   createGroupExpense as createGroupExpenseHandler,
+  updateGroupExpense as updateGroupExpenseHandler,
   deleteGroupExpense as deleteGroupExpenseHandler,
   getGroupBalances,
 } from "@/controllers/groupExpense.controller";
+import {
+  getSettlements,
+  createSettlement as createSettlementHandler,
+  deleteSettlement as deleteSettlementHandler,
+} from "@/controllers/settlement.controller";
+import {
+  getAnalyticsSummary,
+  getAnalyticsByProfile,
+  getAnalyticsByCategory,
+  getAnalyticsTrends,
+} from "@/controllers/analytics.controller";
 import { authenticateRequest } from "@/middleware/auth";
 import { notFoundResponse, internalErrorResponse } from "@/utils/response";
 import { logger } from "@/utils/logger";
@@ -38,6 +64,8 @@ const routes: RouteHandler[] = [
   // Auth routes
   { path: "/api/v1/auth/login", method: "POST", handler: login },
   { path: "/api/v1/auth/register", method: "POST", handler: register },
+  { path: "/api/v1/auth/google", method: "POST", handler: googleAuth },
+  { path: "/api/v1/auth/refresh", method: "POST", handler: refreshTokenHandler },
 
   // User routes
   { path: "/api/v1/users", method: "GET", handler: getUsers },
@@ -46,9 +74,18 @@ const routes: RouteHandler[] = [
   { path: "/api/v1/users/:id", method: "PUT", handler: updateUser },
   { path: "/api/v1/users/:id", method: "DELETE", handler: deleteUser },
 
+  // Profile routes (protected)
+  { path: "/api/v1/profiles", method: "GET", handler: getProfiles, protected: true },
+  { path: "/api/v1/profiles", method: "POST", handler: createProfileHandler, protected: true },
+  { path: "/api/v1/profiles/:id", method: "GET", handler: getProfile, protected: true },
+  { path: "/api/v1/profiles/:id", method: "PUT", handler: updateProfileHandler, protected: true },
+  { path: "/api/v1/profiles/:id", method: "DELETE", handler: deleteProfileHandler, protected: true },
+
   // Personal expenses routes (protected)
   { path: "/api/v1/personal-expenses", method: "GET", handler: getPersonalExpenses, protected: true },
   { path: "/api/v1/personal-expenses", method: "POST", handler: createPersonalExpense, protected: true },
+  { path: "/api/v1/personal-expenses/:id", method: "GET", handler: getPersonalExpense, protected: true },
+  { path: "/api/v1/personal-expenses/:id", method: "PUT", handler: updatePersonalExpense, protected: true },
   { path: "/api/v1/personal-expenses/:id", method: "DELETE", handler: deletePersonalExpense, protected: true },
 
   // Group CRUD routes (protected)
@@ -65,10 +102,23 @@ const routes: RouteHandler[] = [
   // Group expenses routes (protected)
   { path: "/api/v1/groups/:id/expenses", method: "GET", handler: getGroupExpenses, protected: true },
   { path: "/api/v1/groups/:id/expenses", method: "POST", handler: createGroupExpenseHandler, protected: true },
+  { path: "/api/v1/groups/:id/expenses/:expenseId", method: "GET", handler: getGroupExpenseHandler, protected: true },
+  { path: "/api/v1/groups/:id/expenses/:expenseId", method: "PUT", handler: updateGroupExpenseHandler, protected: true },
   { path: "/api/v1/groups/:id/expenses/:expenseId", method: "DELETE", handler: deleteGroupExpenseHandler, protected: true },
 
   // Group balances route (protected)
   { path: "/api/v1/groups/:id/balances", method: "GET", handler: getGroupBalances, protected: true },
+
+  // Settlement routes (protected)
+  { path: "/api/v1/groups/:id/settlements", method: "GET", handler: getSettlements, protected: true },
+  { path: "/api/v1/groups/:id/settlements", method: "POST", handler: createSettlementHandler, protected: true },
+  { path: "/api/v1/groups/:id/settlements/:settlementId", method: "DELETE", handler: deleteSettlementHandler, protected: true },
+
+  // Analytics routes (protected)
+  { path: "/api/v1/analytics/summary", method: "GET", handler: getAnalyticsSummary, protected: true },
+  { path: "/api/v1/analytics/by-profile", method: "GET", handler: getAnalyticsByProfile, protected: true },
+  { path: "/api/v1/analytics/by-category", method: "GET", handler: getAnalyticsByCategory, protected: true },
+  { path: "/api/v1/analytics/trends", method: "GET", handler: getAnalyticsTrends, protected: true },
 ];
 
 interface MatchResult {
@@ -116,8 +166,6 @@ export async function handleRequest(req: Request): Promise<Response> {
   const { pathname } = url;
   const method = req.method;
 
-  const startTime = performance.now();
-
   try {
     const match = matchRoute(method, pathname);
 
@@ -132,24 +180,12 @@ export async function handleRequest(req: Request): Promise<Response> {
       if (authError) return authError;
     }
 
-    const response = await match.route.handler(req, match.params);
-
-    const duration = performance.now() - startTime;
-    logger.info("Request completed", {
-      method,
-      pathname,
-      status: response.status,
-      duration: `${duration.toFixed(2)}ms`,
-    });
-
-    return response;
+    return await match.route.handler(req, match.params);
   } catch (error) {
-    const duration = performance.now() - startTime;
-    logger.error("Request failed", {
+    logger.error("Request handler error", {
       method,
       pathname,
       error,
-      duration: `${duration.toFixed(2)}ms`,
     });
 
     return internalErrorResponse();

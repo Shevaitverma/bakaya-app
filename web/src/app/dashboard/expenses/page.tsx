@@ -187,6 +187,16 @@ export default function ExpensesPage() {
                   ₹{expense.amount.toFixed(2)}
                 </span>
 
+                {/* Edit */}
+                <Link
+                  href={`/dashboard/expenses/${expense._id}/edit`}
+                  className={styles.expenseEdit}
+                  aria-label={`Edit ${expense.title}`}
+                  title="Edit expense"
+                >
+                  &#9998;
+                </Link>
+
                 {/* Delete */}
                 <button
                   className={styles.expenseDelete}

@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IExpense {
   userId: mongoose.Types.ObjectId;
+  profileId?: mongoose.Types.ObjectId;
   title: string;
   amount: number;
   category?: string;
@@ -18,6 +19,11 @@ const expenseSchema = new Schema<IExpenseDocument>(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
+    },
+    profileId: {
+      type: Schema.Types.ObjectId,
+      ref: "Profile",
       index: true,
     },
     title: {
@@ -46,5 +52,6 @@ const expenseSchema = new Schema<IExpenseDocument>(
 );
 
 expenseSchema.index({ userId: 1, createdAt: -1 });
+expenseSchema.index({ userId: 1, profileId: 1, createdAt: -1 });
 
 export const Expense = mongoose.model<IExpenseDocument>("Expense", expenseSchema);

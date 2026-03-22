@@ -7,6 +7,9 @@ export interface IUser {
   lastName?: string;
   name?: string;
   password: string;
+  profilePicture?: string;
+  authProvider: "local" | "google";
+  googleId?: string;
   role: "user" | "admin";
   isActive: boolean;
   isVerified: boolean;
@@ -57,9 +60,26 @@ const userSchema = new Schema<IUserDocument>(
     },
     password: {
       type: String,
-      required: [true, "Password is required"],
+      required: function (this: IUser) {
+        return this.authProvider === "local";
+      },
       minlength: [8, "Password must be at least 8 characters"],
       select: false,
+    },
+    profilePicture: {
+      type: String,
+      trim: true,
+    },
+    authProvider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
     },
     role: {
       type: String,
