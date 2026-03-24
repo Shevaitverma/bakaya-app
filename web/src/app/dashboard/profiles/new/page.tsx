@@ -51,23 +51,16 @@ export default function NewProfilePage() {
         <h1 className={styles.pageTitle}>New Profile</h1>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ maxWidth: 480 }}>
+      <form onSubmit={handleSubmit} className={styles.profileForm}>
         {error && (
-          <div style={{
-            color: "var(--color-error, #ef4444)",
-            background: "var(--color-error-bg, #fef2f2)",
-            padding: "0.75rem 1rem",
-            borderRadius: "0.5rem",
-            fontSize: "0.875rem",
-            marginBottom: "1rem",
-          }}>
+          <div className={styles.formError}>
             {error}
           </div>
         )}
 
         {/* Name */}
-        <div style={{ marginBottom: "1.25rem" }}>
-          <label style={{ display: "block", fontWeight: 600, marginBottom: "0.375rem", fontSize: "0.875rem" }}>
+        <div className={styles.formField}>
+          <label className={styles.formLabel}>
             Name
           </label>
           <input
@@ -75,23 +68,16 @@ export default function NewProfilePage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g., Brother, Girlfriend"
-            style={{
-              width: "100%",
-              padding: "0.625rem 0.875rem",
-              border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius-md)",
-              fontSize: "0.9375rem",
-              background: "var(--color-surface)",
-            }}
+            className={styles.formInput}
           />
         </div>
 
         {/* Relationship */}
-        <div style={{ marginBottom: "1.25rem" }}>
-          <label style={{ display: "block", fontWeight: 600, marginBottom: "0.375rem", fontSize: "0.875rem" }}>
+        <div className={styles.formField}>
+          <label className={styles.formLabel}>
             Relationship
           </label>
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <div className={styles.formChipsRow}>
             {RELATIONSHIPS.map((rel) => (
               <button
                 key={rel}
@@ -106,6 +92,7 @@ export default function NewProfilePage() {
                   fontSize: "0.8125rem",
                   fontWeight: relationship === rel ? 600 : 400,
                   textTransform: "capitalize",
+                  whiteSpace: "nowrap",
                 }}
               >
                 {rel}
@@ -115,11 +102,11 @@ export default function NewProfilePage() {
         </div>
 
         {/* Color */}
-        <div style={{ marginBottom: "1.5rem" }}>
-          <label style={{ display: "block", fontWeight: 600, marginBottom: "0.375rem", fontSize: "0.875rem" }}>
+        <div className={styles.formFieldLarge}>
+          <label className={styles.formLabel}>
             Color
           </label>
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <div className={styles.formChipsRow}>
             {COLORS.map((c) => (
               <button
                 key={c}
@@ -133,6 +120,7 @@ export default function NewProfilePage() {
                   border: color === c ? "3px solid var(--color-text-primary)" : "2px solid transparent",
                   cursor: "pointer",
                   outline: color === c ? "2px solid var(--color-surface)" : "none",
+                  flexShrink: 0,
                 }}
               />
             ))}
@@ -140,35 +128,18 @@ export default function NewProfilePage() {
         </div>
 
         {/* Submit */}
-        <div style={{ display: "flex", gap: "0.75rem" }}>
+        <div className={styles.formActions}>
           <button
             type="button"
             onClick={() => router.back()}
-            style={{
-              padding: "0.625rem 1.25rem",
-              borderRadius: "var(--radius-md)",
-              border: "1px solid var(--color-border)",
-              background: "transparent",
-              cursor: "pointer",
-              fontSize: "0.875rem",
-            }}
+            className={styles.formCancelBtn}
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isLoading}
-            style={{
-              padding: "0.625rem 1.5rem",
-              borderRadius: "var(--radius-md)",
-              border: "none",
-              background: "var(--color-primary)",
-              color: "#fff",
-              cursor: isLoading ? "not-allowed" : "pointer",
-              fontSize: "0.875rem",
-              fontWeight: 600,
-              opacity: isLoading ? 0.7 : 1,
-            }}
+            className={styles.formSubmitBtn}
           >
             {isLoading ? "Creating..." : "Create Profile"}
           </button>

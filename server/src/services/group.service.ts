@@ -1,4 +1,6 @@
 import { Group } from "@/models/Group";
+import { GroupExpense } from "@/models/GroupExpense";
+import { Settlement } from "@/models/Settlement";
 import { User } from "@/models/User";
 import type { CreateGroupInput, UpdateGroupInput } from "@/schemas/group.schema";
 import { createPaginationMeta } from "@/utils/pagination";
@@ -52,8 +54,13 @@ export async function deleteGroup(groupId: string, userId: string) {
     throw new Error("Only the creator can delete the group");
   }
 
-  await Group.findByIdAndDelete(groupId);
-  logger.info("Group deleted", { groupId });
+  // Cascade delete associated data
+  await Promise.all([
+    GroupExpense.deleteMany({ groupId }),
+    Settlement.deleteMany({ groupId }),
+    Group.findByIdAndDelete(groupId),
+  ]);
+  logger.info("Group deleted with associated data", { groupId });
   return true;
 }
 

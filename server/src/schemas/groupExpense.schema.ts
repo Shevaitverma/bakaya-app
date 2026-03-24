@@ -2,23 +2,24 @@ import { z } from "zod";
 
 export const createGroupExpenseSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
-  amount: z.number().min(0, "Amount must be non-negative"),
+  amount: z.number().positive("Amount must be positive"),
   category: z.string().max(50).optional(),
   notes: z.string().max(500).optional(),
+  paidBy: z.string().min(1).optional(),
   splitAmong: z.array(z.object({
     userId: z.string().min(1),
-    amount: z.number().min(0),
+    amount: z.number().positive("Split amount must be positive"),
   })).optional(),
 });
 
 export const updateGroupExpenseSchema = z.object({
   title: z.string().min(1).max(200).optional(),
-  amount: z.number().min(0).optional(),
+  amount: z.number().positive("Amount must be positive").optional(),
   category: z.string().max(50).optional(),
   notes: z.string().max(500).optional(),
   splitAmong: z.array(z.object({
     userId: z.string().min(1),
-    amount: z.number().min(0),
+    amount: z.number().positive("Split amount must be positive"),
   })).optional(),
 });
 

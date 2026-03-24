@@ -6,7 +6,7 @@
 
 /* --- Page Shell --- */
 .page {
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
   max-width: var(--max-width);
   margin-inline: auto;
   animation: fadeIn 400ms ease both;
@@ -353,9 +353,24 @@
 /* --- Responsive --- */
 @media (max-width: 768px) {
   .page {
-    padding: var(--spacing-md);
-    /* Make room for the mobile hamburger */
-    padding-top: calc(var(--spacing-md) + 56px);
+    padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
+    /* No extra top padding needed — layout .main already clears the hamburger */
+  }
+
+  .pageHeader {
+    margin-bottom: var(--spacing-md);
+  }
+
+  .pageTitle {
+    font-size: var(--font-size-title);
+  }
+
+  .addExpenseCta {
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .section {
+    margin-bottom: var(--spacing-lg);
   }
 
   .groupsGrid {

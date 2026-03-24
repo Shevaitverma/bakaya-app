@@ -1,67 +1,26 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { clearToken, ApiError } from "@/lib/api-client";
+import { useRouter, useSearchParams } from "next/navigation";
+import { clearAllAuth, ApiError } from "@/lib/api-client";
 import { expensesApi } from "@/lib/api/expenses";
 import { profilesApi } from "@/lib/api/profiles";
 import type { Profile } from "@/types/profile";
+import { CATEGORIES, getCategoryEmoji } from "@/constants/categories";
 import styles from "./page.module.css";
-
-/** 17 categories matching the mobile app */
-const CATEGORIES = [
-  "Food",
-  "Accessory",
-  "Transport",
-  "Shopping",
-  "Bills",
-  "Entertainment",
-  "Groceries",
-  "Healthcare",
-  "Education",
-  "Travel",
-  "Utilities",
-  "Clothing",
-  "Restaurant",
-  "Gas",
-  "Insurance",
-  "Rent",
-  "Other",
-] as const;
-
-/** Emoji equivalents for category icons */
-const CATEGORY_EMOJI: Record<string, string> = {
-  food: "🍽️",
-  accessory: "📱",
-  transport: "🚗",
-  shopping: "🛍️",
-  bills: "🧾",
-  entertainment: "🎬",
-  groceries: "🛒",
-  healthcare: "💊",
-  education: "🎓",
-  travel: "✈️",
-  utilities: "⚡",
-  clothing: "👕",
-  restaurant: "🍴",
-  gas: "⛽",
-  insurance: "🛡️",
-  rent: "🏠",
-  other: "📄",
-};
-
-function getCategoryEmoji(category: string): string {
-  return CATEGORY_EMOJI[category.toLowerCase()] ?? "📄";
-}
 
 export default function AddExpensePage() {
   const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
+  const searchParams = useSearchParams();
+  const queryProfileId = searchParams.get("profileId") || "";
 
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [notes, setNotes] = useState("");
-  const [selectedProfileId, setSelectedProfileId] = useState("");
+  const [selectedProfileId, setSelectedProfileId] = useState(queryProfileId);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -72,39 +31,24 @@ export default function AddExpensePage() {
     profile?: string;
     server?: string;
   }>({});
-  const [isAuthChecked, setIsAuthChecked] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Auth guard: redirect to login if not logged in
+  // Fetch profiles and pre-select default (unless query param already set)
   useEffect(() => {
-    const stored = localStorage.getItem("bakaya_user");
-    if (!stored) {
-      router.push("/login");
-      return;
-    }
-    try {
-      JSON.parse(stored);
-      setIsAuthChecked(true);
-    } catch {
-      localStorage.removeItem("bakaya_user");
-      clearToken();
-      router.push("/login");
-    }
-  }, [router]);
-
-  // Fetch profiles and pre-select default
-  useEffect(() => {
-    if (!isAuthChecked) return;
     profilesApi.getProfiles().then((data) => {
       const list = data.profiles ?? [];
       setProfiles(list);
-      const defaultProfile = list.find((p) => p.isDefault);
-      if (defaultProfile) setSelectedProfileId(defaultProfile._id);
+      // If a profileId was provided via query param and exists, keep it;
+      // otherwise fall back to the default profile
+      if (!queryProfileId || !list.some((p) => p._id === queryProfileId)) {
+        const defaultProfile = list.find((p) => p.isDefault);
+        if (defaultProfile) setSelectedProfileId(defaultProfile._id);
+      }
     }).catch(() => {
       // profiles API not ready — continue without
     });
-  }, [isAuthChecked]);
+  }, [queryProfileId]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -162,13 +106,12 @@ export default function AddExpensePage() {
         category: category.trim(),
         notes: notes.trim() || undefined,
       });
-      router.push("/dashboard/expenses");
+      routerRef.current.push("/dashboard/expenses");
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.status === 401) {
-          localStorage.removeItem("bakaya_user");
-          clearToken();
-          router.push("/login");
+          clearAllAuth();
+          routerRef.current.push("/login");
           return;
         }
         setErrors({ server: error.message });
@@ -187,10 +130,6 @@ export default function AddExpensePage() {
       setErrors((prev) => ({ ...prev, category: undefined }));
     }
   };
-
-  if (!isAuthChecked) {
-    return null;
-  }
 
   return (
     <div className={styles.page}>
@@ -220,7 +159,7 @@ export default function AddExpensePage() {
           {profiles.length > 0 && (
             <div className={styles.field}>
               <label className={styles.label}>Who is this for?</label>
-              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              <div className={styles.profileChipsRow}>
                 {profiles.map((profile) => (
                   <button
                     key={profile._id}
@@ -237,6 +176,7 @@ export default function AddExpensePage() {
                       display: "flex",
                       alignItems: "center",
                       gap: "0.375rem",
+                      whiteSpace: "nowrap",
                     }}
                   >
                     <span style={{
@@ -245,6 +185,7 @@ export default function AddExpensePage() {
                       borderRadius: "50%",
                       backgroundColor: profile.color || "var(--color-primary, #D81B60)",
                       display: "inline-block",
+                      flexShrink: 0,
                     }} />
                     {profile.name}
                   </button>

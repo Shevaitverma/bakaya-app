@@ -470,3 +470,140 @@
     transform: translateY(0);
   }
 }
+
+/* --- Mobile Responsive --- */
+@media (max-width: 768px) {
+  .header {
+    padding-top: var(--spacing-sm);
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .headerTitle {
+    font-size: 18px;
+  }
+
+  .backBtn {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Form container */
+  .formContainer {
+    padding: 16px;
+  }
+
+  /* All inputs: full width, comfortable touch targets */
+  .input {
+    width: 100%;
+    min-height: 44px;
+    padding: 14px 16px;
+    font-size: 1rem;
+    border-radius: 12px;
+    box-sizing: border-box;
+  }
+
+  .textarea {
+    min-height: 100px;
+  }
+
+  /* Select (paid by): full width */
+  .select {
+    width: 100%;
+    min-height: 44px;
+    padding: 14px 16px;
+    font-size: 1rem;
+    border-radius: 12px;
+    box-sizing: border-box;
+  }
+
+  /* Category trigger: full width */
+  .categoryTrigger {
+    width: 100%;
+    min-height: 44px;
+    padding: 14px 16px;
+    font-size: 1rem;
+    border-radius: 12px;
+    box-sizing: border-box;
+  }
+
+  /* Category dropdown list */
+  .categoryList {
+    max-height: 250px;
+  }
+
+  .categoryItem {
+    padding: 10px 12px;
+    min-height: 44px;
+  }
+
+  /* Split header */
+  .splitHeader {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .splitToggle {
+    padding: 6px 14px;
+    min-height: 36px;
+    font-size: 0.8125rem;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Member checkboxes: single column, full width */
+  .memberCheckboxList {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .memberCheckbox {
+    width: 100%;
+    padding: 12px 16px;
+    min-height: 52px;
+    border-radius: 12px;
+    gap: 12px;
+    box-sizing: border-box;
+  }
+
+  .checkboxAvatar {
+    width: 36px;
+    height: 36px;
+    font-size: 0.875rem;
+  }
+
+  .checkboxName {
+    font-size: 0.9375rem;
+  }
+
+  .checkboxAmount {
+    font-size: 0.8125rem;
+  }
+
+  .checkboxMark {
+    width: 28px;
+    height: 28px;
+  }
+
+  /* Split summary */
+  .splitSummary {
+    padding: 12px 16px;
+    font-size: 0.8125rem;
+    border-radius: 12px;
+  }
+
+  /* Submit button: full width */
+  .submitBtn {
+    width: 100%;
+    min-height: 48px;
+    padding: 14px;
+    font-size: 1rem;
+    border-radius: 12px;
+  }
+
+  /* Labels */
+  .label {
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+}

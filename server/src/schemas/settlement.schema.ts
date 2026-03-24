@@ -5,6 +5,9 @@ export const createSettlementSchema = z.object({
   paidTo: z.string().min(1, "paidTo is required"),
   amount: z.number().positive("Amount must be positive"),
   notes: z.string().max(500).optional(),
+}).refine(data => data.paidBy !== data.paidTo, {
+  message: "Cannot settle with yourself",
+  path: ["paidTo"],
 });
 
 export const settlementQuerySchema = z.object({

@@ -1,3 +1,9 @@
+/* ============================================
+   Analytics Page Styles
+   Clean fintech-style dashboard cards
+   ============================================ */
+
+/* --- Page Shell --- */
 .page {
   padding: var(--spacing-lg);
   max-width: var(--max-width);
@@ -5,36 +11,283 @@
   animation: fadeIn 400ms ease both;
 }
 
+/* --- Page Header --- */
+.pageHeader {
+  margin-bottom: var(--spacing-lg);
+}
+
 .pageTitle {
   font-size: var(--font-size-display);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
+  letter-spacing: -1px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.periodBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  background: rgba(216, 27, 96, 0.07);
+  color: var(--color-primary);
+  border-radius: var(--radius-round);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.01em;
+}
+
+.periodIcon {
+  font-size: var(--font-size-sm);
+  line-height: 1;
+}
+
+/* --- Loading State --- */
+.loadingText {
+  text-align: center;
+  padding: var(--spacing-3xl) var(--spacing-lg);
+  font-size: var(--font-size-md);
+  color: var(--color-text-tertiary);
+}
+
+/* --- Summary Cards Grid --- */
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-md);
   margin-bottom: var(--spacing-xl);
 }
 
-.comingSoon {
-  text-align: center;
-  padding: 5rem 1rem;
+/* --- Individual Card --- */
+.card {
+  position: relative;
+  padding: 22px 24px;
+  background: var(--color-card);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+  min-height: 120px;
 }
 
-.icon {
-  font-size: 4rem;
-  display: block;
-  margin-bottom: 1.5rem;
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
-.heading {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 0.75rem;
+/* Accent top bar on cards */
+.card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: linear-gradient(90deg, var(--color-gradient-start), var(--color-gradient-end));
+  opacity: 0;
+  transition: opacity var(--transition-fast);
 }
 
-.subtitle {
-  color: var(--color-text-secondary);
+.card:hover::before {
+  opacity: 1;
+}
+
+/* Card icon circle */
+.cardIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
   font-size: 1rem;
-  max-width: 400px;
+  margin-bottom: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+.cardIconSpent {
+  background: rgba(216, 27, 96, 0.08);
+}
+
+.cardIconProfile {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.cardIconCategory {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.cardLabel {
+  font-size: 0.6875rem;
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-tertiary);
+  margin-bottom: 8px;
+}
+
+.cardValue {
+  font-size: 1.75rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-tight);
+  letter-spacing: -0.5px;
+  margin-top: auto;
+}
+
+.cardSub {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-top: 6px;
+  line-height: var(--line-height-normal);
+}
+
+/* --- Coming Soon Section --- */
+.comingSoon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--spacing-xl) var(--spacing-lg);
+  border: 2px dashed rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+}
+
+.comingSoonIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  background: var(--color-light-grey);
+  font-size: 1.25rem;
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text-tertiary);
+}
+
+.comingSoonTitle {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.comingSoonSubtitle {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+  max-width: 340px;
   margin: 0 auto;
-  line-height: 1.5;
+  line-height: var(--line-height-relaxed);
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+  .page {
+    padding: var(--spacing-sm) 16px 16px;
+  }
+
+  .pageHeader {
+    margin-bottom: 16px;
+  }
+
+  .pageTitle {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .periodBadge {
+    font-size: 0.75rem;
+    padding: 6px 12px;
+    gap: 4px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cardsGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .card {
+    min-height: unset;
+    padding: 16px;
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    border-radius: 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .card::before {
+    /* Switch to left bar on mobile */
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: unset;
+    width: 3px;
+    height: auto;
+    border-radius: 12px 0 0 12px;
+  }
+
+  .cardIcon {
+    margin-bottom: 0;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+  }
+
+  .cardBody {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .cardLabel {
+    font-size: 0.625rem;
+    margin-bottom: 4px;
+  }
+
+  .cardValue {
+    font-size: 1.375rem;
+    word-break: break-word;
+  }
+
+  .cardSub {
+    font-size: 0.8125rem;
+    margin-top: 4px;
+  }
+
+  /* Coming Soon section: less padding on mobile */
+  .comingSoon {
+    padding: 24px 16px;
+    border-radius: 12px;
+  }
+
+  .comingSoonIcon {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+
+  .comingSoonTitle {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .comingSoonSubtitle {
+    font-size: 0.8125rem;
+    max-width: 280px;
+  }
 }
 
 @keyframes fadeIn {

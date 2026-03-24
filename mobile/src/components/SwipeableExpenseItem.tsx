@@ -20,12 +20,15 @@ interface SwipeableExpenseItemProps {
   index: number;
   isLastItem: boolean;
   onDelete: (expenseId: string) => void;
+  onPress?: (expenseId: string) => void;
   formatDate: (dateString: string) => string;
   formatTime: (dateString: string) => string;
   formatAmount: (amount: number) => string;
   isOpen: boolean;
   onSwipeStart: () => void;
   onSwipeEnd: (expenseId: string, isOpen: boolean) => void;
+  profileName?: string;
+  profileColor?: string;
 }
 
 const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({
@@ -33,12 +36,15 @@ const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({
   index,
   isLastItem,
   onDelete,
+  onPress,
   formatDate,
   formatTime,
   formatAmount,
   isOpen,
   onSwipeStart,
   onSwipeEnd,
+  profileName,
+  profileColor,
 }) => {
   const translateX = useRef(new Animated.Value(0)).current;
   const startX = useRef(0);
@@ -79,6 +85,13 @@ const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({
       },
       onPanResponderRelease: (_, gestureState) => {
         const finalValue = startX.current + gestureState.dx;
+
+        // Detect tap: minimal movement and item is not swiped open
+        const isTap = Math.abs(gestureState.dx) < 5 && Math.abs(gestureState.dy) < 5;
+        if (isTap && startX.current === 0 && onPress) {
+          onPress(item._id);
+          return;
+        }
 
         if (finalValue < -SWIPE_THRESHOLD) {
           // Swipe threshold reached, snap to delete button position
@@ -174,9 +187,19 @@ const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({
               </Text>
               <Text style={styles.expenseAmount}>{formatAmount(item.amount)}</Text>
             </View>
-            <View style={styles.expenseDateTimeContainer}>
-              <Text style={styles.expenseDate}>{formatDate(item.createdAt)}</Text>
-              <Text style={styles.expenseTime}>{formatTime(item.createdAt)}</Text>
+            <View style={styles.expenseMetaRow}>
+              <View style={styles.expenseDateTimeContainer}>
+                <Text style={styles.expenseDate}>{formatDate(item.createdAt)}</Text>
+                <Text style={styles.expenseTime}>{formatTime(item.createdAt)}</Text>
+              </View>
+              {profileName && profileColor && (
+                <View style={[styles.profileBadge, { backgroundColor: profileColor + '18' }]}>
+                  <View style={[styles.profileBadgeDot, { backgroundColor: profileColor }]} />
+                  <Text style={[styles.profileBadgeText, { color: profileColor }]} numberOfLines={1}>
+                    {profileName}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -268,11 +291,36 @@ const styles = StyleSheet.create({
     marginRight: Theme.spacing.sm,
     lineHeight: 20,
   },
+  expenseMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Theme.spacing.xs,
+    marginTop: 1,
+    flexWrap: 'wrap',
+  },
   expenseDateTimeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Theme.spacing.xs + 2,
-    marginTop: 1,
+  },
+  profileBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: Theme.borderRadius.round,
+    gap: 3,
+  },
+  profileBadgeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: Theme.borderRadius.round,
+  },
+  profileBadgeText: {
+    fontSize: Theme.typography.fontSize.xs,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.semibold,
+    maxWidth: 70,
   },
   expenseDate: {
     fontSize: Theme.typography.fontSize.xs,

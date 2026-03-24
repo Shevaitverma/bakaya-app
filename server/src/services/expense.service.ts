@@ -38,7 +38,9 @@ export async function findExpensesByUser(
       dateFilter.$gte = new Date(options.startDate);
     }
     if (options.endDate) {
-      dateFilter.$lte = new Date(options.endDate);
+      const end = new Date(options.endDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.$lte = end;
     }
     filter.createdAt = dateFilter;
   }

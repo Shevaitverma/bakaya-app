@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -74,7 +74,7 @@ const getCategoryIcon = (category: string): string => {
 const HomeScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<HomeScreenNavigationProp>();
-  const { logout, user, accessToken } = useAuth();
+  const { logout, user, accessToken, refreshSession } = useAuth();
 
   // Data states
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -101,7 +101,8 @@ const HomeScreen = () => {
         if (response.success && response.data) {
           setProfiles(response.data.profiles);
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.statusCode === 401) throw err; // Propagate 401 to parent
         console.error('Error fetching profiles:', err);
       } finally {
         setProfilesLoading(false);
@@ -115,7 +116,8 @@ const HomeScreen = () => {
         if (response.success && response.data) {
           setRecentExpenses(response.data.expenses);
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.statusCode === 401) throw err; // Propagate 401 to parent
         console.error('Error fetching expenses:', err);
       } finally {
         setExpensesLoading(false);
@@ -135,22 +137,29 @@ const HomeScreen = () => {
           }));
           setGroups(apiGroups);
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.statusCode === 401) throw err; // Propagate 401 to parent
         console.error('Error fetching groups:', err);
       } finally {
         setGroupsLoading(false);
       }
     };
 
-    await Promise.all([fetchProfiles(), fetchExpenses(), fetchGroups()]);
-  }, [accessToken]);
+    try {
+      await Promise.all([fetchProfiles(), fetchExpenses(), fetchGroups()]);
+    } catch (err: any) {
+      if (err?.statusCode === 401) {
+        // Attempt token refresh; if it fails, log the user out
+        const refreshed = await refreshSession();
+        if (!refreshed) {
+          await logout();
+        }
+        // If refresh succeeded, the next useFocusEffect cycle will re-fetch with new token
+      }
+    }
+  }, [accessToken, refreshSession, logout]);
 
-  // Fetch data on mount
-  useEffect(() => {
-    fetchAllData();
-  }, [fetchAllData]);
-
-  // Refetch when screen comes into focus
+  // Refetch when screen comes into focus (also covers initial mount)
   useFocusEffect(
     useCallback(() => {
       fetchAllData();
@@ -252,29 +261,55 @@ const HomeScreen = () => {
     </TouchableOpacity>
   );
 
-  const renderExpenseRow = (expense: Expense) => (
-    <View key={expense._id} style={styles.expenseRow}>
-      <View style={styles.expenseIconWrapper}>
-        <FontAwesome6
-          name={getCategoryIcon(expense.category ?? 'other') as any}
-          size={16}
-          color={Theme.colors.primary}
-          solid
-        />
-      </View>
-      <View style={styles.expenseDetails}>
-        <Text style={styles.expenseTitle} numberOfLines={1}>
-          {expense.title}
+  const getExpenseProfile = (expense: Expense): Profile | undefined => {
+    if (!expense.profileId) return undefined;
+    return profiles.find((p) => p._id === expense.profileId);
+  };
+
+  const renderExpenseRow = (expense: Expense) => {
+    const profile = getExpenseProfile(expense);
+    const profileColor = profile
+      ? getProfileColor(profile, profiles.indexOf(profile))
+      : undefined;
+
+    return (
+      <TouchableOpacity
+        key={expense._id}
+        style={styles.expenseRow}
+        onPress={() => navigation.navigate('EditExpense', { expenseId: expense._id })}
+        activeOpacity={0.7}>
+        <View style={styles.expenseIconWrapper}>
+          <FontAwesome6
+            name={getCategoryIcon(expense.category ?? 'other') as any}
+            size={16}
+            color={Theme.colors.primary}
+            solid
+          />
+        </View>
+        <View style={styles.expenseDetails}>
+          <Text style={styles.expenseTitle} numberOfLines={1}>
+            {expense.title}
+          </Text>
+          <View style={styles.expenseMeta}>
+            <Text style={styles.expenseCategory}>
+              {expense.category} {'\u00B7'} {formatDate(expense.createdAt)}
+            </Text>
+            {profile && profileColor && (
+              <View style={[styles.profileBadge, { backgroundColor: profileColor + '18' }]}>
+                <View style={[styles.profileBadgeDot, { backgroundColor: profileColor }]} />
+                <Text style={[styles.profileBadgeText, { color: profileColor }]} numberOfLines={1}>
+                  {profile.name}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+        <Text style={styles.expenseAmount}>
+          {'\u20B9'}{expense.amount.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
         </Text>
-        <Text style={styles.expenseCategory}>
-          {expense.category} {'\u00B7'} {formatDate(expense.createdAt)}
-        </Text>
-      </View>
-      <Text style={styles.expenseAmount}>
-        {'\u20B9'}{expense.amount.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-      </Text>
-    </View>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   const renderGroupCard = (item: Group) => (
     <GroupCard
@@ -689,11 +724,36 @@ const styles = StyleSheet.create({
     fontWeight: Theme.typography.fontWeight.semibold,
     marginBottom: 2,
   },
+  expenseMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Theme.spacing.xs,
+    flexWrap: 'wrap',
+  },
   expenseCategory: {
     fontSize: Theme.typography.fontSize.small,
     color: Theme.colors.textSecondary,
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.regular,
+  },
+  profileBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: Theme.borderRadius.round,
+    gap: 4,
+  },
+  profileBadgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: Theme.borderRadius.round,
+  },
+  profileBadgeText: {
+    fontSize: Theme.typography.fontSize.xs,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.semibold,
+    maxWidth: 80,
   },
   expenseAmount: {
     fontSize: Theme.typography.fontSize.large,

@@ -56,4 +56,13 @@ export const authApi = {
       refreshToken: token,
     });
   },
+
+  /** Best-effort server logout. Always resolves (never throws). */
+  async logout(): Promise<void> {
+    try {
+      await api.post("/api/v1/auth/logout", {});
+    } catch {
+      // Best-effort: ignore failures so local cleanup always proceeds
+    }
+  },
 };

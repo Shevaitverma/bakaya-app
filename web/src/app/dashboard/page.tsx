@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ApiError, clearToken } from "@/lib/api-client";
+import { ApiError, clearAllAuth } from "@/lib/api-client";
 import { expensesApi, type Expense } from "@/lib/api/expenses";
 import { groupsApi, type Group } from "@/lib/api/groups";
 import { profilesApi } from "@/lib/api/profiles";
@@ -34,6 +34,8 @@ function formatDate(dateStr: string): string {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const [userName, setUserName] = useState("User");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
@@ -52,16 +54,13 @@ export default function DashboardPage() {
         // ignore
       }
     }
-  }, []);
 
-  useEffect(() => {
     async function fetchDashboardData() {
       try {
         const handle401 = (error: unknown) => {
           if (error instanceof ApiError && error.status === 401) {
-            localStorage.removeItem("bakaya_user");
-            clearToken();
-            router.push("/login");
+            clearAllAuth();
+            routerRef.current.push("/login");
           }
           return null;
         };
@@ -89,7 +88,7 @@ export default function DashboardPage() {
     }
 
     fetchDashboardData();
-  }, [router]);
+  }, []);
 
   const defaultProfile = profiles.find((p) => p.isDefault);
 

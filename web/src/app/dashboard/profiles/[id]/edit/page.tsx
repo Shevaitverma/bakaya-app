@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { clearToken, ApiError } from "@/lib/api-client";
+import { clearAllAuth, ApiError } from "@/lib/api-client";
 import { profilesApi } from "@/lib/api/profiles";
 import type { Profile } from "@/types/profile";
 import styles from "../../page.module.css";
@@ -12,6 +12,8 @@ const COLORS = ["#D81B60", "#1E88E5", "#43A047", "#FB8C00", "#8E24AA", "#00ACC1"
 
 export default function EditProfilePage() {
   const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const params = useParams();
   const profileId = params.id as string;
 
@@ -23,29 +25,9 @@ export default function EditProfilePage() {
   const [isFetching, setIsFetching] = useState(true);
   const [fetchError, setFetchError] = useState("");
   const [error, setError] = useState("");
-  const [isAuthChecked, setIsAuthChecked] = useState(false);
-
-  // Auth guard: redirect to login if not logged in
-  useEffect(() => {
-    const stored = localStorage.getItem("bakaya_user");
-    if (!stored) {
-      router.push("/login");
-      return;
-    }
-    try {
-      JSON.parse(stored);
-      setIsAuthChecked(true);
-    } catch {
-      localStorage.removeItem("bakaya_user");
-      clearToken();
-      router.push("/login");
-    }
-  }, [router]);
 
   // Fetch profile data
   useEffect(() => {
-    if (!isAuthChecked) return;
-
     async function fetchProfile() {
       try {
         const profile = await profilesApi.getProfile(profileId);
@@ -56,9 +38,8 @@ export default function EditProfilePage() {
       } catch (err) {
         if (err instanceof ApiError) {
           if (err.status === 401) {
-            localStorage.removeItem("bakaya_user");
-            clearToken();
-            router.push("/login");
+            clearAllAuth();
+            routerRef.current.push("/login");
             return;
           }
           if (err.status === 404) {
@@ -75,7 +56,7 @@ export default function EditProfilePage() {
     }
 
     fetchProfile();
-  }, [isAuthChecked, profileId, router]);
+  }, [profileId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,13 +74,12 @@ export default function EditProfilePage() {
         relationship: relationship || undefined,
         color,
       });
-      router.push("/dashboard/profiles");
+      routerRef.current.push("/dashboard/profiles");
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 401) {
-          localStorage.removeItem("bakaya_user");
-          clearToken();
-          router.push("/login");
+          clearAllAuth();
+          routerRef.current.push("/login");
           return;
         }
         setError(err.message);
@@ -110,10 +90,6 @@ export default function EditProfilePage() {
       setIsLoading(false);
     }
   };
-
-  if (!isAuthChecked) {
-    return null;
-  }
 
   if (isFetching) {
     return (
@@ -132,19 +108,11 @@ export default function EditProfilePage() {
         <div className={styles.pageHeader}>
           <h1 className={styles.pageTitle}>Edit Profile</h1>
         </div>
-        <div style={{
-          color: "var(--color-error, #ef4444)",
-          background: "var(--color-error-bg, #fef2f2)",
-          padding: "0.75rem 1rem",
-          borderRadius: "0.5rem",
-          fontSize: "0.875rem",
-          textAlign: "center",
-          maxWidth: 480,
-        }}>
+        <div className={styles.formError} style={{ textAlign: "center" }}>
           {fetchError}
         </div>
         <button
-          onClick={() => router.push("/dashboard/profiles")}
+          onClick={() => routerRef.current.push("/dashboard/profiles")}
           style={{
             display: "block",
             marginTop: "1rem",
@@ -175,23 +143,16 @@ export default function EditProfilePage() {
         </h1>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ maxWidth: 480 }}>
+      <form onSubmit={handleSubmit} className={styles.profileForm}>
         {error && (
-          <div style={{
-            color: "var(--color-error, #ef4444)",
-            background: "var(--color-error-bg, #fef2f2)",
-            padding: "0.75rem 1rem",
-            borderRadius: "0.5rem",
-            fontSize: "0.875rem",
-            marginBottom: "1rem",
-          }}>
+          <div className={styles.formError}>
             {error}
           </div>
         )}
 
         {/* Name */}
-        <div style={{ marginBottom: "1.25rem" }}>
-          <label style={{ display: "block", fontWeight: 600, marginBottom: "0.375rem", fontSize: "0.875rem" }}>
+        <div className={styles.formField}>
+          <label className={styles.formLabel}>
             Name
           </label>
           <input
@@ -199,23 +160,16 @@ export default function EditProfilePage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g., Brother, Girlfriend"
-            style={{
-              width: "100%",
-              padding: "0.625rem 0.875rem",
-              border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius-md)",
-              fontSize: "0.9375rem",
-              background: "var(--color-surface)",
-            }}
+            className={styles.formInput}
           />
         </div>
 
         {/* Relationship */}
-        <div style={{ marginBottom: "1.25rem" }}>
-          <label style={{ display: "block", fontWeight: 600, marginBottom: "0.375rem", fontSize: "0.875rem" }}>
+        <div className={styles.formField}>
+          <label className={styles.formLabel}>
             Relationship
           </label>
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <div className={styles.formChipsRow}>
             {RELATIONSHIPS.map((rel) => (
               <button
                 key={rel}
@@ -230,6 +184,7 @@ export default function EditProfilePage() {
                   fontSize: "0.8125rem",
                   fontWeight: relationship === rel ? 600 : 400,
                   textTransform: "capitalize",
+                  whiteSpace: "nowrap",
                 }}
               >
                 {rel}
@@ -239,11 +194,11 @@ export default function EditProfilePage() {
         </div>
 
         {/* Color */}
-        <div style={{ marginBottom: "1.5rem" }}>
-          <label style={{ display: "block", fontWeight: 600, marginBottom: "0.375rem", fontSize: "0.875rem" }}>
+        <div className={styles.formFieldLarge}>
+          <label className={styles.formLabel}>
             Color
           </label>
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <div className={styles.formChipsRow}>
             {COLORS.map((c) => (
               <button
                 key={c}
@@ -257,6 +212,7 @@ export default function EditProfilePage() {
                   border: color === c ? "3px solid var(--color-text-primary)" : "2px solid transparent",
                   cursor: "pointer",
                   outline: color === c ? "2px solid var(--color-surface)" : "none",
+                  flexShrink: 0,
                 }}
               />
             ))}
@@ -264,35 +220,18 @@ export default function EditProfilePage() {
         </div>
 
         {/* Submit */}
-        <div style={{ display: "flex", gap: "0.75rem" }}>
+        <div className={styles.formActions}>
           <button
             type="button"
             onClick={() => router.back()}
-            style={{
-              padding: "0.625rem 1.25rem",
-              borderRadius: "var(--radius-md)",
-              border: "1px solid var(--color-border)",
-              background: "transparent",
-              cursor: "pointer",
-              fontSize: "0.875rem",
-            }}
+            className={styles.formCancelBtn}
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isLoading}
-            style={{
-              padding: "0.625rem 1.5rem",
-              borderRadius: "var(--radius-md)",
-              border: "none",
-              background: "var(--color-primary)",
-              color: "#fff",
-              cursor: isLoading ? "not-allowed" : "pointer",
-              fontSize: "0.875rem",
-              fontWeight: 600,
-              opacity: isLoading ? 0.7 : 1,
-            }}
+            className={styles.formSubmitBtn}
           >
             {isLoading ? "Saving..." : "Save Changes"}
           </button>

@@ -48,6 +48,13 @@ class GroupService {
           console.error('[GROUP API] Error parsing error response:', parseErr);
         }
 
+        // Handle 401 Unauthorized - token expired or invalid
+        if (response.status === 401) {
+          const error = new Error(errorData.error?.message || errorData.message || 'Your session has expired. Please log in again.');
+          (error as any).statusCode = 401;
+          throw error;
+        }
+
         let errorMessage = '';
         if (errorData.error?.message) {
           errorMessage = errorData.error.message;

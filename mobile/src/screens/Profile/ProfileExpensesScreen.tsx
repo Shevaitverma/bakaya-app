@@ -48,7 +48,7 @@ const ProfileExpensesScreen: React.FC<ProfileExpensesScreenProps> = ({ route, na
   useFocusEffect(
     React.useCallback(() => {
       fetchExpenses();
-    }, [])
+    }, [accessToken, profileId])
   );
 
   const fetchExpenses = async () => {
@@ -117,7 +117,11 @@ const ProfileExpensesScreen: React.FC<ProfileExpensesScreenProps> = ({ route, na
   };
 
   const handleAddExpense = () => {
-    navigation.navigate('AddExpense');
+    navigation.navigate('AddExpense', { profileId });
+  };
+
+  const handleEditExpense = (expenseId: string) => {
+    navigation.navigate('EditExpense', { expenseId });
   };
 
   const handleDeleteExpense = (expenseId: string) => {
@@ -208,6 +212,7 @@ const ProfileExpensesScreen: React.FC<ProfileExpensesScreenProps> = ({ route, na
         index={index}
         isLastItem={isLastItem}
         onDelete={handleDeleteExpense}
+        onPress={handleEditExpense}
         formatDate={formatDate}
         formatTime={formatTime}
         formatAmount={formatAmount}

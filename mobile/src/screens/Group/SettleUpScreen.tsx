@@ -105,7 +105,10 @@ const SettleUpScreen: React.FC<SettleUpScreenProps> = ({ navigation, route }) =>
     return debts;
   };
 
-  const debts = calculateDebts();
+  const allDebts = calculateDebts();
+  // Only show debts where the current user is the debtor (from),
+  // since the server only allows settlements where paidBy === authenticated user
+  const debts = allDebts.filter((debt) => debt.from === currentUserId);
 
   const handleSelectDebt = (debt: DebtEntry) => {
     setSelectedDebt(debt);
@@ -317,7 +320,12 @@ const SettleUpScreen: React.FC<SettleUpScreenProps> = ({ navigation, route }) =>
                   placeholder={`Max ${formatCurrency(selectedDebt.amount)}`}
                   value={settleAmount}
                   onChangeText={(text) => {
-                    const numericValue = text.replace(/[^0-9.]/g, '');
+                    let numericValue = text.replace(/[^0-9.]/g, '');
+                    // Remove all but the first decimal point
+                    const parts = numericValue.split('.');
+                    if (parts.length > 2) {
+                      numericValue = parts[0] + '.' + parts.slice(1).join('');
+                    }
                     setSettleAmount(numericValue);
                   }}
                   keyboardType="decimal-pad"

@@ -234,6 +234,13 @@
   font-size: var(--font-size-md);
 }
 
+/* --- Profile Chips Row --- */
+.profileChipsRow {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 /* --- Submit Button --- */
 .submitBtn {
   display: flex;
@@ -289,4 +296,65 @@
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Mobile Responsive --- */
+@media (max-width: 768px) {
+  .header {
+    padding: var(--spacing-sm) 16px var(--spacing-md);
+  }
+
+  .headerTitle {
+    font-size: 24px;
+  }
+
+  .formContainer {
+    max-width: 100%;
+    padding: var(--spacing-md) 16px;
+  }
+
+  .input {
+    min-height: 44px;
+    font-size: 15px;
+    padding: var(--spacing-md);
+  }
+
+  .label {
+    font-size: 14px;
+  }
+
+  .categoryTrigger {
+    min-height: 44px;
+    font-size: 15px;
+  }
+
+  .categoryItem {
+    min-height: 44px;
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+
+  .textarea {
+    min-height: 100px;
+  }
+
+  .submitBtn {
+    min-height: 48px;
+    font-size: var(--font-size-md);
+  }
+
+  .categoryList {
+    max-height: 260px;
+  }
+
+  .profileChipsRow {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .profileChipsRow::-webkit-scrollbar {
+    display: none;
+  }
 }

@@ -1,7 +1,7 @@
 import { getAuthUser } from "@/middleware/auth";
 import { createExpenseSchema, updateExpenseSchema, expenseQuerySchema } from "@/schemas/expense.schema";
 import * as expenseService from "@/services/expense.service";
-import { createDefaultProfile } from "@/services/profile.service";
+import { createDefaultProfile, findProfileById } from "@/services/profile.service";
 import { User } from "@/models/User";
 import { successResponse, badRequestResponse, notFoundResponse, forbiddenResponse } from "@/utils/response";
 import { createPaginationMeta } from "@/utils/pagination";
@@ -63,6 +63,15 @@ export async function createPersonalExpense(req: Request): Promise<Response> {
       const userName = user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(" ") || undefined;
       const defaultProfile = await createDefaultProfile(userId, userName);
       input.profileId = defaultProfile._id.toString();
+    } else {
+      // Validate that the profileId belongs to the authenticated user
+      const profile = await findProfileById(input.profileId);
+      if (!profile) {
+        return notFoundResponse("Profile not found");
+      }
+      if (profile.userId.toString() !== userId) {
+        return forbiddenResponse("Not authorized to use this profile");
+      }
     }
 
     const expense = await expenseService.createExpense(userId, input);
@@ -90,6 +99,17 @@ export async function updatePersonalExpense(req: Request, params?: Record<string
 
     const body = await req.json();
     const input = updateExpenseSchema.parse(body);
+
+    // Validate profileId ownership if provided
+    if (input.profileId) {
+      const profile = await findProfileById(input.profileId);
+      if (!profile) {
+        return notFoundResponse("Profile not found");
+      }
+      if (profile.userId.toString() !== userId) {
+        return forbiddenResponse("Not authorized to use this profile");
+      }
+    }
 
     const expense = await expenseService.updateExpense(userId, expenseId, input);
     if (!expense) return notFoundResponse("Expense not found");

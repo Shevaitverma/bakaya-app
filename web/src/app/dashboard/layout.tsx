@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { clearToken, getToken } from "@/lib/api-client";
+import { clearAllAuth, getToken } from "@/lib/api-client";
+import { authApi } from "@/lib/api/auth";
 import styles from "./layout.module.css";
 
 interface NavItem {
@@ -32,6 +33,8 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const pathname = usePathname();
   const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -40,13 +43,13 @@ export default function DashboardLayout({
   useEffect(() => {
     const token = getToken();
     if (!token) {
-      router.push("/login");
+      routerRef.current.push("/login");
       return;
     }
 
     const stored = localStorage.getItem("bakaya_user");
     if (!stored) {
-      router.push("/login");
+      routerRef.current.push("/login");
       return;
     }
 
@@ -55,20 +58,33 @@ export default function DashboardLayout({
       setUser(parsed);
       setIsAuthChecked(true);
     } catch {
-      localStorage.removeItem("bakaya_user");
-      clearToken();
-      router.push("/login");
+      clearAllAuth();
+      routerRef.current.push("/login");
     }
-  }, [router]);
+  }, []);
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("bakaya_user");
-    clearToken();
+  // Lock body scroll when sidebar overlay is open on mobile
+  useEffect(() => {
+    const cls = "dashboard-sidebar-open";
+    if (sidebarOpen) {
+      document.body.classList.add(cls);
+    } else {
+      document.body.classList.remove(cls);
+    }
+    return () => {
+      document.body.classList.remove(cls);
+    };
+  }, [sidebarOpen]);
+
+  const handleLogout = async () => {
+    // Best-effort server logout before clearing local tokens
+    await authApi.logout();
+    clearAllAuth();
     router.push("/login");
   };
 
@@ -96,7 +112,7 @@ export default function DashboardLayout({
     <div className={styles.layout}>
       {/* Mobile hamburger */}
       <button
-        className={styles.mobileToggle}
+        className={`${styles.mobileToggle} ${sidebarOpen ? styles.mobileToggleHidden : ""}`}
         onClick={() => setSidebarOpen(true)}
         aria-label="Open navigation"
       >

@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ApiError, clearToken } from "@/lib/api-client";
+import { ApiError, clearAllAuth } from "@/lib/api-client";
 import { groupsApi, type Group } from "@/lib/api/groups";
 import styles from "./page.module.css";
 
 export default function GroupsPage() {
   const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -18,15 +20,14 @@ export default function GroupsPage() {
       .then((data) => setGroups(data.groups))
       .catch((error) => {
         if (error instanceof ApiError && error.status === 401) {
-          localStorage.removeItem("bakaya_user");
-          clearToken();
-          router.push("/login");
+          clearAllAuth();
+          routerRef.current.push("/login");
           return;
         }
         setGroups([]);
       })
       .finally(() => setIsLoading(false));
-  }, [router]);
+  }, []);
 
   return (
     <div className={styles.page}>

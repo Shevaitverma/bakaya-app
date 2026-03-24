@@ -31,6 +31,13 @@ export function clearRefreshToken(): void {
   localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
+/** Clear all auth tokens and user data from localStorage. */
+export function clearAllAuth(): void {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem("bakaya_user");
+}
+
 class ApiError extends Error {
   constructor(
     public code: string,
@@ -59,6 +66,34 @@ function buildHeaders(options: RequestInit): HeadersInit {
 
 const REFRESH_ENDPOINT = "/api/v1/auth/refresh";
 
+// Mutex for token refresh: prevents concurrent refresh requests from racing
+let refreshPromise: Promise<boolean> | null = null;
+
+async function doRefresh(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+
+  try {
+    const refreshRes = await fetch(`${API_BASE}${REFRESH_ENDPOINT}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+    const refreshJson = await refreshRes.json();
+    if (refreshJson.success && refreshJson.data) {
+      setToken(refreshJson.data.accessToken);
+      setRefreshToken(refreshJson.data.refreshToken);
+      return true;
+    }
+  } catch {
+    // Refresh failed
+  }
+  // Refresh did not succeed — clear tokens
+  clearToken();
+  clearRefreshToken();
+  return false;
+}
+
 async function request<T>(
   endpoint: string,
   options: RequestInit = {},
@@ -76,27 +111,16 @@ async function request<T>(
 
   // Auto-refresh on 401, but not if this is already a retry or the refresh endpoint itself
   if (res.status === 401 && !_isRetry && endpoint !== REFRESH_ENDPOINT) {
-    const refreshToken = getRefreshToken();
-    if (refreshToken) {
-      try {
-        const refreshRes = await fetch(`${API_BASE}${REFRESH_ENDPOINT}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken }),
-        });
-        const refreshJson = await refreshRes.json();
-        if (refreshJson.success && refreshJson.data) {
-          setToken(refreshJson.data.accessToken);
-          setRefreshToken(refreshJson.data.refreshToken);
-          // Retry the original request
-          return request<T>(endpoint, options, true);
-        }
-      } catch {
-        // Refresh failed — fall through to throw 401
-      }
-      // Refresh did not succeed — clear tokens
-      clearToken();
-      clearRefreshToken();
+    // Use a shared promise so concurrent 401s only trigger one refresh
+    if (!refreshPromise) {
+      refreshPromise = doRefresh().finally(() => {
+        refreshPromise = null;
+      });
+    }
+    const refreshed = await refreshPromise;
+    if (refreshed) {
+      // Retry the original request with the new token
+      return request<T>(endpoint, options, true);
     }
   }
 
@@ -121,7 +145,8 @@ async function request<T>(
 
 async function requestWithMeta<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  _isRetry = false
 ): Promise<ApiResponse<T>> {
   const url = `${API_BASE}${endpoint}`;
   const headers = buildHeaders(options);
@@ -131,6 +156,19 @@ async function requestWithMeta<T>(
     res = await fetch(url, { ...options, headers });
   } catch {
     throw new ApiError("NETWORK_ERROR", "Unable to connect to server", 0);
+  }
+
+  // Auto-refresh on 401
+  if (res.status === 401 && !_isRetry && endpoint !== REFRESH_ENDPOINT) {
+    if (!refreshPromise) {
+      refreshPromise = doRefresh().finally(() => {
+        refreshPromise = null;
+      });
+    }
+    const refreshed = await refreshPromise;
+    if (refreshed) {
+      return requestWithMeta<T>(endpoint, options, true);
+    }
   }
 
   let json: ApiResponse<T>;

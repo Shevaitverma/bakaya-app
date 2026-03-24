@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { formatDate } from "@/utils/format";
-import { clearToken, ApiError } from "@/lib/api-client";
+import { clearAllAuth, ApiError } from "@/lib/api-client";
 import {
   groupsApi,
   type Group,
@@ -12,32 +12,8 @@ import {
   type GroupBalances,
 } from "@/lib/api/groups";
 import type { Settlement } from "@/types/settlement";
+import { getCategoryEmoji } from "@/constants/categories";
 import styles from "./page.module.css";
-
-/** Emoji equivalents for category icons (matching mobile categoryIcons.ts) */
-const CATEGORY_EMOJI: Record<string, string> = {
-  food: "\u{1F37D}\u{FE0F}",
-  accessory: "\u{1F4F1}",
-  transport: "\u{1F697}",
-  shopping: "\u{1F6CD}\u{FE0F}",
-  bills: "\u{1F9FE}",
-  entertainment: "\u{1F3AC}",
-  groceries: "\u{1F6D2}",
-  healthcare: "\u{1F48A}",
-  education: "\u{1F393}",
-  travel: "\u{2708}\u{FE0F}",
-  utilities: "\u{26A1}",
-  clothing: "\u{1F455}",
-  restaurant: "\u{1F374}",
-  gas: "\u{26FD}",
-  insurance: "\u{1F6E1}\u{FE0F}",
-  rent: "\u{1F3E0}",
-  other: "\u{1F4C4}",
-};
-
-function getCategoryEmoji(category: string): string {
-  return CATEGORY_EMOJI[category.toLowerCase()] ?? "\u{1F4C4}";
-}
 
 function getMemberDisplayName(member: {
   email: string;
@@ -60,6 +36,8 @@ interface SettleUpTarget {
 
 export default function GroupDetailPage() {
   const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const params = useParams();
   const groupId = params.id as string;
 
@@ -71,7 +49,7 @@ export default function GroupDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<GroupExpense | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isAuthChecked, setIsAuthChecked] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string>("");
 
   // Add member state
@@ -87,28 +65,21 @@ export default function GroupDetailPage() {
   const [isSettling, setIsSettling] = useState(false);
   const [settleError, setSettleError] = useState("");
 
-  // Auth guard: redirect to login if not logged in
+  // Read current user ID from localStorage (layout already guards auth)
   useEffect(() => {
-    const stored = localStorage.getItem("bakaya_user");
-    if (!stored) {
-      router.push("/login");
-      return;
-    }
     try {
-      const user = JSON.parse(stored);
-      setCurrentUserId(user.id || user._id || "");
-      setIsAuthChecked(true);
+      const stored = localStorage.getItem("bakaya_user");
+      if (stored) {
+        const user = JSON.parse(stored);
+        setCurrentUserId(user.id || user._id || "");
+      }
     } catch {
-      localStorage.removeItem("bakaya_user");
-      clearToken();
-      router.push("/login");
+      // ignore — layout handles auth redirect
     }
-  }, [router]);
+  }, []);
 
   // Fetch group, expenses, balances, and settlements in parallel
   useEffect(() => {
-    if (!isAuthChecked) return;
-
     async function fetchData() {
       try {
         const [groupData, expensesData, balancesData, settlementsData] =
@@ -125,9 +96,8 @@ export default function GroupDetailPage() {
         setSettlements(settlementsData.settlements);
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          localStorage.removeItem("bakaya_user");
-          clearToken();
-          router.push("/login");
+          clearAllAuth();
+          routerRef.current.push("/login");
           return;
         }
       } finally {
@@ -136,7 +106,7 @@ export default function GroupDetailPage() {
     }
 
     fetchData();
-  }, [isAuthChecked, router, groupId]);
+  }, [groupId]);
 
   /** Resolve a userId to a display name using group members */
   function resolveUserName(userId: string): string {
@@ -167,12 +137,14 @@ export default function GroupDetailPage() {
   }
 
   const handleDelete = (expense: GroupExpense) => {
+    setDeleteError("");
     setDeleteTarget(expense);
   };
 
   const confirmDelete = async () => {
     if (!deleteTarget || isDeleting) return;
     setIsDeleting(true);
+    setDeleteError("");
 
     try {
       await groupsApi.deleteExpense(groupId, deleteTarget._id);
@@ -181,21 +153,30 @@ export default function GroupDetailPage() {
       // Refresh balances after deleting an expense
       const updatedBalances = await groupsApi.getBalances(groupId);
       setBalances(updatedBalances);
+      setDeleteTarget(null);
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
-        localStorage.removeItem("bakaya_user");
-        clearToken();
-        router.push("/login");
-        return;
+      if (error instanceof ApiError) {
+        if (error.status === 401) {
+          clearAllAuth();
+          routerRef.current.push("/login");
+          return;
+        }
+        if (error.status === 404) {
+          setDeleteError("Only the expense creator can delete this expense.");
+        } else {
+          setDeleteError(error.message);
+        }
+      } else {
+        setDeleteError("Unable to delete expense. Please try again.");
       }
     } finally {
-      setDeleteTarget(null);
       setIsDeleting(false);
     }
   };
 
   const cancelDelete = () => {
     setDeleteTarget(null);
+    setDeleteError("");
   };
 
   const handleAddMember = async (e: React.FormEvent) => {
@@ -213,9 +194,8 @@ export default function GroupDetailPage() {
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.status === 401) {
-          localStorage.removeItem("bakaya_user");
-          clearToken();
-          router.push("/login");
+          clearAllAuth();
+          routerRef.current.push("/login");
           return;
         }
         setAddMemberError(error.message);
@@ -263,12 +243,10 @@ export default function GroupDetailPage() {
     setSettleError("");
 
     try {
-      // If the balance is negative, current user owes the other person (currentUser pays them)
-      // If the balance is positive, the other person owes current user (they pay currentUser)
-      const paidBy =
-        settleTarget.amount < 0 ? currentUserId : settleTarget.userId;
-      const paidTo =
-        settleTarget.amount < 0 ? settleTarget.userId : currentUserId;
+      // Server requires paidBy === authenticated user, so current user is always the payer.
+      // Settle up is only available when current user owes someone (negative balance).
+      const paidBy = currentUserId;
+      const paidTo = settleTarget.userId;
 
       const newSettlement = await groupsApi.createSettlement(groupId, {
         paidBy,
@@ -287,9 +265,8 @@ export default function GroupDetailPage() {
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.status === 401) {
-          localStorage.removeItem("bakaya_user");
-          clearToken();
-          router.push("/login");
+          clearAllAuth();
+          routerRef.current.push("/login");
           return;
         }
         setSettleError(error.message);
@@ -300,10 +277,6 @@ export default function GroupDetailPage() {
       setIsSettling(false);
     }
   };
-
-  if (!isAuthChecked) {
-    return null;
-  }
 
   const balanceEntries = getBalanceEntries();
 
@@ -355,46 +328,59 @@ export default function GroupDetailPage() {
               ) : (
                 <div className={styles.balanceList}>
                   {balanceEntries.map((entry) => {
-                    const isOwed = entry.amount > 0; // other person owes current user
+                    // entry.amount is the OTHER user's net balance from the server.
+                    // Positive = they are owed money (paid more than their share).
+                    // Negative = they owe money (paid less than their share).
+                    const otherOwes = entry.amount < 0; // other user has debt
+                    const myBalance = balances?.balances[currentUserId] ?? 0;
+                    // Show settle-up button only when current user owes money
+                    // (negative balance) and the other user is owed money (positive balance)
+                    const canSettle = myBalance < 0 && entry.amount > 0;
                     return (
                       <div key={entry.userId} className={styles.balanceCard}>
                         <div className={styles.balanceInfo}>
                           <div
                             className={`${styles.balanceIndicator} ${
-                              isOwed
-                                ? styles.balanceIndicatorPositive
-                                : styles.balanceIndicatorNegative
+                              otherOwes
+                                ? styles.balanceIndicatorNegative
+                                : styles.balanceIndicatorPositive
                             }`}
                           />
                           <div>
                             <p className={styles.balanceText}>
-                              {isOwed ? (
+                              {otherOwes ? (
                                 <>
-                                  <strong>{entry.userName}</strong> owes you
+                                  <strong>{entry.userName}</strong> owes
                                 </>
                               ) : (
                                 <>
-                                  You owe <strong>{entry.userName}</strong>
+                                  <strong>{entry.userName}</strong> is owed
                                 </>
                               )}
                             </p>
                             <p
                               className={`${styles.balanceAmount} ${
-                                isOwed
-                                  ? styles.balanceAmountPositive
-                                  : styles.balanceAmountNegative
+                                otherOwes
+                                  ? styles.balanceAmountNegative
+                                  : styles.balanceAmountPositive
                               }`}
                             >
                               {"\u20B9"}{Math.abs(entry.amount).toFixed(2)}
                             </p>
                           </div>
                         </div>
-                        <button
-                          className={styles.settleBtn}
-                          onClick={() => handleSettleUp(entry)}
-                        >
-                          Settle Up
-                        </button>
+                        {canSettle ? (
+                          <button
+                            className={styles.settleBtn}
+                            onClick={() => handleSettleUp(entry)}
+                          >
+                            Settle Up
+                          </button>
+                        ) : otherOwes ? (
+                          <span style={{ fontSize: "0.75rem", opacity: 0.5 }}>
+                            Awaiting their payment
+                          </span>
+                        ) : null}
                       </div>
                     );
                   })}
@@ -654,15 +640,17 @@ export default function GroupDetailPage() {
                         {"\u20B9"}{expense.amount.toFixed(2)}
                       </span>
 
-                      {/* Delete */}
-                      <button
-                        className={styles.expenseDelete}
-                        onClick={() => handleDelete(expense)}
-                        aria-label={`Delete ${expense.title}`}
-                        title="Delete expense"
-                      >
-                        {"\u2715"}
-                      </button>
+                      {/* Delete (only visible for expenses the current user created) */}
+                      {expense.paidBy.id === currentUserId && (
+                        <button
+                          className={styles.expenseDelete}
+                          onClick={() => handleDelete(expense)}
+                          aria-label={`Delete ${expense.title}`}
+                          title="Delete expense"
+                        >
+                          {"\u2715"}
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -692,6 +680,20 @@ export default function GroupDetailPage() {
               Are you sure you want to delete &ldquo;{deleteTarget.title}
               &rdquo;? This action cannot be undone.
             </p>
+            {deleteError && (
+              <div
+                style={{
+                  color: "var(--color-error, #ef4444)",
+                  background: "var(--color-error-bg, #fef2f2)",
+                  padding: "0.75rem 1rem",
+                  borderRadius: "0.5rem",
+                  fontSize: "0.875rem",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                {deleteError}
+              </div>
+            )}
             <div className={styles.dialogActions}>
               <button
                 className={styles.dialogCancel}

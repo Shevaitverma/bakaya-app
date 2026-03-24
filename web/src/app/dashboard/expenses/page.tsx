@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDate } from "@/utils/format";
-import { clearToken } from "@/lib/api-client";
+import { clearAllAuth, ApiError } from "@/lib/api-client";
 import { expensesApi, type Expense } from "@/lib/api/expenses";
-import { ApiError } from "@/lib/api-client";
+import { profilesApi } from "@/lib/api/profiles";
+import type { Profile } from "@/types/profile";
 import styles from "./page.module.css";
 
 /** Emoji equivalents for category icons (matching mobile categoryIcons.ts) */
@@ -36,55 +37,60 @@ function getCategoryEmoji(category: string): string {
 
 export default function ExpensesPage() {
   const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [totalAmount, setTotalAmount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isAuthChecked, setIsAuthChecked] = useState(false);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [activeProfileFilter, setActiveProfileFilter] = useState<string | null>(null);
 
-  // Auth guard: redirect to login if not logged in
+  // Fetch profiles once on mount
   useEffect(() => {
-    const stored = localStorage.getItem("bakaya_user");
-    if (!stored) {
-      router.push("/login");
-      return;
-    }
-    try {
-      JSON.parse(stored);
-      setIsAuthChecked(true);
-    } catch {
-      localStorage.removeItem("bakaya_user");
-      clearToken();
-      router.push("/login");
-    }
-  }, [router]);
-
-  // Fetch expenses from API
-  useEffect(() => {
-    if (!isAuthChecked) return;
-
-    async function fetchExpenses() {
+    async function fetchProfiles() {
       try {
-        const data = await expensesApi.list({ limit: 100 });
-        setExpenses(data.expenses);
-        setTotalAmount(data.totalExpenseAmount);
+        const data = await profilesApi.getProfiles();
+        setProfiles(data.profiles ?? []);
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          localStorage.removeItem("bakaya_user");
-          clearToken();
-          router.push("/login");
-          return;
+          clearAllAuth();
+          routerRef.current.push("/login");
         }
-        setExpenses([]);
-        setTotalAmount(0);
-      } finally {
-        setIsLoading(false);
       }
     }
 
+    fetchProfiles();
+  }, []);
+
+  // Fetch expenses from API (re-runs when profile filter changes)
+  const fetchExpenses = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const params: { limit: number; profileId?: string } = { limit: 100 };
+      if (activeProfileFilter) {
+        params.profileId = activeProfileFilter;
+      }
+      const data = await expensesApi.list(params);
+      setExpenses(data.expenses);
+      setTotalAmount(data.totalExpenseAmount);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        clearAllAuth();
+        routerRef.current.push("/login");
+        return;
+      }
+      setExpenses([]);
+      setTotalAmount(0);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeProfileFilter]);
+
+  useEffect(() => {
     fetchExpenses();
-  }, [isAuthChecked, router]);
+  }, [fetchExpenses]);
 
   const handleDelete = (expense: Expense) => {
     setDeleteTarget(expense);
@@ -100,9 +106,8 @@ export default function ExpensesPage() {
       setTotalAmount((prev) => prev - deleteTarget.amount);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        localStorage.removeItem("bakaya_user");
-        clearToken();
-        router.push("/login");
+        clearAllAuth();
+        routerRef.current.push("/login");
         return;
       }
     } finally {
@@ -114,10 +119,6 @@ export default function ExpensesPage() {
   const cancelDelete = () => {
     setDeleteTarget(null);
   };
-
-  if (!isAuthChecked) {
-    return null;
-  }
 
   return (
     <div className={styles.page}>
@@ -144,6 +145,39 @@ export default function ExpensesPage() {
         <div className={styles.headerPlaceholder} />
       </header>
 
+      {/* ---------- Profile Filter ---------- */}
+      {profiles.length > 0 && (
+        <div className={styles.filterRow}>
+          <button
+            className={`${styles.filterChip} ${
+              activeProfileFilter === null ? styles.filterChipActive : ""
+            }`}
+            onClick={() => setActiveProfileFilter(null)}
+          >
+            All
+          </button>
+          {profiles.map((profile) => (
+            <button
+              key={profile._id}
+              className={`${styles.filterChip} ${
+                activeProfileFilter === profile._id
+                  ? styles.filterChipActive
+                  : ""
+              }`}
+              onClick={() => setActiveProfileFilter(profile._id)}
+            >
+              <span
+                className={styles.filterChipDot}
+                style={{
+                  backgroundColor: profile.color || "var(--color-primary)",
+                }}
+              />
+              {profile.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ---------- Content ---------- */}
       <main className={styles.content}>
         {isLoading ? (
@@ -162,7 +196,12 @@ export default function ExpensesPage() {
           </div>
         ) : (
           <div className={styles.expenseList}>
-            {expenses.map((expense) => (
+            {expenses.map((expense) => {
+              const expenseProfile = expense.profileId
+                ? profiles.find((p) => p._id === expense.profileId)
+                : profiles.find((p) => p.isDefault);
+
+              return (
               <div key={expense._id} className={styles.expenseCard}>
                 {/* Category Icon */}
                 <div className={styles.categoryIcon}>
@@ -178,6 +217,18 @@ export default function ExpensesPage() {
                     <span className={styles.expenseCategory}>
                       {expense.category ?? "Other"}
                     </span>
+                    {expenseProfile && (
+                      <span className={styles.expenseProfile}>
+                        <span
+                          className={styles.expenseProfileDot}
+                          style={{
+                            backgroundColor:
+                              expenseProfile.color || "var(--color-primary)",
+                          }}
+                        />
+                        {expenseProfile.name}
+                      </span>
+                    )}
                     <span>{formatDate(new Date(expense.createdAt))}</span>
                   </div>
                 </div>
@@ -207,7 +258,8 @@ export default function ExpensesPage() {
                   ✕
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>

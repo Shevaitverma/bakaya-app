@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { clearToken, ApiError } from "@/lib/api-client";
+import { clearAllAuth, ApiError } from "@/lib/api-client";
 import { groupsApi } from "@/lib/api/groups";
 import styles from "./page.module.css";
 
 export default function CreateGroupPage() {
   const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -16,24 +18,6 @@ export default function CreateGroupPage() {
     name?: string;
     server?: string;
   }>({});
-  const [isAuthChecked, setIsAuthChecked] = useState(false);
-
-  // Auth guard: redirect to login if not logged in
-  useEffect(() => {
-    const stored = localStorage.getItem("bakaya_user");
-    if (!stored) {
-      router.push("/login");
-      return;
-    }
-    try {
-      JSON.parse(stored);
-      setIsAuthChecked(true);
-    } catch {
-      localStorage.removeItem("bakaya_user");
-      clearToken();
-      router.push("/login");
-    }
-  }, [router]);
 
   const validateForm = (): boolean => {
     const newErrors: typeof errors = {};
@@ -59,13 +43,12 @@ export default function CreateGroupPage() {
         name: name.trim(),
         description: description.trim() || undefined,
       });
-      router.push("/dashboard");
+      routerRef.current.push("/dashboard");
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.status === 401) {
-          localStorage.removeItem("bakaya_user");
-          clearToken();
-          router.push("/login");
+          clearAllAuth();
+          routerRef.current.push("/login");
           return;
         }
         setErrors({ server: error.message });
@@ -76,10 +59,6 @@ export default function CreateGroupPage() {
       setIsLoading(false);
     }
   };
-
-  if (!isAuthChecked) {
-    return null;
-  }
 
   return (
     <div className={styles.page}>

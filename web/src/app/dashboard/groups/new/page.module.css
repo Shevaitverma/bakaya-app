@@ -158,3 +158,46 @@
     transform: rotate(360deg);
   }
 }
+
+/* --- Mobile Responsive --- */
+@media (max-width: 768px) {
+  .header {
+    padding-top: var(--spacing-sm);
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .headerTitle {
+    font-size: 20px;
+  }
+
+  .formContainer {
+    padding: 16px;
+  }
+
+  .input {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 1rem;
+    min-height: 44px;
+    border-radius: 12px;
+    box-sizing: border-box;
+  }
+
+  .textarea {
+    min-height: 100px;
+  }
+
+  .submitBtn {
+    width: 100%;
+    padding: 14px;
+    min-height: 48px;
+    font-size: 1rem;
+    border-radius: 12px;
+  }
+
+  .backBtn {
+    width: 44px;
+    height: 44px;
+  }
+}

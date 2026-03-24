@@ -1,4 +1,8 @@
 import { User, type IUserDocument } from "@/models/User";
+import { Profile } from "@/models/Profile";
+import { Expense } from "@/models/Expense";
+import { Group } from "@/models/Group";
+import { Settlement } from "@/models/Settlement";
 import type {
   CreateUserInput,
   UpdateUserInput,
@@ -49,7 +53,14 @@ export class UserService {
   async delete(id: string): Promise<boolean> {
     const result = await User.findByIdAndDelete(id);
     if (result) {
-      logger.info("User deleted", { userId: id });
+      // Cascade delete associated data
+      await Promise.all([
+        Profile.deleteMany({ userId: id }),
+        Expense.deleteMany({ userId: id }),
+        Settlement.deleteMany({ $or: [{ paidBy: id }, { paidTo: id }] }),
+        Group.updateMany({ "members.userId": id }, { $pull: { members: { userId: id } } }),
+      ]);
+      logger.info("User deleted with associated data", { userId: id });
       return true;
     }
     return false;
@@ -70,9 +81,11 @@ export class UserService {
     }
 
     if (search) {
+      // Escape special regex characters to prevent ReDoS
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       filter.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
+        { name: { $regex: escaped, $options: "i" } },
+        { email: { $regex: escaped, $options: "i" } },
       ];
     }
 

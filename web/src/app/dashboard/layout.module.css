@@ -22,7 +22,7 @@
   left: 0;
   bottom: 0;
   z-index: 100;
-  transition: transform var(--transition-normal);
+  transition: transform var(--transition-normal), visibility var(--transition-normal);
 }
 
 .sidebarBrand {
@@ -175,26 +175,28 @@
   flex: 1;
   margin-left: 260px;
   min-height: 100vh;
+  padding: var(--spacing-lg);
 }
 
 /* --- Mobile Toggle --- */
 .mobileToggle {
   display: none;
   position: fixed;
-  top: var(--spacing-md);
-  left: var(--spacing-md);
+  top: 12px;
+  left: 12px;
   z-index: 200;
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   align-items: center;
   justify-content: center;
   background: var(--color-card);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   cursor: pointer;
-  font-size: var(--font-size-lg);
+  font-size: 1.25rem;
   color: var(--color-text-primary);
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* --- Overlay --- */
@@ -206,22 +208,37 @@
   z-index: 90;
 }
 
+/* --- Body scroll lock when sidebar is open on mobile --- */
+:global(.dashboard-sidebar-open) {
+  overflow: hidden;
+}
+
 /* --- Responsive --- */
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
+    visibility: hidden;
   }
 
   .sidebarOpen {
     transform: translateX(0);
+    visibility: visible;
   }
 
   .main {
     margin-left: 0;
+    /* Top padding: hamburger top (12px) + height (42px) + gap (6px) = 60px */
+    padding: 60px var(--spacing-md) var(--spacing-md);
   }
 
   .mobileToggle {
     display: flex;
+  }
+
+  /* Hide hamburger when sidebar is open so it doesn't stack on top */
+  .mobileToggleHidden {
+    opacity: 0;
+    pointer-events: none;
   }
 
   .overlay {

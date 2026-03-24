@@ -19,6 +19,7 @@ import type {
 import HomeScreen from '../screens/Home/HomeScreen';
 import ExpenseDetailScreen from '../screens/Expense/ExpenseDetailScreen';
 import AddExpenseScreen from '../screens/Expense/AddExpenseScreen';
+import EditExpenseScreen from '../screens/Expense/EditExpenseScreen';
 import GroupDetailScreen from '../screens/Group/GroupDetailScreen';
 import CreateGroupScreen from '../screens/Group/CreateGroupScreen';
 import AddGroupExpenseScreen from '../screens/Group/AddGroupExpenseScreen';
@@ -49,6 +50,7 @@ const HomeStackNavigator: React.FC = () => {
       <HomeStack.Screen name="Home" component={HomeScreen} />
       <HomeStack.Screen name="ExpenseDetail" component={ExpenseDetailScreen} />
       <HomeStack.Screen name="AddExpense" component={AddExpenseScreen} />
+      <HomeStack.Screen name="EditExpense" component={EditExpenseScreen} />
       <HomeStack.Screen name="CreateGroup" component={CreateGroupScreen} />
       <HomeStack.Screen name="GroupDetail" component={GroupDetailScreen} />
       <HomeStack.Screen name="AddGroupExpense" component={AddGroupExpenseScreen} />

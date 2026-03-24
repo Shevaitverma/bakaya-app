@@ -39,7 +39,7 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
   useFocusEffect(
     React.useCallback(() => {
       fetchProfiles();
-    }, [])
+    }, [accessToken])
   );
 
   const fetchProfiles = async () => {

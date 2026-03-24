@@ -122,3 +122,76 @@
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* --- Mobile Responsive --- */
+@media (max-width: 768px) {
+  .page {
+    padding: var(--spacing-sm) 16px 16px;
+  }
+
+  .pageHeader {
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .pageTitle {
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .createBtn {
+    padding: 12px 20px;
+    font-size: 0.9375rem;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+  }
+
+  .groupsGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .groupCard {
+    padding: 16px;
+    border-radius: 12px;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .groupIcon {
+    font-size: 1.5rem;
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .groupName {
+    text-align: left;
+    font-size: 0.9375rem;
+  }
+
+  .groupDescription {
+    text-align: left;
+    font-size: 0.8125rem;
+  }
+
+  .groupMembers {
+    font-size: 0.75rem;
+  }
+
+  .emptyState {
+    padding: 3rem 1rem;
+  }
+
+  .emptyAction {
+    padding: 12px 24px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 12px;
+  }
+}

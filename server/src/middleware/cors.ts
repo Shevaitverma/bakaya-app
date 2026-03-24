@@ -9,11 +9,16 @@ const ALLOWED_HEADERS = [
 ];
 
 export function corsHeaders(origin?: string | null): Record<string, string> {
-  const allowedOrigin = env.CORS_ORIGIN === "*"
-    ? "*"
-    : origin && env.CORS_ORIGIN.split(",").includes(origin)
+  const allowAll = env.CORS_ORIGIN === "*";
+  const allowedOrigins = env.CORS_ORIGIN.split(",");
+
+  // When CORS_ORIGIN is "*", reflect the request origin back (required when credentials: true)
+  // Otherwise, check if the origin is in the allowed list
+  const allowedOrigin = allowAll
+    ? (origin || "*")
+    : origin && allowedOrigins.includes(origin)
       ? origin
-      : env.CORS_ORIGIN.split(",")[0]!;
+      : allowedOrigins[0]!;
 
   return {
     "Access-Control-Allow-Origin": allowedOrigin,

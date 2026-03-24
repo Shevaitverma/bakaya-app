@@ -226,7 +226,7 @@
   margin-bottom: var(--spacing-md);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .settleFormFields {
     flex-direction: column;
   }
@@ -550,7 +550,7 @@
   box-shadow: var(--shadow-md);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .expenseCard {
     grid-template-columns: auto 1fr auto;
     gap: var(--spacing-sm);
@@ -771,5 +771,251 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+/* --- Mobile Responsive (comprehensive) --- */
+@media (max-width: 768px) {
+  .header {
+    padding-top: var(--spacing-sm);
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .headerTitle {
+    font-size: 20px;
+  }
+
+  .totalValue {
+    font-size: 1.5rem;
+  }
+
+  .backBtn {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Content area */
+  .content {
+    padding: 16px;
+  }
+
+  /* Section titles */
+  .sectionTitle {
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .sectionHeader {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Balances: stack vertically, full width cards */
+  .balanceList {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .balanceCard {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .balanceInfo {
+    width: 100%;
+  }
+
+  .balanceText {
+    font-size: 0.9375rem;
+  }
+
+  .balanceAmount {
+    font-size: 1rem;
+  }
+
+  .settleBtn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    font-size: 0.9375rem;
+    border-radius: 12px;
+  }
+
+  /* Settle up form: full width fields */
+  .settleForm {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .settleInput {
+    width: 100%;
+    min-height: 44px;
+    padding: 12px 16px;
+    font-size: 1rem;
+    border-radius: 12px;
+    box-sizing: border-box;
+  }
+
+  .settleFormActions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .settleCancelBtn,
+  .settleConfirmBtn {
+    width: 100%;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9375rem;
+    border-radius: 12px;
+  }
+
+  /* Settlement cards: full width */
+  .settlementCard {
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .settlementText {
+    font-size: 0.875rem;
+  }
+
+  .settlementAmount {
+    font-size: 1rem;
+  }
+
+  /* Members section */
+  .addMemberBtn {
+    min-height: 44px;
+    padding: 10px 16px;
+    font-size: 0.875rem;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .addMemberForm {
+    width: 100%;
+  }
+
+  .addMemberRow {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .addMemberInput {
+    width: 100%;
+    min-height: 44px;
+    padding: 12px 16px;
+    font-size: 1rem;
+    border-radius: 12px;
+    box-sizing: border-box;
+  }
+
+  .addMemberSubmit {
+    width: 100%;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9375rem;
+    border-radius: 12px;
+  }
+
+  /* Member cards */
+  .memberCard {
+    padding: 16px;
+    border-radius: 12px;
+    gap: 10px;
+  }
+
+  .memberAvatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .memberName {
+    font-size: 0.9375rem;
+  }
+
+  /* Expense cards: full width with clear info */
+  .expenseInfo {
+    min-width: 0;
+  }
+
+  .expenseTitle {
+    font-size: 0.9375rem;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .expenseMeta {
+    flex-wrap: wrap;
+    gap: 4px;
+    font-size: 0.75rem;
+  }
+
+  .paidBy {
+    width: 100%;
+  }
+
+  .expenseAmount {
+    font-size: 1rem;
+  }
+
+  .expenseDelete {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* FAB: full width at bottom */
+  .fab {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    justify-content: center;
+    width: auto;
+    min-height: 48px;
+    font-size: 1rem;
+    border-radius: 12px;
+  }
+
+  /* Delete dialog */
+  .dialog {
+    width: calc(100% - 32px);
+    padding: 20px;
+    border-radius: 12px;
+  }
+
+  .dialogActions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dialogCancel,
+  .dialogConfirm {
+    width: 100%;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9375rem;
+    border-radius: 12px;
+  }
+
+  /* Empty states */
+  .empty {
+    padding: 2rem 1rem;
   }
 }

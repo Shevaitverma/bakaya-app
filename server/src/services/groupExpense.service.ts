@@ -22,11 +22,26 @@ export async function createGroupExpense(
   // Default: split equally among all members if splitAmong not provided
   let splitAmong = input.splitAmong;
   if (!splitAmong || splitAmong.length === 0) {
-    const perPerson = input.amount / group.members.length;
-    splitAmong = group.members.map((m) => ({
+    const n = group.members.length;
+    const baseAmount = Math.floor((input.amount / n) * 100) / 100;
+    const remainder = Math.round((input.amount - baseAmount * n) * 100) / 100;
+    splitAmong = group.members.map((m, i) => ({
       userId: m.userId.toString(),
-      amount: Math.round(perPerson * 100) / 100,
+      amount: i === 0 ? baseAmount + remainder : baseAmount,
     }));
+  } else {
+    // Validate splitAmong users are group members
+    const memberIds = new Set(group.members.map((m) => m.userId.toString()));
+    for (const split of splitAmong) {
+      if (!memberIds.has(split.userId)) {
+        throw new Error(`User ${split.userId} is not a member of this group`);
+      }
+    }
+    // Validate splitAmong amounts sum to total
+    const splitSum = splitAmong.reduce((sum, s) => sum + s.amount, 0);
+    if (Math.abs(splitSum - input.amount) > 0.01) {
+      throw new Error(`Split amounts (${splitSum}) must equal the expense total (${input.amount})`);
+    }
   }
 
   const expense = await GroupExpense.create({
@@ -104,11 +119,27 @@ export async function updateGroupExpense(
 
   // If amount changed and splitAmong not provided, recalculate equal split
   if (input.amount !== undefined && !input.splitAmong) {
-    const perPerson = input.amount / group.members.length;
-    input.splitAmong = group.members.map((m) => ({
+    const n = group.members.length;
+    const baseAmount = Math.floor((input.amount / n) * 100) / 100;
+    const remainder = Math.round((input.amount - baseAmount * n) * 100) / 100;
+    input.splitAmong = group.members.map((m, i) => ({
       userId: m.userId.toString(),
-      amount: Math.round(perPerson * 100) / 100,
+      amount: i === 0 ? baseAmount + remainder : baseAmount,
     }));
+  } else if (input.splitAmong) {
+    // Validate splitAmong users are group members
+    const memberIds = new Set(group.members.map((m) => m.userId.toString()));
+    for (const split of input.splitAmong) {
+      if (!memberIds.has(split.userId)) {
+        throw new Error(`User ${split.userId} is not a member of this group`);
+      }
+    }
+    // Validate splitAmong amounts sum to total
+    const total = input.amount ?? expense.amount;
+    const splitSum = input.splitAmong.reduce((sum, s) => sum + s.amount, 0);
+    if (Math.abs(splitSum - total) > 0.01) {
+      throw new Error(`Split amounts (${splitSum}) must equal the expense total (${total})`);
+    }
   }
 
   const updated = await GroupExpense.findOneAndUpdate(
@@ -129,6 +160,7 @@ export async function deleteGroupExpense(
   return GroupExpense.findOneAndDelete({
     _id: expenseId,
     groupId: new mongoose.Types.ObjectId(groupId),
+    paidBy: userId,
   });
 }
 

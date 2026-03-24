@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { profilesApi } from "@/lib/api/profiles";
 import { expensesApi, type Expense } from "@/lib/api/expenses";
-import { ApiError, clearToken } from "@/lib/api-client";
+import { ApiError, clearAllAuth } from "@/lib/api-client";
 import type { Profile } from "@/types/profile";
 import styles from "../page.module.css";
 
@@ -17,6 +17,8 @@ function formatDate(dateStr: string): string {
 export default function ProfileDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const profileId = params.id as string;
 
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -39,9 +41,8 @@ export default function ProfileDetailPage() {
         setTotalAmount(expenseData.totalExpenseAmount);
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          localStorage.removeItem("bakaya_user");
-          clearToken();
-          router.push("/login");
+          clearAllAuth();
+          routerRef.current.push("/login");
           return;
         }
         // graceful fallback
@@ -50,7 +51,7 @@ export default function ProfileDetailPage() {
       }
     }
     fetchData();
-  }, [profileId, router]);
+  }, [profileId]);
 
   const confirmDelete = async () => {
     if (!deleteTarget || isDeleting) return;
@@ -63,9 +64,8 @@ export default function ProfileDetailPage() {
       setDeleteTarget(null);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        localStorage.removeItem("bakaya_user");
-        clearToken();
-        router.push("/login");
+        clearAllAuth();
+        routerRef.current.push("/login");
         return;
       }
       if (error instanceof ApiError) {
@@ -105,7 +105,7 @@ export default function ProfileDetailPage() {
             </p>
           )}
         </div>
-        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+        <div className={styles.detailHeaderActions}>
           <Link
             href={`/dashboard/profiles/${profileId}/edit`}
             className={styles.editBtn}
@@ -124,17 +124,11 @@ export default function ProfileDetailPage() {
       </div>
 
       {/* Total */}
-      <div style={{
-        padding: "1rem 1.25rem",
-        background: "var(--color-surface)",
-        border: "1px solid var(--color-border)",
-        borderRadius: "var(--radius-lg)",
-        marginBottom: "1.5rem",
-      }}>
-        <p style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary)", marginBottom: "0.25rem" }}>
+      <div className={styles.totalCard}>
+        <p className={styles.totalCardLabel}>
           Total Spent
         </p>
-        <p style={{ fontSize: "1.5rem", fontWeight: 700 }}>
+        <p className={styles.totalCardValue}>
           &#8377;{totalAmount.toLocaleString("en-IN")}
         </p>
       </div>
@@ -148,17 +142,17 @@ export default function ProfileDetailPage() {
       ) : (
         <div className={styles.profilesGrid} style={{ gridTemplateColumns: "1fr" }}>
           {expenses.map((expense) => (
-            <div key={expense._id} className={styles.profileCard} style={{ justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flex: 1 }}>
+            <div key={expense._id} className={`${styles.profileCard} ${styles.expenseRow}`}>
+              <div className={styles.expenseRowInfo}>
                 <div>
-                  <p style={{ fontWeight: 600, fontSize: "0.9375rem" }}>{expense.title}</p>
-                  <p style={{ fontSize: "0.75rem", color: "var(--color-text-secondary)" }}>
+                  <p className={styles.expenseRowTitle}>{expense.title}</p>
+                  <p className={styles.expenseRowMeta}>
                     {expense.category} &middot; {formatDate(expense.createdAt)}
                   </p>
                 </div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                <span style={{ fontWeight: 700, fontSize: "0.9375rem" }}>
+              <div className={styles.expenseRowActions}>
+                <span className={styles.expenseRowAmount}>
                   &#8377;{expense.amount.toLocaleString("en-IN")}
                 </span>
                 <Link

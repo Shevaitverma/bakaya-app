@@ -6,7 +6,7 @@ import {
   updateUser,
   deleteUser,
 } from "@/controllers/user.controller";
-import { login, register, googleAuth, refreshTokenHandler } from "@/controllers/auth.controller";
+import { login, register, googleAuth, refreshTokenHandler, logout } from "@/controllers/auth.controller";
 import {
   getPersonalExpenses,
   getPersonalExpense,
@@ -66,13 +66,14 @@ const routes: RouteHandler[] = [
   { path: "/api/v1/auth/register", method: "POST", handler: register },
   { path: "/api/v1/auth/google", method: "POST", handler: googleAuth },
   { path: "/api/v1/auth/refresh", method: "POST", handler: refreshTokenHandler },
+  { path: "/api/v1/auth/logout", method: "POST", handler: logout, protected: true },
 
-  // User routes
-  { path: "/api/v1/users", method: "GET", handler: getUsers },
-  { path: "/api/v1/users", method: "POST", handler: createUser },
-  { path: "/api/v1/users/:id", method: "GET", handler: getUser },
-  { path: "/api/v1/users/:id", method: "PUT", handler: updateUser },
-  { path: "/api/v1/users/:id", method: "DELETE", handler: deleteUser },
+  // User routes (protected — admin-level management)
+  { path: "/api/v1/users", method: "GET", handler: getUsers, protected: true },
+  { path: "/api/v1/users", method: "POST", handler: createUser, protected: true },
+  { path: "/api/v1/users/:id", method: "GET", handler: getUser, protected: true },
+  { path: "/api/v1/users/:id", method: "PUT", handler: updateUser, protected: true },
+  { path: "/api/v1/users/:id", method: "DELETE", handler: deleteUser, protected: true },
 
   // Profile routes (protected)
   { path: "/api/v1/profiles", method: "GET", handler: getProfiles, protected: true },

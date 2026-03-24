@@ -1,4 +1,6 @@
 import { userService } from "@/services/user.service";
+import { User } from "@/models/User";
+import { getAuthUser } from "@/middleware/auth";
 import {
   createUserSchema,
   updateUserSchema,
@@ -8,6 +10,7 @@ import {
   successResponse,
   notFoundResponse,
   badRequestResponse,
+  forbiddenResponse,
   validationErrorResponse,
 } from "@/utils/response";
 import { logger } from "@/utils/logger";
@@ -25,8 +28,20 @@ function formatZodErrors(error: ZodError): Record<string, string[]> {
   return formatted;
 }
 
+async function requireAdmin(req: Request): Promise<Response | null> {
+  const { userId } = getAuthUser(req);
+  const user = await User.findById(userId);
+  if (!user || user.role !== "admin") {
+    return forbiddenResponse("Admin access required");
+  }
+  return null;
+}
+
 export async function getUsers(req: Request): Promise<Response> {
   try {
+    const adminError = await requireAdmin(req);
+    if (adminError) return adminError;
+
     const url = new URL(req.url);
     const queryParams = Object.fromEntries(url.searchParams);
     const query = userQuerySchema.parse(queryParams);
@@ -44,9 +59,12 @@ export async function getUsers(req: Request): Promise<Response> {
 }
 
 export async function getUser(
-  _req: Request,
+  req: Request,
   params?: Record<string, string>
 ): Promise<Response> {
+  const adminError = await requireAdmin(req);
+  if (adminError) return adminError;
+
   const id = params?.id;
 
   if (!id) {
@@ -64,6 +82,9 @@ export async function getUser(
 
 export async function createUser(req: Request): Promise<Response> {
   try {
+    const adminError = await requireAdmin(req);
+    if (adminError) return adminError;
+
     const body = await req.json();
     const input = createUserSchema.parse(body);
 
@@ -87,6 +108,9 @@ export async function updateUser(
   params?: Record<string, string>
 ): Promise<Response> {
   try {
+    const adminError = await requireAdmin(req);
+    if (adminError) return adminError;
+
     const id = params?.id;
 
     if (!id) {
@@ -113,9 +137,12 @@ export async function updateUser(
 }
 
 export async function deleteUser(
-  _req: Request,
+  req: Request,
   params?: Record<string, string>
 ): Promise<Response> {
+  const adminError = await requireAdmin(req);
+  if (adminError) return adminError;
+
   const id = params?.id;
 
   if (!id) {

@@ -2,60 +2,17 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { clearToken, ApiError } from "@/lib/api-client";
+import { clearAllAuth, ApiError } from "@/lib/api-client";
 import { expensesApi, type Expense } from "@/lib/api/expenses";
 import { profilesApi } from "@/lib/api/profiles";
 import type { Profile } from "@/types/profile";
+import { CATEGORIES, getCategoryEmoji } from "@/constants/categories";
 import styles from "../../new/page.module.css";
-
-/** 17 categories matching the mobile app */
-const CATEGORIES = [
-  "Food",
-  "Accessory",
-  "Transport",
-  "Shopping",
-  "Bills",
-  "Entertainment",
-  "Groceries",
-  "Healthcare",
-  "Education",
-  "Travel",
-  "Utilities",
-  "Clothing",
-  "Restaurant",
-  "Gas",
-  "Insurance",
-  "Rent",
-  "Other",
-] as const;
-
-/** Emoji equivalents for category icons */
-const CATEGORY_EMOJI: Record<string, string> = {
-  food: "\u{1F37D}\uFE0F",
-  accessory: "\u{1F4F1}",
-  transport: "\u{1F697}",
-  shopping: "\u{1F6CD}\uFE0F",
-  bills: "\u{1F9FE}",
-  entertainment: "\u{1F3AC}",
-  groceries: "\u{1F6D2}",
-  healthcare: "\u{1F48A}",
-  education: "\u{1F393}",
-  travel: "\u2708\uFE0F",
-  utilities: "\u26A1",
-  clothing: "\u{1F455}",
-  restaurant: "\u{1F374}",
-  gas: "\u26FD",
-  insurance: "\u{1F6E1}\uFE0F",
-  rent: "\u{1F3E0}",
-  other: "\u{1F4C4}",
-};
-
-function getCategoryEmoji(category: string): string {
-  return CATEGORY_EMOJI[category.toLowerCase()] ?? "\u{1F4C4}";
-}
 
 export default function EditExpensePage() {
   const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const params = useParams();
   const expenseId = params.id as string;
 
@@ -76,31 +33,11 @@ export default function EditExpensePage() {
     profile?: string;
     server?: string;
   }>({});
-  const [isAuthChecked, setIsAuthChecked] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Auth guard: redirect to login if not logged in
-  useEffect(() => {
-    const stored = localStorage.getItem("bakaya_user");
-    if (!stored) {
-      router.push("/login");
-      return;
-    }
-    try {
-      JSON.parse(stored);
-      setIsAuthChecked(true);
-    } catch {
-      localStorage.removeItem("bakaya_user");
-      clearToken();
-      router.push("/login");
-    }
-  }, [router]);
-
   // Fetch expense and profiles
   useEffect(() => {
-    if (!isAuthChecked) return;
-
     async function fetchData() {
       try {
         const [expense, profilesData] = await Promise.all([
@@ -119,9 +56,8 @@ export default function EditExpensePage() {
       } catch (error) {
         if (error instanceof ApiError) {
           if (error.status === 401) {
-            localStorage.removeItem("bakaya_user");
-            clearToken();
-            router.push("/login");
+            clearAllAuth();
+            routerRef.current.push("/login");
             return;
           }
           if (error.status === 404) {
@@ -138,7 +74,7 @@ export default function EditExpensePage() {
     }
 
     fetchData();
-  }, [isAuthChecked, expenseId, router]);
+  }, [expenseId]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -196,13 +132,12 @@ export default function EditExpensePage() {
         category: category.trim(),
         notes: notes.trim() || undefined,
       });
-      router.push("/dashboard/expenses");
+      routerRef.current.push("/dashboard/expenses");
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.status === 401) {
-          localStorage.removeItem("bakaya_user");
-          clearToken();
-          router.push("/login");
+          clearAllAuth();
+          routerRef.current.push("/login");
           return;
         }
         setErrors({ server: error.message });
@@ -221,10 +156,6 @@ export default function EditExpensePage() {
       setErrors((prev) => ({ ...prev, category: undefined }));
     }
   };
-
-  if (!isAuthChecked) {
-    return null;
-  }
 
   if (isFetching) {
     return (
@@ -275,7 +206,7 @@ export default function EditExpensePage() {
             {fetchError}
           </div>
           <button
-            onClick={() => router.push("/dashboard/expenses")}
+            onClick={() => routerRef.current.push("/dashboard/expenses")}
             style={{
               display: "block",
               margin: "1rem auto 0",
@@ -322,7 +253,7 @@ export default function EditExpensePage() {
           {profiles.length > 0 && (
             <div className={styles.field}>
               <label className={styles.label}>Who is this for?</label>
-              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              <div className={styles.profileChipsRow}>
                 {profiles.map((profile) => (
                   <button
                     key={profile._id}
@@ -339,6 +270,7 @@ export default function EditExpensePage() {
                       display: "flex",
                       alignItems: "center",
                       gap: "0.375rem",
+                      whiteSpace: "nowrap",
                     }}
                   >
                     <span style={{
@@ -347,6 +279,7 @@ export default function EditExpensePage() {
                       borderRadius: "50%",
                       backgroundColor: profile.color || "var(--color-primary, #D81B60)",
                       display: "inline-block",
+                      flexShrink: 0,
                     }} />
                     {profile.name}
                   </button>

@@ -9,9 +9,11 @@ interface DateRange {
 
 function getDateRange(query: AnalyticsQueryInput): DateRange {
   if (query.startDate && query.endDate) {
+    const end = new Date(query.endDate);
+    end.setHours(23, 59, 59, 999);
     return {
       start: new Date(query.startDate),
-      end: new Date(query.endDate),
+      end,
     };
   }
 

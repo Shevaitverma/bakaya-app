@@ -1,5 +1,6 @@
 import { User } from "@/models/User";
 import { Device } from "@/models/Device";
+import { getAuthUser } from "@/middleware/auth";
 import { registerSchema, loginSchema, googleAuthSchema, refreshTokenSchema } from "@/schemas/auth.schema";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "@/utils/jwt";
 import { successResponse, badRequestResponse, unauthorizedResponse } from "@/utils/response";
@@ -7,12 +8,44 @@ import { logger } from "@/utils/logger";
 import { env } from "@/config/env";
 import { createDefaultProfile } from "@/services/profile.service";
 import { z } from "zod";
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { createLocalJWKSet, jwtVerify, type JSONWebKeySet } from "jose";
 
-// Firebase/Google JWKS for verifying Firebase ID tokens
-const firebaseJWKS = createRemoteJWKSet(
-  new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com")
-);
+// Firebase/Google JWKS - use curl fallback due to Bun fetch issues on Windows
+const GOOGLE_JWKS_URL = "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
+let cachedJWKS: ReturnType<typeof createLocalJWKSet> | null = null;
+let jwksCachedAt = 0;
+const JWKS_CACHE_DURATION = 3600_000; // 1 hour
+
+async function fetchJWKSWithCurl(): Promise<JSONWebKeySet> {
+  const proc = Bun.spawn(["curl", "-s", "--max-time", "10", GOOGLE_JWKS_URL], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const text = await new Response(proc.stdout).text();
+  const exitCode = await proc.exited;
+  if (exitCode !== 0) {
+    throw new Error(`curl exited with code ${exitCode}`);
+  }
+  return JSON.parse(text) as JSONWebKeySet;
+}
+
+async function getFirebaseJWKS() {
+  const now = Date.now();
+  if (cachedJWKS && (now - jwksCachedAt) < JWKS_CACHE_DURATION) {
+    return cachedJWKS;
+  }
+
+  const jwks = await fetchJWKSWithCurl();
+  cachedJWKS = createLocalJWKSet(jwks);
+  jwksCachedAt = now;
+  logger.info("Firebase JWKS fetched and cached via curl");
+  return cachedJWKS;
+}
+
+// Pre-fetch JWKS at startup
+getFirebaseJWKS().catch((err) => {
+  logger.warn("Initial JWKS fetch failed, will retry on first auth request", { error: err.message });
+});
 
 export async function register(req: Request): Promise<Response> {
   try {
@@ -139,12 +172,19 @@ export async function googleAuth(req: Request): Promise<Response> {
     // Verify the Firebase ID token
     let firebasePayload;
     try {
-      const { payload } = await jwtVerify(input.credential, firebaseJWKS, {
+      const jwks = await getFirebaseJWKS();
+      const { payload } = await jwtVerify(input.credential, jwks, {
         issuer: `https://securetoken.google.com/${env.FIREBASE_PROJECT_ID}`,
         audience: env.FIREBASE_PROJECT_ID,
       });
       firebasePayload = payload;
-    } catch {
+    } catch (jwtError) {
+      logger.error("Firebase JWT verification failed", {
+        error: jwtError instanceof Error ? jwtError.message : String(jwtError),
+        code: (jwtError as any)?.code,
+        claim: (jwtError as any)?.claim,
+        reason: (jwtError as any)?.reason,
+      });
       return unauthorizedResponse("Invalid Firebase credential");
     }
 
@@ -164,6 +204,11 @@ export async function googleAuth(req: Request): Promise<Response> {
       return badRequestResponse("Google account does not have an email");
     }
 
+    // HIGH 1: Verify email is verified with Google
+    if (!firebasePayload.email_verified) {
+      return badRequestResponse("Email not verified with Google");
+    }
+
     // Find existing user by googleId or email
     let user = await User.findOne({
       $or: [{ googleId }, { email: email.toLowerCase() }],
@@ -173,7 +218,11 @@ export async function googleAuth(req: Request): Promise<Response> {
     let isNewUser = false;
 
     if (user) {
-      // Link Google account if user exists by email but hasn't linked Google yet
+      // HIGH 2: Don't auto-link if user registered with email/password
+      if (!user.googleId && user.authProvider === "local") {
+        return badRequestResponse("An account with this email already exists. Please login with your password.");
+      }
+      // Link Google account only if not a local auth user
       if (!user.googleId) {
         user.googleId = googleId;
         user.authProvider = "google";
@@ -300,6 +349,21 @@ export async function refreshTokenHandler(req: Request): Promise<Response> {
       return badRequestResponse("Invalid request body");
     }
     logger.error("Token refresh error", { error });
+    throw error;
+  }
+}
+
+export async function logout(req: Request): Promise<Response> {
+  try {
+    const { userId } = getAuthUser(req);
+
+    // Invalidate all devices for this user
+    await Device.updateMany({ userId }, { isActive: false });
+
+    logger.info("User logged out", { userId });
+    return successResponse({ message: "Logged out successfully" });
+  } catch (error) {
+    logger.error("Logout error", { error });
     throw error;
   }
 }

@@ -227,7 +227,286 @@
   font-weight: 600;
 }
 
+/* --- Profile Form (New / Edit) --- */
+.profileForm {
+  max-width: 480px;
+}
+
+.formField {
+  margin-bottom: 1.25rem;
+}
+
+.formFieldLarge {
+  margin-bottom: 1.5rem;
+}
+
+.formLabel {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.formInput {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+  background: var(--color-surface);
+}
+
+.formChipsRow {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.formActions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.formCancelBtn {
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.formSubmitBtn {
+  padding: 0.625rem 1.5rem;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.formSubmitBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.formError {
+  color: var(--color-error, #ef4444);
+  background: var(--color-error-bg, #fef2f2);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+/* --- Profile Detail --- */
+.detailHeaderActions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.totalCard {
+  padding: 1rem 1.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.5rem;
+}
+
+.totalCardLabel {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.totalCardValue {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.expenseRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.expenseRowInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.expenseRowTitle {
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.expenseRowMeta {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.expenseRowActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.expenseRowAmount {
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Mobile Responsive --- */
+@media (max-width: 768px) {
+  .page {
+    padding: 0 16px var(--spacing-lg);
+  }
+
+  .pageHeader {
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .pageTitle {
+    font-size: 24px;
+  }
+
+  .createBtn {
+    padding: 0.625rem 1.25rem;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+  }
+
+  .profilesGrid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-sm);
+  }
+
+  .profileCard {
+    padding: 0.875rem 1rem;
+  }
+
+  .profileAvatar {
+    width: 40px;
+    height: 40px;
+    font-size: 0.9375rem;
+  }
+
+  .profileName {
+    font-size: 0.875rem;
+  }
+
+  .profileRelation {
+    font-size: 0.75rem;
+  }
+
+  .editBtn,
+  .deleteBtn {
+    min-width: 36px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .emptyAction {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: 0.75rem 1.5rem;
+    min-height: 44px;
+  }
+
+  .dialog {
+    width: 92%;
+    padding: 1.25rem;
+  }
+
+  .dialogActions {
+    flex-direction: column;
+  }
+
+  .dialogCancel,
+  .dialogConfirm {
+    width: 100%;
+    min-height: 44px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Profile Form (New / Edit) */
+  .profileForm {
+    max-width: 100%;
+  }
+
+  .formInput {
+    min-height: 44px;
+    font-size: 15px;
+    padding: 0.75rem 0.875rem;
+  }
+
+  .formChipsRow {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .formChipsRow::-webkit-scrollbar {
+    display: none;
+  }
+
+  .formActions {
+    flex-direction: column;
+  }
+
+  .formCancelBtn,
+  .formSubmitBtn {
+    width: 100%;
+    min-height: 44px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Profile Detail */
+  .detailHeaderActions {
+    flex-wrap: wrap;
+  }
+
+  .totalCard {
+    margin-bottom: 1rem;
+  }
+
+  .expenseRowActions {
+    gap: 0.5rem;
+  }
+
+  .expenseRowTitle {
+    font-size: 0.875rem;
+  }
+
+  .expenseRowAmount {
+    font-size: 0.875rem;
+  }
 }

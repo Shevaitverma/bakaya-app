@@ -103,21 +103,16 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
 
     const amountNum = parseFloat(amount);
     const splitCount = splitMembers.size;
-    const perPersonAmount = Math.round((amountNum / splitCount) * 100) / 100;
+    // Use Math.floor to match server logic (floor base, remainder to first person)
+    const baseAmount = Math.floor((amountNum / splitCount) * 100) / 100;
+    const remainder = Math.round((amountNum - baseAmount * splitCount) * 100) / 100;
 
     // Build splitAmong array
-    const splitAmong = Array.from(splitMembers).map((userId) => ({
+    const splitMemberIds = Array.from(splitMembers);
+    const splitAmong = splitMemberIds.map((userId, i) => ({
       userId,
-      amount: perPersonAmount,
+      amount: i === 0 ? baseAmount + remainder : baseAmount,
     }));
-
-    // Adjust rounding difference on first person
-    const totalSplit = splitAmong.reduce((sum, s) => sum + s.amount, 0);
-    const diff = Math.round((amountNum - totalSplit) * 100) / 100;
-    const firstEntry = splitAmong[0];
-    if (diff !== 0 && firstEntry) {
-      firstEntry.amount = Math.round((firstEntry.amount + diff) * 100) / 100;
-    }
 
     try {
       setLoading(true);
@@ -244,7 +239,12 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
             placeholder="Enter amount"
             value={amount}
             onChangeText={(text) => {
-              const numericValue = text.replace(/[^0-9.]/g, '');
+              let numericValue = text.replace(/[^0-9.]/g, '');
+              // Remove all but the first decimal point
+              const parts = numericValue.split('.');
+              if (parts.length > 2) {
+                numericValue = parts[0] + '.' + parts.slice(1).join('');
+              }
               setAmount(numericValue);
               if (errors.amount) setErrors({ ...errors, amount: undefined });
             }}

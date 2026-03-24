@@ -2,7 +2,7 @@ import { env, isProduction } from "@/config/env";
 import { connectDatabase, disconnectDatabase } from "@/config/database";
 import { handleRequest } from "@/routes";
 import { handleCorsPreFlight, addCorsHeaders } from "@/middleware/cors";
-import { checkRateLimit, getRateLimitHeaders } from "@/middleware/rateLimit";
+import { checkRateLimit, checkAuthRateLimit, getRateLimitHeaders } from "@/middleware/rateLimit";
 import { getOrCreateRequestId, addRequestIdHeader } from "@/middleware/requestId";
 import { addSecurityHeaders } from "@/middleware/security";
 import { handleSwaggerRoute } from "@/plugins/swagger.plugin";
@@ -74,7 +74,16 @@ async function main() {
         return corsResponse;
       }
 
-      // Check rate limit
+      // Stricter rate limit for auth endpoints
+      if (pathname.startsWith("/api/v1/auth/")) {
+        const authLimitResponse = checkAuthRateLimit(req);
+        if (authLimitResponse) {
+          logRequest(authLimitResponse, "auth-rate-limit");
+          return authLimitResponse;
+        }
+      }
+
+      // Check general rate limit
       const rateLimitResponse = checkRateLimit(req);
       if (rateLimitResponse) {
         logger.warn("Rate limit exceeded", {

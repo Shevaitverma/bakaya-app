@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const createExpenseSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
-  amount: z.number().min(0, "Amount must be non-negative"),
+  amount: z.number().positive("Amount must be positive"),
   profileId: z.string().min(1).optional(),
   category: z.string().max(50).optional(),
   notes: z.string().max(500).optional(),
@@ -10,7 +10,7 @@ export const createExpenseSchema = z.object({
 
 export const updateExpenseSchema = z.object({
   title: z.string().min(1).max(200).optional(),
-  amount: z.number().min(0, "Amount must be non-negative").optional(),
+  amount: z.number().positive("Amount must be positive").optional(),
   profileId: z.string().min(1).optional(),
   category: z.string().max(50).optional(),
   notes: z.string().max(500).optional(),

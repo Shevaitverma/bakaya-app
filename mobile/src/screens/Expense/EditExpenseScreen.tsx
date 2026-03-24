@@ -1,5 +1,5 @@
 /**
- * Add Expense Screen
+ * Edit Expense Screen
  */
 
 import React, { useState, useEffect } from 'react';
@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   Modal,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
@@ -29,12 +30,14 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { HomeStackParamList } from '../../navigation/types';
 import type { Profile } from '../../types/profile';
 
-type AddExpenseScreenProps = NativeStackScreenProps<HomeStackParamList, 'AddExpense'>;
+type EditExpenseScreenProps = NativeStackScreenProps<HomeStackParamList, 'EditExpense'>;
 
-export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation, route }) => {
-  const routeProfileId = route.params?.profileId;
+export const EditExpenseScreen: React.FC<EditExpenseScreenProps> = ({ navigation, route }) => {
+  const { expenseId } = route.params;
   const insets = useSafeAreaInsets();
   const { accessToken } = useAuth();
+
+  const [fetchingExpense, setFetchingExpense] = useState(true);
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
@@ -49,33 +52,49 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation, 
     category?: string;
   }>({});
 
-  // Fetch profiles on mount
+  // Fetch expense data and profiles on mount
   useEffect(() => {
-    const fetchProfiles = async () => {
+    const fetchData = async () => {
       if (!accessToken) return;
+
       try {
-        const response = await profileService.getProfiles(accessToken);
-        if (response.success && response.data?.profiles) {
-          const fetchedProfiles = response.data.profiles;
-          setProfiles(fetchedProfiles);
-          // Pre-select the route profile if provided, otherwise the default profile
-          if (routeProfileId && fetchedProfiles.some((p) => p._id === routeProfileId)) {
-            setSelectedProfileId(routeProfileId);
-          } else {
-            const defaultProfile = fetchedProfiles.find((p) => p.isDefault);
-            if (defaultProfile) {
-              setSelectedProfileId(defaultProfile._id);
-            }
-          }
+        setFetchingExpense(true);
+
+        // Fetch expense and profiles in parallel
+        const [expenseResponse, profilesResponse] = await Promise.all([
+          expenseService.getExpense(expenseId, accessToken),
+          profileService.getProfiles(accessToken),
+        ]);
+
+        // Populate form with expense data
+        if (expenseResponse.success && expenseResponse.data) {
+          const expense = expenseResponse.data;
+          setTitle(expense.title);
+          setAmount(String(expense.amount));
+          setCategory(expense.category ?? '');
+          setNotes(expense.notes ?? '');
+          setSelectedProfileId(expense.profileId ?? '');
+        } else {
+          throw new Error('Failed to load expense');
+        }
+
+        // Set profiles
+        if (profilesResponse.success && profilesResponse.data?.profiles) {
+          setProfiles(profilesResponse.data.profiles);
         }
       } catch (err) {
-        // Silently fail — profile selection is optional
-        console.warn('Failed to load profiles:', err);
+        const errorMessage =
+          err instanceof Error ? err.message : 'An error occurred while loading expense';
+        Alert.alert('Error', errorMessage, [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      } finally {
+        setFetchingExpense(false);
       }
     };
 
-    fetchProfiles();
-  }, [accessToken]);
+    fetchData();
+  }, [accessToken, expenseId]);
 
   const validateForm = (): boolean => {
     const newErrors: { title?: string; amount?: string; category?: string } = {};
@@ -101,7 +120,7 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation, 
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleAddExpense = async () => {
+  const handleUpdateExpense = async () => {
     if (!validateForm()) {
       return;
     }
@@ -121,10 +140,10 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation, 
         profileId: selectedProfileId || undefined,
       };
 
-      const response = await expenseService.createExpense(expenseData, accessToken);
+      const response = await expenseService.updateExpense(expenseId, expenseData, accessToken);
 
       if (response.success) {
-        Alert.alert('Success', 'Expense added successfully', [
+        Alert.alert('Success', 'Expense updated successfully', [
           {
             text: 'OK',
             onPress: () => {
@@ -133,11 +152,11 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation, 
           },
         ]);
       } else {
-        throw new Error('Failed to add expense');
+        throw new Error('Failed to update expense');
       }
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : 'An error occurred while adding expense';
+        err instanceof Error ? err.message : 'An error occurred while updating expense';
       Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
@@ -154,6 +173,16 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation, 
   };
 
   const selectedCategoryIcon = category ? getCategoryIcon(category) : 'receipt';
+
+  if (fetchingExpense) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
+        <ActivityIndicator size="large" color={Theme.colors.textOnPrimary} />
+        <Text style={styles.loadingText}>Loading expense...</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -175,7 +204,7 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation, 
             solid
           />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add expense</Text>
+        <Text style={styles.headerTitle}>Edit expense</Text>
         <View style={styles.backButtonPlaceholder} />
       </View>
 
@@ -312,12 +341,12 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation, 
             style={styles.notesInput}
           />
 
-          {/* Add Button */}
+          {/* Update Button */}
           <Button
-            title="Add Expense"
-            onPress={handleAddExpense}
+            title="Update Expense"
+            onPress={handleUpdateExpense}
             loading={loading}
-            style={styles.addButton}
+            style={styles.updateButton}
           />
         </View>
       </ScrollView>
@@ -402,6 +431,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Theme.colors.primary,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Theme.spacing.md,
+  },
+  loadingText: {
+    fontSize: Theme.typography.fontSize.medium,
+    color: Theme.colors.textOnPrimary,
+    fontFamily: Theme.typography.fontFamily,
+    marginTop: Theme.spacing.md,
   },
   header: {
     flexDirection: 'row',
@@ -536,7 +576,7 @@ const styles = StyleSheet.create({
     minHeight: 100,
     paddingTop: Theme.spacing.md,
   },
-  addButton: {
+  updateButton: {
     marginTop: Theme.spacing.lg,
     marginBottom: Theme.spacing.xl,
   },
@@ -612,4 +652,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AddExpenseScreen;
+export default EditExpenseScreen;

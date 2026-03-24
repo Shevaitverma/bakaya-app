@@ -2,55 +2,11 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { clearToken, ApiError } from "@/lib/api-client";
+import { clearAllAuth, ApiError } from "@/lib/api-client";
 import { groupsApi, type Group } from "@/lib/api/groups";
+import { CATEGORIES, getCategoryEmoji } from "@/constants/categories";
 import styles from "./page.module.css";
 
-/** 17 categories matching the mobile app */
-const CATEGORIES = [
-  "Food",
-  "Accessory",
-  "Transport",
-  "Shopping",
-  "Bills",
-  "Entertainment",
-  "Groceries",
-  "Healthcare",
-  "Education",
-  "Travel",
-  "Utilities",
-  "Clothing",
-  "Restaurant",
-  "Gas",
-  "Insurance",
-  "Rent",
-  "Other",
-] as const;
-
-/** Emoji equivalents for category icons */
-const CATEGORY_EMOJI: Record<string, string> = {
-  food: "\u{1F37D}\u{FE0F}",
-  accessory: "\u{1F4F1}",
-  transport: "\u{1F697}",
-  shopping: "\u{1F6CD}\u{FE0F}",
-  bills: "\u{1F9FE}",
-  entertainment: "\u{1F3AC}",
-  groceries: "\u{1F6D2}",
-  healthcare: "\u{1F48A}",
-  education: "\u{1F393}",
-  travel: "\u{2708}\u{FE0F}",
-  utilities: "\u{26A1}",
-  clothing: "\u{1F455}",
-  restaurant: "\u{1F374}",
-  gas: "\u{26FD}",
-  insurance: "\u{1F6E1}\u{FE0F}",
-  rent: "\u{1F3E0}",
-  other: "\u{1F4C4}",
-};
-
-function getCategoryEmoji(category: string): string {
-  return CATEGORY_EMOJI[category.toLowerCase()] ?? "\u{1F4C4}";
-}
 
 function getMemberDisplayName(member: {
   email: string;
@@ -67,6 +23,8 @@ function getMemberDisplayName(member: {
 
 export default function AddGroupExpensePage() {
   const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const params = useParams();
   const groupId = params.id as string;
 
@@ -84,7 +42,6 @@ export default function AddGroupExpensePage() {
     splitAmong?: string;
     server?: string;
   }>({});
-  const [isAuthChecked, setIsAuthChecked] = useState(false);
 
   // Group data for member selection
   const [group, setGroup] = useState<Group | null>(null);
@@ -100,29 +57,18 @@ export default function AddGroupExpensePage() {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Auth guard: redirect to login if not logged in
+  // Read current user ID and fetch group details
   useEffect(() => {
-    const stored = localStorage.getItem("bakaya_user");
-    if (!stored) {
-      router.push("/login");
-      return;
-    }
     try {
-      const user = JSON.parse(stored);
-      setIsAuthChecked(true);
-      // Default paidBy to current user
-      const userId = user.id || user._id || "";
-      setPaidBy(userId);
+      const stored = localStorage.getItem("bakaya_user");
+      if (stored) {
+        const user = JSON.parse(stored);
+        const userId = user.id || user._id || "";
+        setPaidBy(userId);
+      }
     } catch {
-      localStorage.removeItem("bakaya_user");
-      clearToken();
-      router.push("/login");
+      // layout handles auth redirect
     }
-  }, [router]);
-
-  // Fetch group details
-  useEffect(() => {
-    if (!isAuthChecked) return;
 
     async function fetchGroup() {
       try {
@@ -135,9 +81,8 @@ export default function AddGroupExpensePage() {
         setSelectedMembers(allMemberIds);
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          localStorage.removeItem("bakaya_user");
-          clearToken();
-          router.push("/login");
+          clearAllAuth();
+          routerRef.current.push("/login");
           return;
         }
       } finally {
@@ -146,7 +91,7 @@ export default function AddGroupExpensePage() {
     }
 
     fetchGroup();
-  }, [isAuthChecked, router, groupId]);
+  }, [groupId]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -191,11 +136,14 @@ export default function AddGroupExpensePage() {
     setSelectedMembers(new Set());
   };
 
-  /** Calculate per-person amount for equal split */
-  const perPersonAmount = (): number => {
+  /** Calculate per-person amounts for equal split (Math.floor + remainder to first) */
+  const getSplitAmounts = (): { base: number; first: number } => {
     const total = parseFloat(amount);
-    if (isNaN(total) || total <= 0 || selectedMembers.size === 0) return 0;
-    return total / selectedMembers.size;
+    if (isNaN(total) || total <= 0 || selectedMembers.size === 0)
+      return { base: 0, first: 0 };
+    const base = Math.floor((total * 100) / selectedMembers.size) / 100;
+    const remainder = Math.round((total - base * selectedMembers.size) * 100) / 100;
+    return { base, first: Math.round((base + remainder) * 100) / 100 };
   };
 
   const validateForm = (): boolean => {
@@ -239,12 +187,14 @@ export default function AddGroupExpensePage() {
     setErrors({});
 
     const totalAmount = parseFloat(amount);
-    const splitPerPerson = totalAmount / selectedMembers.size;
+    const memberIds = Array.from(selectedMembers);
+    const splitPerPerson = Math.floor((totalAmount * 100) / memberIds.length) / 100;
+    const remainder = Math.round((totalAmount - splitPerPerson * memberIds.length) * 100) / 100;
 
-    // Build splitAmong array
-    const splitAmong = Array.from(selectedMembers).map((userId) => ({
+    // Build splitAmong array, assigning the rounding remainder to the first member
+    const splitAmong = memberIds.map((userId, idx) => ({
       userId,
-      amount: Math.round(splitPerPerson * 100) / 100,
+      amount: idx === 0 ? Math.round((splitPerPerson + remainder) * 100) / 100 : splitPerPerson,
     }));
 
     try {
@@ -256,13 +206,12 @@ export default function AddGroupExpensePage() {
         paidBy,
         splitAmong,
       });
-      router.push(`/dashboard/groups/${groupId}`);
+      routerRef.current.push(`/dashboard/groups/${groupId}`);
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.status === 401) {
-          localStorage.removeItem("bakaya_user");
-          clearToken();
-          router.push("/login");
+          clearAllAuth();
+          routerRef.current.push("/login");
           return;
         }
         setErrors({ server: error.message });
@@ -284,11 +233,7 @@ export default function AddGroupExpensePage() {
     }
   };
 
-  if (!isAuthChecked) {
-    return null;
-  }
-
-  const ppAmount = perPersonAmount();
+  const splitAmounts = getSplitAmounts();
 
   return (
     <div className={styles.page}>
@@ -521,36 +466,40 @@ export default function AddGroupExpensePage() {
               </div>
 
               <div className={styles.memberCheckboxList}>
-                {group?.members.map((member) => {
-                  const isChecked = selectedMembers.has(member.userId.id);
-                  return (
-                    <label
-                      key={member.userId.id}
-                      className={`${styles.memberCheckbox} ${
-                        isChecked ? styles.memberCheckboxChecked : ""
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        className={styles.checkboxInput}
-                        checked={isChecked}
-                        onChange={() => toggleMember(member.userId.id)}
-                      />
-                      <div className={styles.checkboxAvatar}>
-                        {getMemberDisplayName(member.userId)
-                          .charAt(0)
-                          .toUpperCase()}
-                      </div>
-                      <div className={styles.checkboxInfo}>
-                        <span className={styles.checkboxName}>
-                          {getMemberDisplayName(member.userId)}
-                        </span>
-                        {isChecked && ppAmount > 0 && (
-                          <span className={styles.checkboxAmount}>
-                            {"\u20B9"}{ppAmount.toFixed(2)}
+                {(() => {
+                  const selectedArr = Array.from(selectedMembers);
+                  return group?.members.map((member) => {
+                    const isChecked = selectedMembers.has(member.userId.id);
+                    const isFirst = selectedArr[0] === member.userId.id;
+                    const memberAmount = isFirst ? splitAmounts.first : splitAmounts.base;
+                    return (
+                      <label
+                        key={member.userId.id}
+                        className={`${styles.memberCheckbox} ${
+                          isChecked ? styles.memberCheckboxChecked : ""
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          className={styles.checkboxInput}
+                          checked={isChecked}
+                          onChange={() => toggleMember(member.userId.id)}
+                        />
+                        <div className={styles.checkboxAvatar}>
+                          {getMemberDisplayName(member.userId)
+                            .charAt(0)
+                            .toUpperCase()}
+                        </div>
+                        <div className={styles.checkboxInfo}>
+                          <span className={styles.checkboxName}>
+                            {getMemberDisplayName(member.userId)}
                           </span>
-                        )}
-                      </div>
+                          {isChecked && memberAmount > 0 && (
+                            <span className={styles.checkboxAmount}>
+                              {"\u20B9"}{memberAmount.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
                       <div
                         className={`${styles.checkboxMark} ${
                           isChecked ? styles.checkboxMarkChecked : ""
@@ -559,8 +508,9 @@ export default function AddGroupExpensePage() {
                         {isChecked ? "\u2713" : ""}
                       </div>
                     </label>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
 
               {errors.splitAmong && (
@@ -569,12 +519,15 @@ export default function AddGroupExpensePage() {
                 </span>
               )}
 
-              {ppAmount > 0 && (
+              {splitAmounts.base > 0 && (
                 <div className={styles.splitSummary}>
                   {"\u20B9"}{parseFloat(amount).toFixed(2)} split equally
                   among {selectedMembers.size}{" "}
                   {selectedMembers.size === 1 ? "person" : "people"} ={" "}
-                  {"\u20B9"}{ppAmount.toFixed(2)} each
+                  {"\u20B9"}{splitAmounts.base.toFixed(2)} each
+                  {splitAmounts.first !== splitAmounts.base && (
+                    <> (first person: {"\u20B9"}{splitAmounts.first.toFixed(2)})</>
+                  )}
                 </div>
               )}
             </div>

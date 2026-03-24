@@ -1,15 +1,32 @@
 import { getAuthUser } from "@/middleware/auth";
 import { createGroupExpenseSchema, updateGroupExpenseSchema, groupExpenseQuerySchema } from "@/schemas/groupExpense.schema";
 import * as groupExpenseService from "@/services/groupExpense.service";
+import * as groupService from "@/services/group.service";
 import { successResponse, badRequestResponse, notFoundResponse, forbiddenResponse } from "@/utils/response";
 import { logger } from "@/utils/logger";
 import { z } from "zod";
+
+async function validateGroupMembership(groupId: string, userId: string): Promise<Response | null> {
+  const group = await groupService.findGroupById(groupId);
+  if (!group) return notFoundResponse("Group not found");
+
+  const isMember = group.members.some(
+    (m: any) => (m.userId?._id || m.userId)?.toString() === userId
+  );
+  if (!isMember) return forbiddenResponse("Not a member of this group");
+
+  return null;
+}
 
 export async function getGroupExpenses(req: Request, params?: Record<string, string>): Promise<Response> {
   try {
     const { userId } = getAuthUser(req);
     const groupId = params?.id;
     if (!groupId) return badRequestResponse("Group ID is required");
+
+    // Validate group membership
+    const membershipError = await validateGroupMembership(groupId, userId);
+    if (membershipError) return membershipError;
 
     const url = new URL(req.url);
     const query = groupExpenseQuerySchema.parse(Object.fromEntries(url.searchParams));
@@ -39,7 +56,11 @@ export async function createGroupExpense(req: Request, params?: Record<string, s
     const body = await req.json();
     const input = createGroupExpenseSchema.parse(body);
 
-    const expense = await groupExpenseService.createGroupExpense(groupId, userId, input);
+    // Use client-provided paidBy if present, otherwise default to authenticated user.
+    // The service validates that paidBy is a member of the group.
+    const paidBy = input.paidBy || userId;
+
+    const expense = await groupExpenseService.createGroupExpense(groupId, paidBy, input);
 
     return successResponse(expense, undefined, 201);
   } catch (error) {
@@ -65,6 +86,10 @@ export async function getGroupExpense(req: Request, params?: Record<string, stri
     const expenseId = params?.expenseId;
     if (!groupId) return badRequestResponse("Group ID is required");
     if (!expenseId) return badRequestResponse("Expense ID is required");
+
+    // Validate group membership
+    const membershipError = await validateGroupMembership(groupId, userId);
+    if (membershipError) return membershipError;
 
     const expense = await groupExpenseService.findGroupExpenseById(groupId, expenseId);
     if (!expense) return notFoundResponse("Expense not found");
@@ -115,6 +140,10 @@ export async function deleteGroupExpense(req: Request, params?: Record<string, s
     if (!groupId) return badRequestResponse("Group ID is required");
     if (!expenseId) return badRequestResponse("Expense ID is required");
 
+    // Validate group membership
+    const membershipError = await validateGroupMembership(groupId, userId);
+    if (membershipError) return membershipError;
+
     const deleted = await groupExpenseService.deleteGroupExpense(groupId, expenseId, userId);
     if (!deleted) return notFoundResponse("Expense not found");
 
@@ -130,6 +159,10 @@ export async function getGroupBalances(req: Request, params?: Record<string, str
     const { userId } = getAuthUser(req);
     const groupId = params?.id;
     if (!groupId) return badRequestResponse("Group ID is required");
+
+    // Validate group membership
+    const membershipError = await validateGroupMembership(groupId, userId);
+    if (membershipError) return membershipError;
 
     const balances = await groupExpenseService.getGroupBalances(groupId);
 

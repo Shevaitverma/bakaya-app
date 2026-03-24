@@ -23,6 +23,7 @@ const envSchema = z.object({
 
   // Security
   CORS_ORIGIN: z.string().default("*"),
+  TRUST_PROXY: z.string().default("false"),
   RATE_LIMIT_MAX: z.coerce.number().default(100),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60000),
 
@@ -43,7 +44,19 @@ function loadEnv(): EnvConfig {
     process.exit(1);
   }
 
-  return parsed.data;
+  const config = parsed.data;
+
+  // Reject default JWT secrets in production
+  const DEV_JWT_SECRET = "bakaya-dev-jwt-secret-change-in-production";
+  const DEV_REFRESH_SECRET = "bakaya-dev-refresh-secret-change-in-production";
+  if (config.NODE_ENV === "production") {
+    if (config.JWT_SECRET === DEV_JWT_SECRET || config.JWT_REFRESH_SECRET === DEV_REFRESH_SECRET) {
+      console.error("❌ FATAL: JWT secrets must be changed from defaults in production!");
+      process.exit(1);
+    }
+  }
+
+  return config;
 }
 
 export const env = loadEnv();

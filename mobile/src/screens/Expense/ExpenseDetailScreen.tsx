@@ -15,7 +15,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { Theme } from '../../constants/theme';
 import { expenseService } from '../../services/expenseService';
+import { profileService } from '../../services/profileService';
 import type { Expense, PersonalExpensesResponse } from '../../types/expense';
+import type { Profile } from '../../types/profile';
 import SwipeableExpenseItem from '../../components/SwipeableExpenseItem';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -29,18 +31,33 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [totalExpenseAmount, setTotalExpenseAmount] = useState(0);
   const [openSwipeableId, setOpenSwipeableId] = useState<string | null>(null);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState<{ id: string; title: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Fetch expenses on mount and refresh when screen comes into focus (e.g., after adding a new expense)
+  // Fetch expenses and profiles on mount and refresh when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       fetchExpenses();
-    }, [])
+      fetchProfiles();
+    }, [accessToken])
   );
+
+  const fetchProfiles = async () => {
+    if (!accessToken) return;
+    try {
+      const response = await profileService.getProfiles(accessToken);
+      if (response.success && response.data?.profiles) {
+        setProfiles(response.data.profiles);
+      }
+    } catch (err) {
+      // Silently fail — profile display is supplementary
+      console.warn('Failed to load profiles:', err);
+    }
+  };
 
   const fetchExpenses = async () => {
     if (!accessToken) {
@@ -101,6 +118,10 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation })
 
   const handleAddExpense = () => {
     navigation.navigate('AddExpense');
+  };
+
+  const handleEditExpense = (expenseId: string) => {
+    navigation.navigate('EditExpense', { expenseId });
   };
 
   const handleDeleteExpense = (expenseId: string) => {
@@ -181,9 +202,15 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation })
     }
   };
 
+  const getExpenseProfile = (expense: Expense): Profile | undefined => {
+    if (!expense.profileId) return undefined;
+    return profiles.find((p) => p._id === expense.profileId);
+  };
+
   const renderExpenseItem = ({ item, index }: { item: Expense; index: number }) => {
     const isLastItem = index === expenses.length - 1;
     const isOpen = openSwipeableId === item._id;
+    const profile = getExpenseProfile(item);
 
     return (
       <SwipeableExpenseItem
@@ -191,12 +218,15 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation })
         index={index}
         isLastItem={isLastItem}
         onDelete={handleDeleteExpense}
+        onPress={handleEditExpense}
         formatDate={formatDate}
         formatTime={formatTime}
         formatAmount={formatAmount}
         isOpen={isOpen}
         onSwipeStart={() => handleSwipeStart(item._id)}
         onSwipeEnd={(expenseId, isOpen) => handleSwipeEnd(expenseId, isOpen)}
+        profileName={profile?.name}
+        profileColor={profile?.color}
       />
     );
   };
