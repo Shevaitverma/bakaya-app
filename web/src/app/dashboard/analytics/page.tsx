@@ -128,14 +128,14 @@ export default function AnalyticsPage() {
   const profileBars = (profileData?.profiles ?? [])
     .slice()
     .sort((a, b) => b.total - a.total);
-  const profileMax = profileBars.length > 0 ? profileBars[0].total : 1;
+  const profileMax = profileBars.length > 0 ? profileBars[0]!.total : 1;
   const profileTotal = profileData?.totalSpent ?? totalSpent;
 
   /* Category bars */
   const categoryBars = (categoryData?.categories ?? [])
     .slice()
     .sort((a, b) => b.total - a.total);
-  const categoryMax = categoryBars.length > 0 ? categoryBars[0].total : 1;
+  const categoryMax = categoryBars.length > 0 ? categoryBars[0]!.total : 1;
   const categoryTotal = categoryData?.totalSpent ?? totalSpent;
 
   /* Trend bars - last 6 months */
@@ -148,7 +148,7 @@ export default function AnalyticsPage() {
   function getProfileColor(profileId: string, index: number): string {
     const profile = profilesMap[profileId];
     if (profile?.color) return profile.color;
-    return PROFILE_COLORS[index % PROFILE_COLORS.length];
+    return PROFILE_COLORS[index % PROFILE_COLORS.length]!;
   }
 
   return (

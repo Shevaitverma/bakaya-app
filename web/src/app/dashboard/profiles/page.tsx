@@ -1,18 +1,40 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ApiError } from "@/lib/api-client";
+import { ApiError, clearAllAuth } from "@/lib/api-client";
+import { authApi } from "@/lib/api/auth";
 import { profilesApi } from "@/lib/api/profiles";
 import type { Profile } from "@/types/profile";
 import styles from "./page.module.css";
 
 export default function ProfilesPage() {
+  const router = useRouter();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+
+  useEffect(() => {
+    try {
+      const userData = localStorage.getItem("bakaya_user");
+      if (userData) {
+        const user = JSON.parse(userData);
+        setUserName(user.name || user.firstName || "");
+        setUserEmail(user.email || "");
+      }
+    } catch {}
+  }, []);
+
+  const handleLogout = async () => {
+    await authApi.logout();
+    clearAllAuth();
+    router.push("/login");
+  };
 
   useEffect(() => {
     profilesApi
@@ -112,6 +134,25 @@ export default function ProfilesPage() {
           ))}
         </div>
       )}
+
+      {/* Account Section */}
+      <div className={styles.accountSection}>
+        <h2 className={styles.accountTitle}>Account</h2>
+        <div className={styles.accountCard}>
+          <div className={styles.accountInfo}>
+            <div className={styles.accountAvatar}>
+              {(userName || userEmail).charAt(0).toUpperCase()}
+            </div>
+            <div>
+              {userName && <p className={styles.accountName}>{userName}</p>}
+              {userEmail && <p className={styles.accountEmail}>{userEmail}</p>}
+            </div>
+          </div>
+          <button className={styles.logoutBtn} onClick={handleLogout}>
+            Sign Out
+          </button>
+        </div>
+      </div>
 
       {/* Delete Confirmation */}
       {deleteTarget && (

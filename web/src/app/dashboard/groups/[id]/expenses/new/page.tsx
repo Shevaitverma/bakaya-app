@@ -282,7 +282,7 @@ export default function AddGroupExpensePage() {
       const diff = Math.round((totalAmount - rawTotal) * 100) / 100;
       splitAmong = memberIds.map((userId, idx) => ({
         userId,
-        amount: idx === 0 ? Math.round((rawAmounts[idx] + diff) * 100) / 100 : rawAmounts[idx],
+        amount: idx === 0 ? Math.round((rawAmounts[idx]! + diff) * 100) / 100 : rawAmounts[idx]!,
       }));
     } else {
       // Equal split
