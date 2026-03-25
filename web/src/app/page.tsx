@@ -187,7 +187,7 @@ export default function Home() {
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
           <p className={styles.footerText}>
-            &copy; {new Date().getFullYear()} Bakaya. Built with love.
+            &copy; 2026 Bakaya. Built with love by ZTaS
           </p>
           <div className={styles.footerLinks}>
             <a href="#" className={styles.footerLink}>
