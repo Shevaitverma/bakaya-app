@@ -135,6 +135,30 @@ export default function ProfilesPage() {
         </div>
       )}
 
+      {/* Manage Categories Link */}
+      <div className={styles.accountSection} style={{ borderTop: "none", marginTop: "var(--spacing-md)", paddingTop: 0 }}>
+        <Link
+          href="/dashboard/categories"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "14px 20px",
+            background: "#FFFFFF",
+            borderRadius: "12px",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)",
+            textDecoration: "none",
+            color: "#1A1A2E",
+            fontWeight: 600,
+            fontSize: "15px",
+            transition: "transform 200ms ease, box-shadow 200ms ease",
+          }}
+        >
+          <span>Manage Categories</span>
+          <span style={{ color: "#9CA3AF", fontSize: "1.25rem" }}>&rarr;</span>
+        </Link>
+      </div>
+
       {/* Account Section */}
       <div className={styles.accountSection}>
         <h2 className={styles.accountTitle}>Account</h2>

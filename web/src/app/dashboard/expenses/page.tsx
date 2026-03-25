@@ -7,30 +7,10 @@ import { formatDate } from "@/utils/format";
 import { formatCurrency, formatCurrencyExact } from "@/utils/currency";
 import { expensesApi, type Expense } from "@/lib/api/expenses";
 import { profilesApi } from "@/lib/api/profiles";
+import { categoriesApi, type Category } from "@/lib/api/categories";
 import type { Profile } from "@/types/profile";
 import DateRangePicker from "@/components/DateRangePicker";
 import styles from "./page.module.css";
-
-/** Emoji equivalents for category icons (matching mobile categoryIcons.ts) */
-const CATEGORY_EMOJI: Record<string, string> = {
-  food: "\u{1F37D}\uFE0F",
-  accessory: "\u{1F4F1}",
-  transport: "\u{1F697}",
-  shopping: "\u{1F6CD}\uFE0F",
-  bills: "\u{1F9FE}",
-  entertainment: "\u{1F3AC}",
-  groceries: "\u{1F6D2}",
-  healthcare: "\u{1F48A}",
-  education: "\u{1F393}",
-  travel: "\u2708\uFE0F",
-  utilities: "\u26A1",
-  clothing: "\u{1F455}",
-  restaurant: "\u{1F374}",
-  gas: "\u26FD",
-  insurance: "\u{1F6E1}\uFE0F",
-  rent: "\u{1F3E0}",
-  other: "\u{1F4C4}",
-};
 
 const SOURCE_EMOJI: Record<string, string> = {
   salary: "\u{1F4B0}",
@@ -42,12 +22,22 @@ const SOURCE_EMOJI: Record<string, string> = {
   other: "\u{1F4B5}",
 };
 
-function getCategoryEmoji(category: string): string {
-  return CATEGORY_EMOJI[category.toLowerCase()] ?? "\u{1F4C4}";
-}
+const SOURCE_COLORS: Record<string, string> = {
+  salary: "rgba(16, 185, 129, 0.15)",
+  freelance: "rgba(99, 102, 241, 0.15)",
+  investment: "rgba(34, 197, 94, 0.15)",
+  gift: "rgba(244, 63, 94, 0.15)",
+  refund: "rgba(59, 130, 246, 0.15)",
+  rental: "rgba(139, 92, 246, 0.15)",
+  other: "rgba(16, 185, 129, 0.15)",
+};
 
 function getSourceEmoji(source: string): string {
   return SOURCE_EMOJI[source.toLowerCase()] ?? "\u{1F4B5}";
+}
+
+function getSourceColor(source: string): string {
+  return SOURCE_COLORS[source.toLowerCase()] ?? "rgba(16, 185, 129, 0.15)";
 }
 
 type TypeFilter = "all" | "expense" | "income";
@@ -70,6 +60,7 @@ export default function ExpensesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [isExporting, setIsExporting] = useState(false);
+  const [categoriesMap, setCategoriesMap] = useState<Record<string, Category>>({});
 
   // Debounce search input
   useEffect(() => {
@@ -79,13 +70,25 @@ export default function ExpensesPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // Fetch profiles once on mount
+  // Fetch profiles and categories once on mount
   useEffect(() => {
     profilesApi
       .getProfiles()
       .then((data) => setProfiles(data.profiles ?? []))
       .catch(() => {
         // Swallow -- session-expired redirect is handled centrally by api-client
+      });
+    categoriesApi
+      .list()
+      .then((data) => {
+        const map: Record<string, Category> = {};
+        for (const c of data.categories ?? []) {
+          map[c.name] = c;
+        }
+        setCategoriesMap(map);
+      })
+      .catch(() => {
+        // Swallow -- continue with empty map, fallback emoji/color will be used
       });
   }, []);
 
@@ -206,17 +209,17 @@ export default function ExpensesPage() {
 
       {/* ---------- Summary Bar ---------- */}
       <div className={styles.summaryBar}>
-        <div className={styles.summaryItem}>
+        <div className={`${styles.summaryItem} ${styles.summaryItemIncome}`}>
           <span className={styles.summaryLabel}>Income</span>
           <span className={styles.summaryIncome}>{formatCurrency(totalIncome)}</span>
         </div>
         <div className={styles.summarySep} />
-        <div className={styles.summaryItem}>
+        <div className={`${styles.summaryItem} ${styles.summaryItemExpense}`}>
           <span className={styles.summaryLabel}>Expenses</span>
           <span className={styles.summaryExpense}>{formatCurrency(totalExpenses)}</span>
         </div>
         <div className={styles.summarySep} />
-        <div className={styles.summaryItem}>
+        <div className={`${styles.summaryItem} ${styles.summaryItemBalance}`}>
           <span className={styles.summaryLabel}>Balance</span>
           <span className={balance >= 0 ? styles.summaryBalancePositive : styles.summaryBalanceNegative}>
             {formatCurrency(Math.abs(balance))}
@@ -329,55 +332,66 @@ export default function ExpensesPage() {
           </div>
         ) : (
           <div className={styles.expenseList}>
-            {expenses.map((expense) => {
+            {expenses.map((expense, index) => {
               const isIncome = expense.type === "income";
               const expenseProfile = expense.profileId
                 ? profiles.find((p) => p._id === expense.profileId)
                 : profiles.find((p) => p.isDefault);
 
+              const catEntry = categoriesMap[expense.category ?? ""];
+              const emoji = isIncome
+                ? getSourceEmoji(expense.source ?? "other")
+                : (catEntry?.emoji ?? "\u{1F4C4}");
+              const circleColor = isIncome
+                ? getSourceColor(expense.source ?? "other")
+                : (catEntry?.color ? `${catEntry.color}26` : "rgba(156, 163, 175, 0.15)");
+              const label = isIncome
+                ? (expense.source ?? "Income")
+                : (expense.category ?? "Other");
+
               return (
-              <div key={expense._id} className={styles.expenseCard}>
+              <div
+                key={expense._id}
+                className={`${styles.expenseCard} ${isIncome ? styles.expenseCardIncome : ""}`}
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
                 {/* Category/Source Icon */}
-                <div className={`${styles.categoryIcon} ${isIncome ? styles.categoryIconIncome : ""}`}>
-                  <span aria-hidden>
-                    {isIncome
-                      ? getSourceEmoji(expense.source ?? "other")
-                      : getCategoryEmoji(expense.category ?? "other")}
-                  </span>
+                <div
+                  className={styles.categoryIcon}
+                  style={{ background: circleColor }}
+                >
+                  <span aria-hidden>{emoji}</span>
                 </div>
 
                 {/* Info */}
                 <div className={styles.expenseInfo}>
                   <p className={styles.expenseTitle}>{expense.title}</p>
                   <div className={styles.expenseMeta}>
-                    {isIncome ? (
-                      <span className={styles.incomeSourceTag}>
-                        {expense.source ?? "Income"}
-                      </span>
-                    ) : (
-                      <span className={styles.expenseCategory}>
-                        {expense.category ?? "Other"}
-                      </span>
-                    )}
+                    <span>{label}</span>
                     {expenseProfile && (
-                      <span className={styles.expenseProfile}>
-                        <span
-                          className={styles.expenseProfileDot}
-                          style={{
-                            backgroundColor:
-                              expenseProfile.color || "var(--color-primary)",
-                          }}
-                        />
-                        {expenseProfile.name}
-                      </span>
+                      <>
+                        <span className={styles.metaDot} />
+                        <span className={styles.expenseProfile}>
+                          <span
+                            className={styles.expenseProfileDot}
+                            style={{
+                              backgroundColor:
+                                expenseProfile.color || "var(--color-primary)",
+                            }}
+                          />
+                          {expenseProfile.name}
+                        </span>
+                      </>
                     )}
-                    <span>{formatDate(new Date(expense.createdAt))}</span>
                   </div>
+                  <span className={styles.expenseDate}>
+                    {formatDate(new Date(expense.createdAt))}
+                  </span>
                 </div>
 
                 {/* Amount */}
                 <span className={isIncome ? styles.incomeAmount : styles.expenseAmount}>
-                  {isIncome ? "+" : "-"}{formatCurrency(expense.amount)}
+                  {isIncome ? "+" : ""}{formatCurrency(expense.amount)}
                 </span>
 
                 {/* Edit */}

@@ -6,7 +6,7 @@ import { ApiError } from "@/lib/api-client";
 import { expensesApi, type Expense } from "@/lib/api/expenses";
 import { profilesApi } from "@/lib/api/profiles";
 import type { Profile } from "@/types/profile";
-import { CATEGORIES, getCategoryEmoji } from "@/constants/categories";
+import { categoriesApi, type Category } from "@/lib/api/categories";
 import styles from "../../new/page.module.css";
 
 const INCOME_SOURCES = [
@@ -63,6 +63,18 @@ export default function EditExpensePage() {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const isIncome = entryType === "income";
+
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    categoriesApi
+      .list()
+      .then((data) => setCategories(data.categories ?? []))
+      .catch(() => {
+        // categories API not ready -- continue without
+      });
+  }, []);
 
   // Fetch expense and profiles
   useEffect(() => {
@@ -384,7 +396,7 @@ export default function EditExpensePage() {
                 >
                   {category ? (
                     <span className={styles.categorySelected}>
-                      <span aria-hidden>{getCategoryEmoji(category)}</span>
+                      <span aria-hidden>{categories.find((c) => c.name === category)?.emoji ?? "\u{1F4C4}"}</span>
                       {category}
                     </span>
                   ) : (
@@ -399,25 +411,25 @@ export default function EditExpensePage() {
 
                 {showDropdown && (
                   <div className={styles.categoryList}>
-                    {CATEGORIES.map((cat) => {
-                      const isSelected = category === cat;
+                    {categories.map((cat) => {
+                      const isSelected = category === cat.name;
                       return (
                         <button
-                          key={cat}
+                          key={cat.id}
                           type="button"
                           className={`${styles.categoryItem} ${isSelected ? styles.categoryItemSelected : ""}`}
-                          onClick={() => handleCategorySelect(cat)}
+                          onClick={() => handleCategorySelect(cat.name)}
                         >
                           <span className={styles.categoryItemContent}>
                             <span
                               className={`${styles.categoryItemIcon} ${isSelected ? styles.categoryItemIconSelected : ""}`}
                             >
-                              <span aria-hidden>{getCategoryEmoji(cat)}</span>
+                              <span aria-hidden>{cat.emoji}</span>
                             </span>
                             <span
                               className={`${styles.categoryItemText} ${isSelected ? styles.categoryItemTextSelected : ""}`}
                             >
-                              {cat}
+                              {cat.name}
                             </span>
                           </span>
                           {isSelected && (

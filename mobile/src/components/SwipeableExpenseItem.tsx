@@ -11,6 +11,7 @@ import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { Theme } from '../constants/theme';
 import { getCategoryIcon } from '../utils/categoryIcons';
 import type { Expense } from '../types/expense';
+import type { Category } from '../types/category';
 
 const DELETE_BUTTON_WIDTH = 60;
 const SWIPE_THRESHOLD = DELETE_BUTTON_WIDTH * 0.5;
@@ -29,6 +30,8 @@ interface SwipeableExpenseItemProps {
   onSwipeEnd: (expenseId: string, isOpen: boolean) => void;
   profileName?: string;
   profileColor?: string;
+  categoryEmoji?: string;
+  categoryColor?: string;
 }
 
 const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({
@@ -45,6 +48,8 @@ const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({
   onSwipeEnd,
   profileName,
   profileColor,
+  categoryEmoji,
+  categoryColor,
 }) => {
   const translateX = useRef(new Animated.Value(0)).current;
   const startX = useRef(0);
@@ -136,6 +141,7 @@ const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({
   }, [item._id, onDelete, onSwipeEnd, translateX]);
 
   const categoryIcon = getCategoryIcon(item.category ?? 'other');
+  const timelineCircleBg = categoryColor || Theme.colors.primary;
 
   return (
     <View style={styles.container}>
@@ -167,15 +173,19 @@ const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({
           {/* Timeline line and icon container */}
           <View style={styles.timelineContainer}>
             <View style={styles.timelineIconWrapper}>
-              <View style={styles.timelineIconCircle}>
-                <FontAwesome6
-                  name={categoryIcon as any}
-                  size={16}
-                  color={Theme.colors.textOnPrimary}
-                  solid
-                />
+              <View style={[styles.timelineIconCircle, { backgroundColor: timelineCircleBg }]}>
+                {categoryEmoji ? (
+                  <Text style={styles.timelineEmoji}>{categoryEmoji}</Text>
+                ) : (
+                  <FontAwesome6
+                    name={categoryIcon as any}
+                    size={16}
+                    color={Theme.colors.textOnPrimary}
+                    solid
+                  />
+                )}
               </View>
-              {!isLastItem && <View style={styles.timelineLine} />}
+              {!isLastItem && <View style={[styles.timelineLine, { backgroundColor: timelineCircleBg }]} />}
             </View>
           </View>
 
@@ -258,6 +268,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 2,
+  },
+  timelineEmoji: {
+    fontSize: 16,
   },
   timelineLine: {
     width: 2,

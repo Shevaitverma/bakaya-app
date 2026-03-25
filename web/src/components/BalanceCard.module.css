@@ -6,10 +6,15 @@
 .card {
   background: var(--color-card);
   border: 1px solid rgba(0, 0, 0, 0.05);
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   padding: var(--spacing-lg);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
   margin-bottom: var(--spacing-lg);
+  transition: box-shadow var(--transition-fast);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
 }
 
 /* --- Three-column numbers --- */
@@ -48,6 +53,7 @@
 .summaryValue {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
   letter-spacing: -0.5px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -157,6 +163,7 @@
 .detailValue {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
   color: var(--color-text-primary);
 }
 

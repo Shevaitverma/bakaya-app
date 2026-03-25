@@ -46,13 +46,15 @@ export default function GroupsPage() {
               className={styles.groupCard}
             >
               <div className={styles.groupIcon}>&#128101;</div>
-              <p className={styles.groupName}>{group.name}</p>
-              {group.description && (
-                <p className={styles.groupDescription}>{group.description}</p>
-              )}
-              <span className={styles.groupMembers}>
-                {group.members.length} {group.members.length === 1 ? "member" : "members"}
-              </span>
+              <div className={styles.groupInfo}>
+                <p className={styles.groupName}>{group.name}</p>
+                {group.description && (
+                  <p className={styles.groupDescription}>{group.description}</p>
+                )}
+                <span className={styles.groupMembers}>
+                  {group.members.length} {group.members.length === 1 ? "member" : "members"}
+                </span>
+              </div>
             </Link>
           ))}
         </div>

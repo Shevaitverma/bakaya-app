@@ -3,7 +3,7 @@
  * Form to create a new expense in a group with equal split
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,11 +24,11 @@ import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { Theme } from '../../constants/theme';
 import { groupService } from '../../services/groupService';
-import { getCategoryIcon } from '../../utils/categoryIcons';
-import { CATEGORIES } from '../../constants/categories';
+import { categoryService } from '../../services/categoryService';
 import { formatCurrencyExact } from '../../utils/currency';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { HomeStackParamList } from '../../navigation/types';
+import type { Category } from '../../types/category';
 
 type AddGroupExpenseScreenProps = NativeStackScreenProps<HomeStackParamList, 'AddGroupExpense'>;
 
@@ -42,6 +42,7 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [notes, setNotes] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showPaidByModal, setShowPaidByModal] = useState(false);
 
@@ -69,6 +70,24 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
     category?: string;
     split?: string;
   }>({});
+
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      if (!accessToken) return;
+      try {
+        const response = await categoryService.getCategories(accessToken);
+        if (response.success && response.data?.categories) {
+          setCategories(response.data.categories.filter((c) => c.isActive));
+        }
+      } catch (err) {
+        console.warn('Failed to load categories:', err);
+        setCategories([]);
+      }
+    };
+
+    fetchCategories();
+  }, [accessToken]);
 
   const getPaidByName = (): string => {
     if (paidBy === currentUserId) return 'You';
@@ -289,7 +308,7 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
     return formatCurrencyExact(perPerson);
   };
 
-  const selectedCategoryIcon = category ? getCategoryIcon(category) : 'receipt';
+  const selectedCat = categories.find((c) => c.name === category);
 
   return (
     <KeyboardAvoidingView
@@ -369,12 +388,9 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
               activeOpacity={0.7}>
               {category ? (
                 <View style={styles.pickerSelected}>
-                  <FontAwesome6
-                    name={selectedCategoryIcon as any}
-                    size={18}
-                    color={Theme.colors.primary}
-                    solid
-                  />
+                  <View style={[styles.categoryEmojiCircle, selectedCat?.color ? { backgroundColor: selectedCat.color + '20' } : undefined]}>
+                    <Text style={styles.categoryEmoji}>{selectedCat?.emoji || '📦'}</Text>
+                  </View>
                   <Text style={styles.pickerSelectedText}>{category}</Text>
                 </View>
               ) : (
@@ -663,37 +679,31 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
             <ScrollView
               style={styles.modalList}
               showsVerticalScrollIndicator={false}>
-              {CATEGORIES.map((cat) => {
-                const icon = getCategoryIcon(cat);
-                const isSelected = category === cat;
+              {categories.map((cat) => {
+                const isSelected = category === cat.name;
                 return (
                   <TouchableOpacity
-                    key={cat}
+                    key={cat.id}
                     style={[
                       styles.modalItem,
                       isSelected && styles.modalItemSelected,
                     ]}
-                    onPress={() => handleCategorySelect(cat)}
+                    onPress={() => handleCategorySelect(cat.name)}
                     activeOpacity={0.7}>
                     <View style={styles.modalItemContent}>
                       <View
                         style={[
                           styles.modalItemIcon,
-                          isSelected && styles.modalItemIconSelected,
+                          { backgroundColor: isSelected ? cat.color : (cat.color + '20') },
                         ]}>
-                        <FontAwesome6
-                          name={icon as any}
-                          size={18}
-                          color={isSelected ? Theme.colors.textOnPrimary : Theme.colors.primary}
-                          solid
-                        />
+                        <Text style={styles.modalItemEmoji}>{cat.emoji}</Text>
                       </View>
                       <Text
                         style={[
                           styles.modalItemText,
                           isSelected && styles.modalItemTextSelected,
                         ]}>
-                        {cat}
+                        {cat.name}
                       </Text>
                     </View>
                     {isSelected && (
@@ -877,6 +887,17 @@ const styles = StyleSheet.create({
     fontSize: Theme.typography.fontSize.medium,
     color: Theme.colors.textPrimary,
     fontFamily: Theme.typography.fontFamily,
+  },
+  categoryEmojiCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: Theme.borderRadius.round,
+    backgroundColor: Theme.colors.lightGrey,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  categoryEmoji: {
+    fontSize: 16,
   },
   pickerPlaceholder: {
     fontSize: Theme.typography.fontSize.medium,
@@ -1137,8 +1158,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalItemIconSelected: {
-    backgroundColor: Theme.colors.primary,
+  modalItemEmoji: {
+    fontSize: 18,
   },
   modalItemText: {
     fontSize: Theme.typography.fontSize.medium,

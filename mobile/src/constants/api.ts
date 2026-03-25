@@ -53,6 +53,11 @@ export const API_CONFIG = {
       MEMBERS: (id: string) => `/groups/${id}/members`,
       SINGLE_MEMBER: (id: string, memberId: string) => `/groups/${id}/members/${memberId}`,
     },
+    CATEGORIES: {
+      LIST: '/categories',
+      SINGLE: (id: string) => `/categories/${id}`,
+      REORDER: '/categories/reorder',
+    },
     PROFILES: {
       LIST: '/profiles',
       SINGLE: (id: string) => `/profiles/${id}`,

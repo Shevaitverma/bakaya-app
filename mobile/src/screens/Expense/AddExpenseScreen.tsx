@@ -23,11 +23,11 @@ import { Button } from '../../components/Button';
 import { Theme } from '../../constants/theme';
 import { expenseService } from '../../services/expenseService';
 import { profileService } from '../../services/profileService';
-import { getCategoryIcon } from '../../utils/categoryIcons';
-import { CATEGORIES } from '../../constants/categories';
+import { categoryService } from '../../services/categoryService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { HomeStackParamList } from '../../navigation/types';
 import type { Profile } from '../../types/profile';
+import type { Category } from '../../types/category';
 
 type AddExpenseScreenProps = NativeStackScreenProps<HomeStackParamList, 'AddExpense'>;
 
@@ -70,6 +70,7 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation, 
   const [showSourceModal, setShowSourceModal] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
   const [errors, setErrors] = useState<{
     title?: string;
     amount?: string;
@@ -80,7 +81,7 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation, 
   const isIncome = type === 'income';
   const accentColor = isIncome ? '#10B981' : Theme.colors.primary;
 
-  // Fetch profiles on mount
+  // Fetch profiles and categories on mount
   useEffect(() => {
     const fetchProfiles = async () => {
       if (!accessToken) return;
@@ -105,7 +106,21 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation, 
       }
     };
 
+    const fetchCategories = async () => {
+      if (!accessToken) return;
+      try {
+        const response = await categoryService.getCategories(accessToken);
+        if (response.success && response.data?.categories) {
+          setCategories(response.data.categories.filter((c) => c.isActive));
+        }
+      } catch (err) {
+        console.warn('Failed to load categories:', err);
+        setCategories([]);
+      }
+    };
+
     fetchProfiles();
+    fetchCategories();
   }, [accessToken]);
 
   // Clear type-specific fields when switching type
@@ -213,7 +228,7 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation, 
     }
   };
 
-  const selectedCategoryIcon = category ? getCategoryIcon(category) : 'receipt';
+  const selectedCat = categories.find((c) => c.name === category);
   const selectedSourceIcon = source ? getSourceIcon(source) : 'money-bill';
 
   return (
@@ -389,12 +404,9 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation, 
                 activeOpacity={0.7}>
                 {category ? (
                   <View style={styles.categorySelected}>
-                    <FontAwesome6
-                      name={selectedCategoryIcon as any}
-                      size={18}
-                      color={Theme.colors.primary}
-                      solid
-                    />
+                    <View style={[styles.categoryEmojiCircle, selectedCat?.color ? { backgroundColor: selectedCat.color + '20' } : undefined]}>
+                      <Text style={styles.categoryEmoji}>{selectedCat?.emoji || '📦'}</Text>
+                    </View>
                     <Text style={styles.categorySelectedText}>{category}</Text>
                   </View>
                 ) : (
@@ -496,37 +508,31 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation, 
             <ScrollView
               style={styles.categoryList}
               showsVerticalScrollIndicator={false}>
-              {CATEGORIES.map((cat) => {
-                const icon = getCategoryIcon(cat);
-                const isSelected = category === cat;
+              {categories.map((cat) => {
+                const isSelected = category === cat.name;
                 return (
                   <TouchableOpacity
-                    key={cat}
+                    key={cat.id}
                     style={[
                       styles.categoryItem,
                       isSelected && styles.categoryItemSelected,
                     ]}
-                    onPress={() => handleCategorySelect(cat)}
+                    onPress={() => handleCategorySelect(cat.name)}
                     activeOpacity={0.7}>
                     <View style={styles.categoryItemContent}>
                       <View
                         style={[
                           styles.categoryItemIcon,
-                          isSelected && styles.categoryItemIconSelected,
+                          { backgroundColor: isSelected ? cat.color : (cat.color + '20') },
                         ]}>
-                        <FontAwesome6
-                          name={icon as any}
-                          size={18}
-                          color={isSelected ? Theme.colors.textOnPrimary : Theme.colors.primary}
-                          solid
-                        />
+                        <Text style={styles.categoryItemEmoji}>{cat.emoji}</Text>
                       </View>
                       <Text
                         style={[
                           styles.categoryItemText,
                           isSelected && styles.categoryItemTextSelected,
                         ]}>
-                        {cat}
+                        {cat.name}
                       </Text>
                     </View>
                     {isSelected && (
@@ -779,6 +785,17 @@ const styles = StyleSheet.create({
     color: Theme.colors.textPrimary,
     fontFamily: Theme.typography.fontFamily,
   },
+  categoryEmojiCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: Theme.borderRadius.round,
+    backgroundColor: Theme.colors.lightGrey,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  categoryEmoji: {
+    fontSize: 16,
+  },
   categoryPlaceholder: {
     fontSize: Theme.typography.fontSize.medium,
     color: Theme.colors.textTertiary,
@@ -863,8 +880,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  categoryItemIconSelected: {
-    backgroundColor: Theme.colors.primary,
+  categoryItemEmoji: {
+    fontSize: 18,
   },
   categoryItemText: {
     fontSize: Theme.typography.fontSize.medium,

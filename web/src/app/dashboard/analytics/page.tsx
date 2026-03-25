@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   analyticsApi,
   type SummaryData,
@@ -10,8 +10,8 @@ import {
   type AnalyticsQueryParams,
 } from "@/lib/api/analytics";
 import { profilesApi } from "@/lib/api/profiles";
+import { categoriesApi, type Category } from "@/lib/api/categories";
 import type { Profile } from "@/types/profile";
-import { getCategoryEmoji } from "@/constants/categories";
 import { formatCurrency } from "@/utils/currency";
 import DateRangePicker from "@/components/DateRangePicker";
 import styles from "./page.module.css";
@@ -22,12 +22,22 @@ const PROFILE_COLORS = [
   "#8E24AA", "#00ACC1", "#E53935", "#3949AB",
 ];
 
-const CATEGORY_COLORS = [
-  "#D81B60", "#1E88E5", "#43A047", "#FB8C00",
-  "#8E24AA", "#00ACC1", "#E53935", "#3949AB",
-  "#F4511E", "#6D4C41", "#546E7A", "#00897B",
-  "#7CB342", "#C0CA33", "#FFB300", "#5E35B1",
-  "#EC407A",
+const CATEGORY_COLORS: Record<string, string> = {
+  Healthcare: "#3B82F6",
+  Food: "#FB8C00",
+  Shopping: "#E53935",
+  Transport: "#8E24AA",
+  Entertainment: "#00ACC1",
+  Education: "#43A047",
+  Utilities: "#546E7A",
+  Rent: "#6D4C41",
+};
+
+const CATEGORY_COLORS_FALLBACK = [
+  "#3B82F6", "#FB8C00", "#E53935", "#8E24AA",
+  "#00ACC1", "#43A047", "#546E7A", "#6D4C41",
+  "#F4511E", "#7CB342", "#C0CA33", "#FFB300",
+  "#5E35B1", "#EC407A", "#D81B60", "#1E88E5",
 ];
 
 const MONTH_NAMES = [
@@ -36,7 +46,7 @@ const MONTH_NAMES = [
 ];
 
 export default function AnalyticsPage() {
-  /* Date range state — DateRangePicker drives this */
+  /* Date range state - DateRangePicker drives this */
   const [dateStart, setDateStart] = useState<string | undefined>(undefined);
   const [dateEnd, setDateEnd] = useState<string | undefined>(undefined);
 
@@ -46,6 +56,7 @@ export default function AnalyticsPage() {
   const [categoryData, setCategoryData] = useState<ByCategoryData | null>(null);
   const [trendsData, setTrendsData] = useState<TrendsData | null>(null);
   const [profilesMap, setProfilesMap] = useState<Record<string, Profile>>({});
+  const [categoriesMap, setCategoriesMap] = useState<Record<string, Category>>({});
 
   /* Independent loading states per section */
   const [loadingSummary, setLoadingSummary] = useState(true);
@@ -53,7 +64,7 @@ export default function AnalyticsPage() {
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingTrends, setLoadingTrends] = useState(true);
 
-  // Swallow errors — session-expired redirect is handled centrally by api-client
+  // Swallow errors - session-expired redirect is handled centrally by api-client
   const swallowError = useCallback(() => null, []);
 
   /* Fetch profiles once (for colors) */
@@ -66,6 +77,16 @@ export default function AnalyticsPage() {
           map[p._id] = p;
         });
         setProfilesMap(map);
+      })
+      .catch(() => {});
+    categoriesApi
+      .list()
+      .then((data) => {
+        const map: Record<string, Category> = {};
+        for (const c of data.categories ?? []) {
+          map[c.name] = c;
+        }
+        setCategoriesMap(map);
       })
       .catch(() => {});
   }, []);
@@ -118,11 +139,25 @@ export default function AnalyticsPage() {
       : 0;
 
   const totalSpent = summary?.totalSpent ?? profileData?.totalSpent ?? 0;
-  const avgPerExpense = totalExpenses > 0 ? totalSpent / totalExpenses : 0;
 
-  const periodLabel = summary
-    ? `${formatPeriodDate(summary.period.start)} - ${formatPeriodDate(summary.period.end)}`
-    : "This month";
+  /* Compute change % from trends (compare last two months) */
+  const changePercent = useMemo(() => {
+    if (!trendsData || trendsData.months.length < 2) return null;
+    const months = trendsData.months;
+    const current = months[months.length - 1]!;
+    const previous = months[months.length - 2]!;
+    if (previous.total === 0) return null;
+    return Math.round(((current.total - previous.total) / previous.total) * 100);
+  }, [trendsData]);
+
+  /* Compute average daily spend */
+  const avgDaily = useMemo(() => {
+    if (!summary) return 0;
+    const start = new Date(summary.period.start + "T00:00:00");
+    const end = new Date(summary.period.end + "T00:00:00");
+    const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    return Math.round(totalSpent / days);
+  }, [summary, totalSpent]);
 
   /* Profile bars */
   const profileBars = (profileData?.profiles ?? [])
@@ -136,7 +171,6 @@ export default function AnalyticsPage() {
     .slice()
     .sort((a, b) => b.total - a.total);
   const categoryMax = categoryBars.length > 0 ? categoryBars[0]!.total : 1;
-  const categoryTotal = categoryData?.totalSpent ?? totalSpent;
 
   /* Trend bars - last 6 months */
   const trendBars = (trendsData?.months ?? []).slice(-6);
@@ -145,33 +179,42 @@ export default function AnalyticsPage() {
       ? Math.max(...trendBars.map((m) => m.total))
       : 1;
 
+  /* Current month for highlighting in trend chart */
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+
   function getProfileColor(profileId: string, index: number): string {
     const profile = profilesMap[profileId];
     if (profile?.color) return profile.color;
     return PROFILE_COLORS[index % PROFILE_COLORS.length]!;
   }
 
+  function getCategoryColor(categoryName: string, index: number): string {
+    const cat = categoriesMap[categoryName];
+    if (cat?.color) return cat.color;
+    if (CATEGORY_COLORS[categoryName]) return CATEGORY_COLORS[categoryName]!;
+    return CATEGORY_COLORS_FALLBACK[index % CATEGORY_COLORS_FALLBACK.length]!;
+  }
+
   return (
     <div className={styles.page}>
       {/* Header */}
       <div className={styles.pageHeader}>
-        <div className={styles.headerTop}>
+        <div className={styles.headerLeft}>
           <h1 className={styles.pageTitle}>Analytics</h1>
-          <span className={styles.periodBadge}>
-            <span className={styles.periodIcon}>&#128197;</span>
-            {periodLabel}
-          </span>
+          <p className={styles.pageSubtitle}>
+            Review your spending patterns and budgets.
+          </p>
         </div>
-      </div>
-
-      {/* Date range picker */}
-      <div className={styles.datePickerSection}>
-        <DateRangePicker
-          onChange={(startDate, endDate) => {
-            setDateStart(startDate);
-            setDateEnd(endDate);
-          }}
-        />
+        <div className={styles.headerRight}>
+          <DateRangePicker
+            onChange={(startDate, endDate) => {
+              setDateStart(startDate);
+              setDateEnd(endDate);
+            }}
+          />
+        </div>
       </div>
 
       {/* Section 1: Summary Cards */}
@@ -184,147 +227,206 @@ export default function AnalyticsPage() {
           </>
         ) : (
           <>
-            {/* Total Spent */}
+            {/* Monthly Spend */}
             <div className={styles.card}>
-              <div className={`${styles.cardIcon} ${styles.cardIconSpent}`}>
-                &#128176;
+              <div className={styles.cardTop}>
+                <div className={`${styles.cardIconCircle} ${styles.cardIconPink}`}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E91E63" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+                    <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+                    <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z" />
+                  </svg>
+                </div>
+                <span className={styles.cardLabel}>MONTHLY SPEND</span>
               </div>
-              <div className={styles.cardBody}>
-                <p className={styles.cardLabel}>Total Spent</p>
-                <p className={styles.cardValue}>
-                  {formatCurrency(totalSpent)}
-                </p>
-                <p className={styles.cardSub}>{periodLabel}</p>
-              </div>
+              <p className={styles.cardValue}>
+                {formatCurrency(totalSpent)}
+              </p>
+              <p className={styles.cardStatusPink}>
+                {changePercent !== null ? (
+                  <>
+                    {changePercent >= 0 ? "\u2197" : "\u2198"}{" "}
+                    {Math.abs(changePercent)}% from last month
+                  </>
+                ) : (
+                  "Current period total"
+                )}
+              </p>
             </div>
 
-            {/* Total Expenses */}
+            {/* Total Count */}
             <div className={styles.card}>
-              <div className={`${styles.cardIcon} ${styles.cardIconProfile}`}>
-                &#128203;
+              <div className={styles.cardTop}>
+                <div className={`${styles.cardIconCircle} ${styles.cardIconTeal}`}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0D9488" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                    <polyline points="10 9 9 9 8 9" />
+                  </svg>
+                </div>
+                <span className={styles.cardLabel}>TOTAL COUNT</span>
               </div>
-              <div className={styles.cardBody}>
-                <p className={styles.cardLabel}>Total Expenses</p>
-                <p className={styles.cardValue}>
-                  {totalExpenses.toLocaleString("en-IN")}
-                </p>
-                <p className={styles.cardSub}>
-                  {totalExpenses === 1 ? "transaction" : "transactions"}
-                </p>
-              </div>
+              <p className={styles.cardValue}>
+                {totalExpenses.toLocaleString("en-IN")}
+              </p>
+              <p className={styles.cardStatusBlue}>
+                Recorded transactions
+              </p>
             </div>
 
-            {/* Average per Expense */}
+            {/* Average Daily */}
             <div className={styles.card}>
-              <div className={`${styles.cardIcon} ${styles.cardIconCategory}`}>
-                &#128200;
+              <div className={styles.cardTop}>
+                <div className={`${styles.cardIconCircle} ${styles.cardIconBlue}`}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10" />
+                    <line x1="12" y1="20" x2="12" y2="4" />
+                    <line x1="6" y1="20" x2="6" y2="14" />
+                  </svg>
+                </div>
+                <span className={styles.cardLabel}>AVERAGE DAILY</span>
               </div>
-              <div className={styles.cardBody}>
-                <p className={styles.cardLabel}>Average / Expense</p>
-                <p className={styles.cardValue}>
-                  {formatCurrency(Math.round(avgPerExpense))}
-                </p>
-                <p className={styles.cardSub}>per transaction</p>
-              </div>
+              <p className={styles.cardValue}>
+                {formatCurrency(avgDaily)}
+              </p>
+              <p className={styles.cardStatusGreen}>
+                Within budget limits
+              </p>
             </div>
           </>
         )}
       </div>
 
-      {/* Section 2: Spending by Profile */}
-      <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>Spending by Profile</h2>
-        {loadingProfiles ? (
-          <BarsSkeleton />
-        ) : profileBars.length === 0 ? (
-          <EmptyState message="No profile spending data for this period." />
-        ) : (
-          <div className={styles.barsContainer}>
-            {profileBars.map((p, i) => {
-              const pct =
-                profileTotal > 0
-                  ? Math.round((p.total / profileTotal) * 100)
-                  : 0;
-              const barWidth =
-                profileMax > 0
-                  ? Math.max((p.total / profileMax) * 100, 2)
-                  : 0;
-              const color = getProfileColor(p.profileId, i);
-              return (
-                <div key={p.profileId} className={styles.barRow}>
-                  <span className={styles.barLabel}>{p.profileName}</span>
-                  <div className={styles.barTrack}>
-                    <div
-                      className={styles.barFill}
-                      style={{
-                        width: `${barWidth}%`,
-                        backgroundColor: color,
-                      }}
-                    />
-                  </div>
-                  <span className={styles.barAmount}>
-                    {formatCurrency(p.total)}
-                  </span>
-                  <span className={styles.barPct}>{pct}%</span>
-                </div>
-              );
-            })}
+      {/* Section 2: Spending by Profile & Category (side by side) */}
+      <div className={styles.twoColGrid}>
+        {/* Spending by Profile */}
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>Spending by Profile</h2>
+            <svg className={styles.sectionIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
           </div>
-        )}
+          {loadingProfiles ? (
+            <BarsSkeleton />
+          ) : profileBars.length === 0 ? (
+            <EmptyState message="No profile spending data for this period." />
+          ) : (
+            <div className={styles.profileList}>
+              {profileBars.map((p, i) => {
+                const pct =
+                  profileTotal > 0
+                    ? Math.round((p.total / profileTotal) * 100)
+                    : 0;
+                const barWidth =
+                  profileMax > 0
+                    ? Math.max((p.total / profileMax) * 100, 2)
+                    : 0;
+                const color = getProfileColor(p.profileId, i);
+                return (
+                  <div key={p.profileId} className={styles.profileItem}>
+                    <div className={styles.profileRow}>
+                      <div className={styles.profileNameGroup}>
+                        <span
+                          className={styles.profileDot}
+                          style={{ backgroundColor: color }}
+                        />
+                        <span className={styles.profileName}>
+                          {p.profileName}
+                        </span>
+                      </div>
+                      <div className={styles.profileValues}>
+                        <span className={styles.profileAmount}>
+                          {formatCurrency(p.total)}
+                        </span>
+                        <span className={styles.profilePct}>{pct}%</span>
+                      </div>
+                    </div>
+                    <div className={styles.thinBarTrack}>
+                      <div
+                        className={styles.thinBarFill}
+                        style={{
+                          width: `${barWidth}%`,
+                          backgroundColor: color,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Spending by Category */}
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>Spending by Category</h2>
+            <svg className={styles.sectionIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+            </svg>
+          </div>
+          {loadingCategories ? (
+            <BarsSkeleton />
+          ) : categoryBars.length === 0 ? (
+            <EmptyState message="No category spending data for this period." />
+          ) : (
+            <div className={styles.profileList}>
+              {categoryBars.map((c, i) => {
+                const barWidth =
+                  categoryMax > 0
+                    ? Math.max((c.total / categoryMax) * 100, 2)
+                    : 0;
+                const color = getCategoryColor(c.category, i);
+                return (
+                  <div key={c.category} className={styles.profileItem}>
+                    <div className={styles.profileRow}>
+                      <span className={styles.categoryName}>
+                        {c.category}
+                      </span>
+                      <span className={styles.categoryAmount}>
+                        {formatCurrency(c.total)}
+                      </span>
+                    </div>
+                    <div className={styles.thinBarTrack}>
+                      <div
+                        className={styles.thinBarFill}
+                        style={{
+                          width: `${barWidth}%`,
+                          backgroundColor: color,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Section 3: Spending by Category */}
+      {/* Section 3: Monthly Trends */}
       <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>Spending by Category</h2>
-        {loadingCategories ? (
-          <BarsSkeleton />
-        ) : categoryBars.length === 0 ? (
-          <EmptyState message="No category spending data for this period." />
-        ) : (
-          <div className={styles.barsContainer}>
-            {categoryBars.map((c, i) => {
-              const pct =
-                categoryTotal > 0
-                  ? Math.round((c.total / categoryTotal) * 100)
-                  : 0;
-              const barWidth =
-                categoryMax > 0
-                  ? Math.max((c.total / categoryMax) * 100, 2)
-                  : 0;
-              const color = CATEGORY_COLORS[i % CATEGORY_COLORS.length];
-              return (
-                <div key={c.category} className={styles.barRow}>
-                  <span className={styles.barLabel}>
-                    <span className={styles.barEmoji}>
-                      {getCategoryEmoji(c.category)}
-                    </span>
-                    {c.category}
-                  </span>
-                  <div className={styles.barTrack}>
-                    <div
-                      className={styles.barFill}
-                      style={{
-                        width: `${barWidth}%`,
-                        backgroundColor: color,
-                      }}
-                    />
-                  </div>
-                  <span className={styles.barAmount}>
-                    {formatCurrency(c.total)}
-                  </span>
-                  <span className={styles.barPct}>
-                    {c.count} {c.count === 1 ? "exp" : "exps"} &middot; {pct}%
-                  </span>
-                </div>
-              );
-            })}
+        <div className={styles.trendsHeader}>
+          <div>
+            <h2 className={styles.sectionTitle}>Monthly Trends</h2>
+            <p className={styles.trendsSubtitle}>
+              Last 6 months expense comparison
+            </p>
           </div>
-        )}
-      </div>
-
-      {/* Section 4: Monthly Trends */}
-      <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>Monthly Trends</h2>
+          <div className={styles.trendsLegend}>
+            <span className={styles.legendDot} />
+            <span className={styles.legendLabel}>Expense</span>
+          </div>
+        </div>
         {loadingTrends ? (
           <BarsSkeleton />
         ) : trendBars.length === 0 ? (
@@ -336,6 +438,8 @@ export default function AnalyticsPage() {
                 trendMax > 0
                   ? Math.max((m.total / trendMax) * 100, 3)
                   : 0;
+              const isCurrent =
+                m.month === currentMonth && m.year === currentYear;
               return (
                 <div
                   key={`${m.year}-${m.month}`}
@@ -350,11 +454,10 @@ export default function AnalyticsPage() {
                       style={{ height: `${barHeight}%` }}
                     />
                   </div>
-                  <span className={styles.trendLabel}>
-                    {MONTH_NAMES[m.month - 1]} {String(m.year).slice(-2)}
-                  </span>
-                  <span className={styles.trendCount}>
-                    {m.count} {m.count === 1 ? "exp" : "exps"}
+                  <span
+                    className={`${styles.trendLabel} ${isCurrent ? styles.trendLabelActive : ""}`}
+                  >
+                    {MONTH_NAMES[m.month - 1]}
                   </span>
                 </div>
               );
@@ -370,7 +473,7 @@ export default function AnalyticsPage() {
 
 function BarsSkeleton() {
   return (
-    <div className={styles.barsContainer}>
+    <div className={styles.profileList}>
       {[1, 2, 3].map((i) => (
         <div key={i} className={styles.skeletonBar} />
       ))}
@@ -388,17 +491,8 @@ function EmptyState({ message }: { message: string }) {
 
 /* ---- Utility functions ---- */
 
-function formatPeriodDate(dateStr: string): string {
-  const date = new Date(dateStr + "T00:00:00");
-  return date.toLocaleDateString("en-IN", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 function abbreviateAmount(amount: number): string {
-  if (amount >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;
-  if (amount >= 1000) return `₹${(amount / 1000).toFixed(1)}K`;
+  if (amount >= 100000) return `\u20B9${(amount / 100000).toFixed(1)}L`;
+  if (amount >= 1000) return `\u20B9${(amount / 1000).toFixed(1)}K`;
   return formatCurrency(amount);
 }

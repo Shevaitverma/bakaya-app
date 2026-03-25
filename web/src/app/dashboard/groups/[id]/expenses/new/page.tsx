@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { ApiError } from "@/lib/api-client";
 import { formatCurrencyExact } from "@/utils/currency";
 import { groupsApi, type Group } from "@/lib/api/groups";
-import { CATEGORIES, getCategoryEmoji } from "@/constants/categories";
+import { categoriesApi, type Category } from "@/lib/api/categories";
 import styles from "./page.module.css";
 
 
@@ -66,6 +66,18 @@ export default function AddGroupExpensePage() {
   const [percentages, setPercentages] = useState<Record<string, string>>({});
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    categoriesApi
+      .list()
+      .then((data) => setCategories(data.categories ?? []))
+      .catch(() => {
+        // categories API not ready -- continue without
+      });
+  }, []);
 
   // Read current user ID and fetch group details
   useEffect(() => {
@@ -435,7 +447,7 @@ export default function AddGroupExpensePage() {
                 >
                   {category ? (
                     <span className={styles.categorySelected}>
-                      <span aria-hidden>{getCategoryEmoji(category)}</span>
+                      <span aria-hidden>{categories.find((c) => c.name === category)?.emoji ?? "\u{1F4C4}"}</span>
                       {category}
                     </span>
                   ) : (
@@ -450,16 +462,16 @@ export default function AddGroupExpensePage() {
 
                 {showDropdown && (
                   <div className={styles.categoryList}>
-                    {CATEGORIES.map((cat) => {
-                      const isSelected = category === cat;
+                    {categories.map((cat) => {
+                      const isSelected = category === cat.name;
                       return (
                         <button
-                          key={cat}
+                          key={cat.id}
                           type="button"
                           className={`${styles.categoryItem} ${
                             isSelected ? styles.categoryItemSelected : ""
                           }`}
-                          onClick={() => handleCategorySelect(cat)}
+                          onClick={() => handleCategorySelect(cat.name)}
                         >
                           <span className={styles.categoryItemContent}>
                             <span
@@ -470,7 +482,7 @@ export default function AddGroupExpensePage() {
                               }`}
                             >
                               <span aria-hidden>
-                                {getCategoryEmoji(cat)}
+                                {cat.emoji}
                               </span>
                             </span>
                             <span
@@ -480,7 +492,7 @@ export default function AddGroupExpensePage() {
                                   : ""
                               }`}
                             >
-                              {cat}
+                              {cat.name}
                             </span>
                           </span>
                           {isSelected && (

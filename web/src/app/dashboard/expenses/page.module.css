@@ -1,12 +1,30 @@
 /* ============================================
    Expenses Page Styles
-   Mirrors mobile ExpenseDetailScreen
+   Premium Fintech Redesign
    ============================================ */
+
+/* --- Keyframes --- */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 /* --- Page Shell --- */
 .page {
   min-height: 100vh;
-  background: var(--color-surface);
+  background: #F9F9FF;
+  overflow-x: hidden;
 }
 
 /* --- Header --- */
@@ -14,8 +32,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg);
-  background: var(--color-primary);
+  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-xl);
+  background: linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-end));
+  border-radius: 0 0 24px 24px;
 }
 
 .backBtn {
@@ -26,14 +45,14 @@
   height: 40px;
   color: var(--color-text-on-primary);
   font-size: var(--font-size-xl);
-  background: none;
+  background: rgba(255, 255, 255, 0.15);
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   transition: background var(--transition-fast);
 }
 
 .backBtn:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .headerCenter {
@@ -42,10 +61,11 @@
 }
 
 .headerTitle {
-  font-size: var(--font-size-display);
+  font-family: 'Plus Jakarta Sans', var(--font-inter), system-ui, -apple-system, sans-serif;
+  font-size: 28px;
   font-weight: var(--font-weight-bold);
   color: var(--color-text-on-primary);
-  letter-spacing: -1px;
+  letter-spacing: -0.5px;
 }
 
 .totalRow {
@@ -53,15 +73,16 @@
 }
 
 .totalLabel {
-  font-size: var(--font-size-md);
+  font-size: 14px;
   color: var(--color-text-on-primary);
-  opacity: 0.9;
+  opacity: 0.85;
   margin-bottom: var(--spacing-xs);
 }
 
 .totalValue {
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
   color: var(--color-text-on-primary);
   letter-spacing: -0.5px;
 }
@@ -73,75 +94,101 @@
 /* --- Summary Bar --- */
 .summaryBar {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-md);
+  align-items: stretch;
+  gap: 12px;
   padding: var(--spacing-md) var(--spacing-lg);
   max-width: var(--max-width);
   margin-inline: auto;
-  background: var(--color-card);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  margin-top: -24px;
+  position: relative;
+  z-index: 1;
 }
 
 .summaryItem {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  justify-content: center;
+  gap: 4px;
   flex: 1;
+  padding: 14px;
+  background: var(--color-card);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transition: box-shadow var(--transition-fast);
+}
+
+.summaryItem:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Colored top borders for summary cards */
+.summaryItemIncome {
+  border-top: 2px solid var(--color-success);
+}
+
+.summaryItemExpense {
+  border-top: 2px solid var(--color-primary);
+}
+
+.summaryItemBalance {
+  border-top: 2px solid #14b8a6;
 }
 
 .summaryLabel {
-  font-size: var(--font-size-xs);
+  font-size: 10px;
   color: var(--color-text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.8px;
+  font-weight: var(--font-weight-medium);
 }
 
 .summaryIncome {
-  font-size: var(--font-size-md);
+  font-size: 16px;
   font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
   color: var(--color-success);
 }
 
 .summaryExpense {
-  font-size: var(--font-size-md);
+  font-size: 16px;
   font-weight: var(--font-weight-bold);
-  color: var(--color-error);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-primary);
 }
 
 .summaryBalancePositive {
-  font-size: var(--font-size-md);
+  font-size: 16px;
   font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
   color: var(--color-success);
 }
 
 .summaryBalanceNegative {
-  font-size: var(--font-size-md);
+  font-size: 16px;
   font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
   color: var(--color-error);
 }
 
 .summarySep {
-  width: 1px;
-  height: 28px;
-  background: rgba(0, 0, 0, 0.1);
-  flex-shrink: 0;
+  display: none;
 }
 
 /* --- Type Filter Tabs --- */
 .typeFilterRow {
   display: flex;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-md) var(--spacing-lg) 0;
+  gap: 8px;
+  padding: 16px var(--spacing-lg) 0;
   max-width: var(--max-width);
   margin-inline: auto;
 }
 
 .typeFilterBtn {
   flex: 1;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  height: 36px;
+  padding: 10px 20px;
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
   border-radius: var(--radius-round);
   background: var(--color-card);
   font-size: var(--font-size-sm);
@@ -160,7 +207,8 @@
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: var(--color-text-on-primary);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-bold);
+  box-shadow: 0 3px 10px rgba(216, 27, 96, 0.3);
 }
 
 /* --- Search & Export Row --- */
@@ -168,7 +216,7 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-md) var(--spacing-lg) 0;
+  padding: 16px var(--spacing-lg) 0;
   max-width: var(--max-width);
   margin-inline: auto;
 }
@@ -190,11 +238,12 @@
 
 .searchInput {
   width: 100%;
-  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) 2.5rem;
+  height: 44px;
+  padding: 0 var(--spacing-md) 0 2.5rem;
   font-size: var(--font-size-md);
-  background: var(--color-light-grey);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: var(--radius-round);
+  background: #F0F3FF;
+  border: 1.5px solid transparent;
+  border-radius: 12px;
   color: var(--color-text-primary);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
@@ -205,8 +254,8 @@
 
 .searchInput:focus {
   outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(216, 27, 96, 0.1);
+  border-color: var(--color-primary-light);
+  box-shadow: 0 0 0 3px rgba(216, 27, 96, 0.08);
 }
 
 .searchClear {
@@ -231,12 +280,13 @@
 }
 
 .exportBtn {
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-size: var(--font-size-sm);
+  height: 32px;
+  padding: 0 var(--spacing-md);
+  font-size: 13px;
   font-weight: var(--font-weight-semibold);
   color: var(--color-primary);
-  background: rgba(216, 27, 96, 0.08);
-  border: 1px solid rgba(216, 27, 96, 0.2);
+  background: transparent;
+  border: 1.5px solid rgba(216, 27, 96, 0.25);
   border-radius: var(--radius-round);
   cursor: pointer;
   white-space: nowrap;
@@ -244,20 +294,22 @@
 }
 
 .exportBtn:hover {
-  background: rgba(216, 27, 96, 0.15);
+  background: rgba(216, 27, 96, 0.08);
+  border-color: var(--color-primary);
 }
 
 .exportBtn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 /* --- Income-specific styles --- */
 .incomeAmount {
-  font-size: var(--font-size-lg);
+  font-size: 16px;
   font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
   color: var(--color-success);
-  letter-spacing: -0.4px;
+  letter-spacing: -0.3px;
   white-space: nowrap;
 }
 
@@ -268,12 +320,12 @@
   background: rgba(16, 185, 129, 0.1);
   color: var(--color-success);
   border-radius: var(--radius-round);
-  font-size: var(--font-size-xs);
+  font-size: 13px;
   font-weight: var(--font-weight-medium);
 }
 
 .categoryIconIncome {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(16, 185, 129, 0.12);
 }
 
 /* --- Profile Filter Row --- */
@@ -281,7 +333,7 @@
   display: flex;
   gap: var(--spacing-sm);
   overflow-x: auto;
-  padding: var(--spacing-md) var(--spacing-lg) 0;
+  padding: 16px var(--spacing-lg) 0;
   max-width: var(--max-width);
   margin-inline: auto;
   -webkit-overflow-scrolling: touch;
@@ -295,12 +347,13 @@
 .filterChip {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-sm) var(--spacing-md);
+  gap: 6px;
+  padding: 0 var(--spacing-md);
+  height: 36px;
   background: var(--color-card);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: var(--radius-round);
-  font-size: var(--font-size-sm);
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  border-radius: 9999px;
+  font-size: 14px;
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   white-space: nowrap;
@@ -323,22 +376,58 @@
 .filterChipDot {
   width: 8px;
   height: 8px;
-  border-radius: var(--radius-round);
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
 /* --- Content --- */
 .content {
-  max-width: var(--max-width);
+  max-width: 900px;
   margin-inline: auto;
-  padding: var(--spacing-lg);
+  padding: 16px var(--spacing-lg);
 }
 
-/* --- Expense List (table-like) --- */
+/* --- Expense List --- */
 .expenseList {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
+}
+
+/* Desktop: transaction list in a white card */
+@media (min-width: 769px) {
+  .expenseList {
+    background: var(--color-card);
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    padding: var(--spacing-md);
+  }
+
+  .expenseCard {
+    box-shadow: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    border-radius: 8px;
+  }
+
+  .expenseCard:last-child {
+    border-bottom: none;
+  }
+
+  .summaryBar {
+    max-width: 900px;
+  }
+
+  .typeFilterRow {
+    max-width: 900px;
+  }
+
+  .searchRow {
+    max-width: 900px;
+  }
+
+  .filterRow {
+    max-width: 900px;
+  }
 }
 
 /* --- Expense Card --- */
@@ -347,27 +436,34 @@
   grid-template-columns: auto 1fr auto auto auto;
   align-items: center;
   gap: var(--spacing-md);
-  padding: var(--spacing-md);
+  padding: 16px;
   background: var(--color-card);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   box-shadow: var(--shadow-sm);
-  transition: box-shadow var(--transition-fast);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  animation: fadeSlideUp 400ms ease both;
+  position: relative;
 }
 
 .expenseCard:hover {
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
+}
+
+/* Income left accent bar */
+.expenseCardIncome {
+  border-left: 3px solid var(--color-success);
 }
 
 .categoryIcon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-md);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   background: var(--color-light-grey);
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   flex-shrink: 0;
 }
 
@@ -376,7 +472,7 @@
 }
 
 .expenseTitle {
-  font-size: var(--font-size-md);
+  font-size: 15px;
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   margin-bottom: 2px;
@@ -388,43 +484,54 @@
 .expenseMeta {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  font-size: var(--font-size-xs);
+  gap: 6px;
+  font-size: 13px;
   color: var(--color-text-tertiary);
+}
+
+.metaDot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--color-text-tertiary);
+  flex-shrink: 0;
 }
 
 .expenseCategory {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  background: rgba(216, 27, 96, 0.08);
-  color: var(--color-primary);
-  border-radius: var(--radius-round);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
+  font-size: 13px;
+  color: var(--color-text-tertiary);
 }
 
 .expenseProfile {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: var(--font-size-xs);
+  font-size: 13px;
   font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
+  color: var(--color-text-tertiary);
 }
 
 .expenseProfileDot {
-  width: 7px;
-  height: 7px;
-  border-radius: var(--radius-round);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
+.expenseDate {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  margin-top: 2px;
+}
+
 .expenseAmount {
-  font-size: var(--font-size-lg);
+  font-size: 16px;
   font-weight: var(--font-weight-bold);
-  color: var(--color-error);
-  letter-spacing: -0.4px;
+  font-variant-numeric: tabular-nums;
+  color: #1A1A2E;
+  letter-spacing: -0.3px;
   white-space: nowrap;
 }
 
@@ -436,8 +543,8 @@
   height: 36px;
   color: var(--color-text-tertiary);
   background: none;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border: 1.5px solid transparent;
+  border-radius: 12px;
   font-size: var(--font-size-lg);
   text-decoration: none;
   transition: color var(--transition-fast), background var(--transition-fast),
@@ -458,8 +565,8 @@
   height: 36px;
   color: var(--color-text-tertiary);
   background: none;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border: 1.5px solid transparent;
+  border-radius: 12px;
   font-size: var(--font-size-lg);
   transition: color var(--transition-fast), background var(--transition-fast),
     border-color var(--transition-fast);
@@ -480,6 +587,9 @@
   padding: var(--spacing-3xl) var(--spacing-lg);
   text-align: center;
   gap: var(--spacing-md);
+  background: var(--color-card);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
 }
 
 .emptyIcon {
@@ -506,23 +616,22 @@
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-md) var(--spacing-lg);
+  height: 48px;
+  padding: 0 var(--spacing-lg);
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-on-primary);
-  background: var(--color-primary);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast),
-    background var(--transition-fast);
+  background: linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-end));
+  border-radius: var(--radius-round);
+  box-shadow: 0 4px 16px rgba(216, 27, 96, 0.35);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
   z-index: 50;
   text-decoration: none;
 }
 
 .fab:hover {
-  background: var(--color-primary-dark);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-glass);
+  box-shadow: 0 6px 20px rgba(216, 27, 96, 0.45);
 }
 
 /* --- Confirm Dialog Overlay --- */
@@ -532,7 +641,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
   z-index: 200;
   animation: fadeIn 200ms ease both;
 }
@@ -541,9 +651,9 @@
   width: 90%;
   max-width: 400px;
   background: var(--color-card);
-  border-radius: var(--radius-xl);
+  border-radius: 12px;
   padding: var(--spacing-xl);
-  box-shadow: var(--shadow-glass);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
 }
 
 .dialogTitle {
@@ -573,7 +683,7 @@
   color: var(--color-text-secondary);
   background: var(--color-light-grey);
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   transition: background var(--transition-fast);
 }
 
@@ -588,17 +698,12 @@
   color: var(--color-white);
   background: var(--color-error);
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   transition: background var(--transition-fast);
 }
 
 .dialogConfirm:hover {
   background: #DC2626;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 /* --- Mobile Responsive --- */
@@ -608,36 +713,52 @@
   }
 
   .header {
-    padding: var(--spacing-sm) 16px var(--spacing-md);
+    padding: 16px 16px 28px;
+    border-radius: 0 0 20px 20px;
   }
 
   .headerTitle {
-    font-size: 24px;
+    font-size: 20px;
+  }
+
+  .totalLabel {
+    font-size: 12px;
   }
 
   .totalValue {
-    font-size: var(--font-size-xl);
+    font-size: 20px;
   }
 
   .summaryBar {
-    padding: var(--spacing-sm) 16px;
-    gap: var(--spacing-sm);
+    padding: 0 16px;
+    gap: 8px;
+    margin-top: -24px;
+  }
+
+  .summaryItem {
+    padding: 14px 10px;
+  }
+
+  .summaryLabel {
+    font-size: 10px;
+    letter-spacing: 0.8px;
   }
 
   .summaryIncome,
   .summaryExpense,
   .summaryBalancePositive,
   .summaryBalanceNegative {
-    font-size: var(--font-size-sm);
+    font-size: 16px;
   }
 
   .typeFilterRow {
-    padding: var(--spacing-sm) 16px 0;
+    padding: 16px 16px 0;
+    gap: 8px;
   }
 
   .searchRow {
-    padding: var(--spacing-sm) 16px 0;
-    flex-wrap: wrap;
+    padding: 16px 16px 0;
+    flex-wrap: nowrap;
   }
 
   .searchInput {
@@ -646,14 +767,15 @@
   }
 
   .exportBtn {
-    width: 100%;
-    text-align: center;
-    padding: var(--spacing-sm);
-    min-height: 40px;
+    height: 32px;
+    padding: 0 12px;
+    font-size: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .filterRow {
-    padding: var(--spacing-md) 16px 0;
+    padding: 16px 16px 0;
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -702,15 +824,16 @@
   }
 
   .categoryIcon {
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
     font-size: 1rem;
   }
 
   .fab {
     bottom: var(--spacing-md);
     right: var(--spacing-md);
-    padding: var(--spacing-sm) var(--spacing-md);
+    height: 44px;
+    padding: 0 var(--spacing-md);
     font-size: var(--font-size-sm);
   }
 

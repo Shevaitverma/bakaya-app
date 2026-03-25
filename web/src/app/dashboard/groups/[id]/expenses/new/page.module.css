@@ -16,7 +16,8 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-md) var(--spacing-lg);
-  background: var(--color-primary);
+  background: linear-gradient(135deg, #D81B60, #E91E63);
+  border-radius: 0 0 24px 24px;
 }
 
 .backBtn {
@@ -25,12 +26,12 @@
   justify-content: center;
   width: 40px;
   height: 40px;
-  color: var(--color-text-on-primary);
+  color: #fff;
   font-size: var(--font-size-xl);
   background: none;
   border: none;
-  border-radius: var(--radius-sm);
-  transition: background var(--transition-fast);
+  border-radius: 12px;
+  transition: background 200ms ease;
 }
 
 .backBtn:hover {
@@ -40,7 +41,7 @@
 .headerTitle {
   font-size: var(--font-size-display);
   font-weight: var(--font-weight-bold);
-  color: var(--color-text-on-primary);
+  color: #fff;
   letter-spacing: -1px;
 }
 
@@ -58,7 +59,7 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  gap: 16px;
 }
 
 /* --- Fields --- */
@@ -69,20 +70,22 @@
 }
 
 .label {
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+  color: #1A1A2E;
 }
 
 .input {
   width: 100%;
-  padding: var(--spacing-md);
-  font-size: var(--font-size-md);
+  height: 48px;
+  padding: 0 16px;
+  font-size: 16px;
   color: var(--color-text-primary);
-  background: #F0F0F0;
-  border: 1px solid #D0D0D0;
-  border-radius: var(--radius-md);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  background: #F0F3FF;
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+  box-sizing: border-box;
 }
 
 .input::placeholder {
@@ -91,8 +94,8 @@
 
 .input:focus {
   outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(216, 27, 96, 0.1);
+  border-color: rgba(216, 27, 96, 0.25);
+  box-shadow: 0 0 0 3px rgba(216, 27, 96, 0.08);
 }
 
 .inputError {
@@ -105,6 +108,8 @@
 
 .textarea {
   min-height: 100px;
+  padding: 14px 16px;
+  height: auto;
   resize: vertical;
 }
 
@@ -116,21 +121,23 @@
 /* --- Select (Paid By) --- */
 .select {
   width: 100%;
-  padding: var(--spacing-md);
-  font-size: var(--font-size-md);
+  height: 48px;
+  padding: 0 16px;
+  font-size: 16px;
   color: var(--color-text-primary);
-  background: #F0F0F0;
-  border: 1px solid #D0D0D0;
-  border-radius: var(--radius-md);
+  background: #F0F3FF;
+  border: 1.5px solid transparent;
+  border-radius: 12px;
   cursor: pointer;
   appearance: auto;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+  box-sizing: border-box;
 }
 
 .select:focus {
   outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(216, 27, 96, 0.1);
+  border-color: rgba(216, 27, 96, 0.25);
+  box-shadow: 0 0 0 3px rgba(216, 27, 96, 0.08);
 }
 
 /* --- Split Header --- */
@@ -146,55 +153,66 @@
 }
 
 .splitToggle {
-  padding: 2px 10px;
+  padding: 0 12px;
+  height: 32px;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
-  color: var(--color-primary);
-  background: rgba(216, 27, 96, 0.06);
-  border: 1px solid rgba(216, 27, 96, 0.15);
-  border-radius: var(--radius-sm);
+  color: #E91E63;
+  background: rgba(233, 30, 99, 0.06);
+  border: 1px solid rgba(233, 30, 99, 0.15);
+  border-radius: 9999px;
   cursor: pointer;
-  transition: background var(--transition-fast);
+  transition: background 200ms ease;
+  display: inline-flex;
+  align-items: center;
 }
 
 .splitToggle:hover {
-  background: rgba(216, 27, 96, 0.12);
+  background: rgba(233, 30, 99, 0.12);
 }
 
-/* --- Split Type Tabs --- */
+/* --- Split Type Tabs (segmented pill control) --- */
 .splitTypeTabs {
   display: flex;
-  gap: var(--spacing-xs);
+  gap: 4px;
   margin-bottom: var(--spacing-xs);
+  background: #F0F3FF;
+  border-radius: 9999px;
+  padding: 4px;
 }
 
 .splitTypeTab {
-  padding: var(--spacing-xs) var(--spacing-md);
+  padding: 10px 20px;
+  height: 36px;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
-  background: var(--color-light-grey);
-  border: 1px solid transparent;
-  border-radius: var(--radius-round);
+  background: transparent;
+  border: none;
+  border-radius: 9999px;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 200ms ease;
   white-space: nowrap;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .splitTypeTab:hover {
-  color: var(--color-primary);
-  background: rgba(216, 27, 96, 0.06);
+  color: #E91E63;
 }
 
 .splitTypeTabActive {
-  color: var(--color-text-on-primary);
-  background: var(--color-primary);
-  border-color: var(--color-primary);
+  color: #fff;
+  font-weight: var(--font-weight-bold);
+  background: linear-gradient(135deg, #D81B60, #E91E63);
+  box-shadow: 0 3px 10px rgba(233, 30, 99, 0.3);
 }
 
 .splitTypeTabActive:hover {
-  color: var(--color-text-on-primary);
-  background: var(--color-primary-dark);
+  color: #fff;
+  background: linear-gradient(135deg, #C2185B, #D81B60);
 }
 
 /* --- Split Allocation Indicator --- */
@@ -203,7 +221,7 @@
   padding: var(--spacing-sm) var(--spacing-md);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   text-align: center;
 }
 
@@ -225,22 +243,23 @@
 /* --- Inline Split Input --- */
 .splitInlineInput {
   width: 90px;
-  padding: var(--spacing-xs) var(--spacing-sm);
+  height: 38px;
+  padding: 0 10px;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
-  background: #fff;
-  border: 1px solid #D0D0D0;
-  border-radius: var(--radius-sm);
+  background: #F0F3FF;
+  border: none;
+  border-radius: 12px;
   text-align: right;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition: outline 200ms ease;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .splitInlineInput:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(216, 27, 96, 0.1);
+  outline: 2px solid rgba(233, 30, 99, 0.4);
+  outline-offset: 0;
 }
 
 .splitInlineInput::placeholder {
@@ -277,22 +296,25 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-card);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  border-radius: var(--radius-md);
+  padding: 0 16px;
+  height: 48px;
+  background: #FFFFFF;
+  border: none;
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
+  transition: transform 200ms ease, box-shadow 200ms ease;
   user-select: none;
 }
 
 .memberCheckbox:hover {
-  background: var(--color-light-grey);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .memberCheckboxChecked {
-  border-color: rgba(216, 27, 96, 0.2);
-  background: rgba(216, 27, 96, 0.03);
+  box-shadow: 0 2px 8px rgba(233, 30, 99, 0.12);
+  background: rgba(233, 30, 99, 0.03);
 }
 
 .checkboxInput {
@@ -310,8 +332,8 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--color-primary);
-  color: var(--color-text-on-primary);
+  background: linear-gradient(135deg, #D81B60, #E91E63);
+  color: #fff;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
   flex-shrink: 0;
@@ -338,7 +360,7 @@
 .checkboxAmount {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-primary);
+  color: #E91E63;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -349,18 +371,17 @@
   justify-content: center;
   width: 24px;
   height: 24px;
-  border-radius: var(--radius-sm);
-  border: 2px solid #D0D0D0;
+  border-radius: 8px;
+  border: 2px solid #E5E7EB;
   font-size: var(--font-size-sm);
   color: transparent;
   flex-shrink: 0;
-  transition: background var(--transition-fast), border-color var(--transition-fast),
-    color var(--transition-fast);
+  transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
 }
 
 .checkboxMarkChecked {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
+  background: linear-gradient(135deg, #D81B60, #E91E63);
+  border-color: #E91E63;
   color: #fff;
 }
 
@@ -370,8 +391,8 @@
   padding: var(--spacing-sm) var(--spacing-md);
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
-  background: var(--color-light-grey);
-  border-radius: var(--radius-md);
+  background: #F0F3FF;
+  border-radius: 12px;
   text-align: center;
 }
 
@@ -381,20 +402,21 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: var(--spacing-md);
-  min-height: 50px;
-  font-size: var(--font-size-md);
+  height: 48px;
+  padding: 0 16px;
+  font-size: 16px;
   color: var(--color-text-primary);
-  background: #F0F0F0;
-  border: 1px solid #D0D0D0;
-  border-radius: var(--radius-md);
+  background: #F0F3FF;
+  border: 1.5px solid transparent;
+  border-radius: 12px;
   cursor: pointer;
   text-align: left;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+  box-sizing: border-box;
 }
 
 .categoryTrigger:hover {
-  border-color: var(--color-grey);
+  border-color: rgba(216, 27, 96, 0.25);
 }
 
 .categoryTriggerError {
@@ -429,10 +451,10 @@
   right: 0;
   max-height: 320px;
   overflow-y: auto;
-  background: var(--color-card);
-  border: 1px solid var(--color-light-grey);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  background: #FFFFFF;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   z-index: 100;
   padding: var(--spacing-sm);
   animation: slideUp 200ms ease both;
@@ -448,18 +470,18 @@
   color: var(--color-text-primary);
   background: none;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   cursor: pointer;
-  transition: background var(--transition-fast);
+  transition: background 200ms ease;
   text-align: left;
 }
 
 .categoryItem:hover {
-  background: var(--color-light-grey);
+  background: #F0F3FF;
 }
 
 .categoryItemSelected {
-  background: var(--color-light-grey);
+  background: #F0F3FF;
 }
 
 .categoryItemContent {
@@ -474,13 +496,13 @@
   justify-content: center;
   width: 36px;
   height: 36px;
-  border-radius: var(--radius-md);
-  background: var(--color-light-grey);
+  border-radius: 12px;
+  background: #F0F3FF;
   font-size: 1rem;
 }
 
 .categoryItemIconSelected {
-  background: var(--color-primary);
+  background: linear-gradient(135deg, #D81B60, #E91E63);
 }
 
 .categoryItemText {
@@ -488,12 +510,12 @@
 }
 
 .categoryItemTextSelected {
-  color: var(--color-primary);
+  color: #E91E63;
   font-weight: var(--font-weight-semibold);
 }
 
 .categoryCheck {
-  color: var(--color-primary);
+  color: #E91E63;
   font-size: var(--font-size-md);
 }
 
@@ -503,20 +525,23 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: var(--spacing-md);
+  height: 48px;
+  padding: 0 24px;
   margin-top: var(--spacing-lg);
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text-on-primary);
-  background: var(--color-primary);
+  color: #fff;
+  background: linear-gradient(135deg, #D81B60, #E91E63);
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: 9999px;
+  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
   cursor: pointer;
-  transition: background var(--transition-fast);
+  transition: transform 200ms ease, box-shadow 200ms ease;
 }
 
 .submitBtn:hover {
-  background: var(--color-primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(233, 30, 99, 0.4);
 }
 
 .submitBtn:active {
@@ -526,6 +551,7 @@
 .submitBtn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+  transform: none;
 }
 
 /* --- Spinner --- */
@@ -533,7 +559,7 @@
   width: 20px;
   height: 20px;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: var(--color-white);
+  border-top-color: #fff;
   border-radius: 50%;
   animation: spin 600ms linear infinite;
 }
@@ -568,6 +594,7 @@
     padding-top: var(--spacing-sm);
     padding-left: 16px;
     padding-right: 16px;
+    border-radius: 0 0 20px 20px;
   }
 
   .headerTitle {
@@ -588,22 +615,26 @@
   .input {
     width: 100%;
     min-height: 44px;
-    padding: 14px 16px;
-    font-size: 1rem;
+    height: 48px;
+    padding: 0 16px;
+    font-size: 16px;
     border-radius: 12px;
     box-sizing: border-box;
   }
 
   .textarea {
     min-height: 100px;
+    height: auto;
+    padding: 14px 16px;
   }
 
   /* Select (paid by): full width */
   .select {
     width: 100%;
     min-height: 44px;
-    padding: 14px 16px;
-    font-size: 1rem;
+    height: 48px;
+    padding: 0 16px;
+    font-size: 16px;
     border-radius: 12px;
     box-sizing: border-box;
   }
@@ -612,8 +643,9 @@
   .categoryTrigger {
     width: 100%;
     min-height: 44px;
-    padding: 14px 16px;
-    font-size: 1rem;
+    height: 48px;
+    padding: 0 16px;
+    font-size: 16px;
     border-radius: 12px;
     box-sizing: border-box;
   }
@@ -635,8 +667,9 @@
   }
 
   .splitToggle {
-    padding: 6px 14px;
+    padding: 0 14px;
     min-height: 36px;
+    height: 36px;
     font-size: 0.8125rem;
     display: inline-flex;
     align-items: center;
@@ -650,8 +683,11 @@
 
   .memberCheckbox {
     width: 100%;
-    padding: 12px 16px;
+    padding: 0 16px;
     min-height: 52px;
+    height: auto;
+    padding-top: 12px;
+    padding-bottom: 12px;
     border-radius: 12px;
     gap: 12px;
     box-sizing: border-box;
@@ -678,22 +714,26 @@
 
   /* Split type tabs */
   .splitTypeTabs {
-    gap: 6px;
+    gap: 0;
+    padding: 3px;
   }
 
   .splitTypeTab {
-    padding: 6px 14px;
+    padding: 0 10px;
+    height: 36px;
     font-size: 0.8125rem;
     min-height: 36px;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
   }
 
   /* Inline split input */
   .splitInlineInput {
     width: 80px;
     min-height: 36px;
-    padding: 6px 8px;
+    height: 36px;
+    padding: 0 8px;
     font-size: 0.875rem;
   }
 
@@ -708,9 +748,10 @@
   .submitBtn {
     width: 100%;
     min-height: 48px;
-    padding: 14px;
+    height: 48px;
+    padding: 0 24px;
     font-size: 1rem;
-    border-radius: 12px;
+    border-radius: 9999px;
   }
 
   /* Labels */

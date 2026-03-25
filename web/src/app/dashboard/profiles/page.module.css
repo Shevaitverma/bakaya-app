@@ -15,26 +15,31 @@
 .pageTitle {
   font-size: var(--font-size-display);
   font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
+  color: #1A1A2E;
 }
 
 .createBtn {
   padding: 0.5rem 1.25rem;
-  background: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-gradient-start, #D81B60), var(--color-gradient-end, #E91E63));
   color: #fff;
-  border-radius: var(--radius-md);
+  border-radius: 9999px;
   font-size: 0.875rem;
   font-weight: 600;
   text-decoration: none;
-  transition: opacity 0.2s;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+  box-shadow: 0 2px 8px rgba(216, 27, 96, 0.25);
 }
 
-.createBtn:hover { opacity: 0.9; }
+.createBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(216, 27, 96, 0.35);
+}
 
 .loadingText {
   text-align: center;
   padding: 3rem;
   opacity: 0.6;
+  color: #9CA3AF;
 }
 
 .emptyState {
@@ -46,21 +51,29 @@
   font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
+  color: #1A1A2E;
 }
 
 .emptySubtitle {
-  color: var(--color-text-secondary);
+  color: #9CA3AF;
   margin-bottom: 1.5rem;
 }
 
 .emptyAction {
   display: inline-block;
   padding: 0.6rem 1.5rem;
-  background: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-gradient-start, #D81B60), var(--color-gradient-end, #E91E63));
   color: #fff;
-  border-radius: var(--radius-md);
+  border-radius: 9999px;
   text-decoration: none;
   font-weight: 600;
+  box-shadow: 0 2px 8px rgba(216, 27, 96, 0.25);
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.emptyAction:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(216, 27, 96, 0.35);
 }
 
 .profilesGrid {
@@ -72,15 +85,18 @@
 .profileCard {
   display: flex;
   align-items: center;
-  padding: 1rem 1.25rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  transition: box-shadow 0.2s;
+  padding: 16px;
+  background: #FFFFFF;
+  border: none;
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 200ms ease, box-shadow 200ms ease;
+  animation: fadeSlideUp 400ms ease both;
 }
 
 .profileCard:hover {
-  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .profileLink {
@@ -93,15 +109,15 @@
 }
 
 .profileAvatar {
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 18px;
   flex-shrink: 0;
 }
 
@@ -111,25 +127,25 @@
 
 .profileName {
   font-weight: 600;
-  font-size: 0.9375rem;
-  color: var(--color-text-primary);
+  font-size: 15px;
+  color: #1A1A2E;
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
 .defaultBadge {
-  font-size: 0.6875rem;
+  font-size: 11px;
   font-weight: 500;
-  padding: 0.125rem 0.5rem;
-  border-radius: 1rem;
-  background: var(--color-primary-bg, #fce4ec);
-  color: var(--color-primary);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: rgba(233, 30, 99, 0.1);
+  color: #E91E63;
 }
 
 .profileRelation {
-  font-size: 0.8125rem;
-  color: var(--color-text-secondary);
+  font-size: 13px;
+  color: #9CA3AF;
   text-transform: capitalize;
 }
 
@@ -138,16 +154,20 @@
   border: none;
   color: var(--color-text-tertiary);
   cursor: pointer;
-  padding: 0.375rem;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.875rem;
-  border-radius: var(--radius-sm);
+  border-radius: 50%;
   text-decoration: none;
-  transition: color 0.2s, background 0.2s;
+  transition: color 200ms ease, background 200ms ease;
 }
 
 .editBtn:hover {
   color: var(--color-primary);
-  background: rgba(216, 27, 96, 0.06);
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .deleteBtn {
@@ -155,44 +175,52 @@
   border: none;
   color: var(--color-text-tertiary);
   cursor: pointer;
-  padding: 0.375rem;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.875rem;
-  border-radius: var(--radius-sm);
-  transition: color 0.2s, background 0.2s;
+  border-radius: 50%;
+  transition: color 200ms ease, background 200ms ease;
 }
 
 .deleteBtn:hover {
   color: var(--color-error, #ef4444);
-  background: var(--color-error-bg, #fef2f2);
+  background: rgba(0, 0, 0, 0.04);
 }
 
 /* Dialog */
 .dialogOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
+  backdrop-filter: blur(4px);
 }
 
 .dialog {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
+  background: #FFFFFF;
+  border-radius: 12px;
   padding: 1.5rem;
   width: 90%;
   max-width: 400px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  animation: fadeSlideUp 250ms ease both;
 }
 
 .dialogTitle {
   font-size: 1.125rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
+  color: #1A1A2E;
 }
 
 .dialogMessage {
-  color: var(--color-text-secondary);
+  color: #9CA3AF;
   font-size: 0.875rem;
   margin-bottom: 1rem;
 }
@@ -211,20 +239,31 @@
 
 .dialogCancel {
   padding: 0.5rem 1rem;
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   border: 1px solid var(--color-border);
   background: transparent;
   cursor: pointer;
+  transition: background 200ms ease;
+}
+
+.dialogCancel:hover {
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .dialogConfirm {
   padding: 0.5rem 1rem;
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   border: none;
   background: var(--color-error, #ef4444);
   color: #fff;
   cursor: pointer;
   font-weight: 600;
+  transition: background 200ms ease, box-shadow 200ms ease;
+}
+
+.dialogConfirm:hover {
+  background: #dc2626;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
 /* --- Profile Form (New / Edit) --- */
@@ -243,22 +282,36 @@
 .formLabel {
   display: block;
   font-weight: 600;
-  margin-bottom: 0.375rem;
-  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  font-size: 14px;
+  color: #1A1A2E;
 }
 
 .formInput {
   width: 100%;
-  padding: 0.625rem 0.875rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  height: 48px;
+  padding: 0 0.875rem;
+  border: 1.5px solid transparent;
+  border-radius: 12px;
   font-size: 0.9375rem;
-  background: var(--color-surface);
+  background: #F0F3FF;
+  color: var(--color-text-primary);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.formInput::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: var(--color-primary-light, rgba(216, 27, 96, 0.3));
+  box-shadow: 0 0 0 3px rgba(216, 27, 96, 0.08);
 }
 
 .formChipsRow {
   display: flex;
-  gap: 0.5rem;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -269,34 +322,53 @@
 
 .formCancelBtn {
   padding: 0.625rem 1.25rem;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   border: 1px solid var(--color-border);
   background: transparent;
   cursor: pointer;
   font-size: 0.875rem;
+  transition: background 200ms ease;
+}
+
+.formCancelBtn:hover {
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .formSubmitBtn {
+  flex: 1;
+  height: 48px;
   padding: 0.625rem 1.5rem;
-  border-radius: var(--radius-md);
+  border-radius: 9999px;
   border: none;
-  background: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-gradient-start, #D81B60), var(--color-gradient-end, #E91E63));
   color: #fff;
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   font-weight: 600;
+  box-shadow: 0 4px 12px rgba(216, 27, 96, 0.3);
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.formSubmitBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(216, 27, 96, 0.4);
+}
+
+.formSubmitBtn:active {
+  transform: scale(0.98);
 }
 
 .formSubmitBtn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+  transform: none;
 }
 
 .formError {
   color: var(--color-error, #ef4444);
   background: var(--color-error-bg, #fef2f2);
   padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
+  border-radius: 12px;
   font-size: 0.875rem;
   margin-bottom: 1rem;
 }
@@ -314,22 +386,28 @@
 }
 
 .totalCard {
-  padding: 1rem 1.25rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  padding: 14px 1.5rem;
+  background: #FFFFFF;
+  border: none;
+  border-top: 2px solid var(--color-primary, #E91E63);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   margin-bottom: 1.5rem;
 }
 
 .totalCardLabel {
-  font-size: 0.8125rem;
-  color: var(--color-text-secondary);
+  font-size: 10px;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
   margin-bottom: 0.25rem;
 }
 
 .totalCardValue {
-  font-size: 1.5rem;
+  font-size: 28px;
   font-weight: 700;
+  color: #1A1A2E;
+  font-variant-numeric: tabular-nums;
 }
 
 .expenseRow {
@@ -348,12 +426,13 @@
 
 .expenseRowTitle {
   font-weight: 600;
-  font-size: 0.9375rem;
+  font-size: 15px;
+  color: #1A1A2E;
 }
 
 .expenseRowMeta {
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
+  font-size: 12px;
+  color: #9CA3AF;
 }
 
 .expenseRowActions {
@@ -365,20 +444,22 @@
 
 .expenseRowAmount {
   font-weight: 700;
-  font-size: 0.9375rem;
+  font-size: 15px;
+  color: #1A1A2E;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Account Section */
 .accountSection {
   margin-top: var(--spacing-xl);
   padding-top: var(--spacing-lg);
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid #F0F3FF;
 }
 
 .accountTitle {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
+  color: #1A1A2E;
   margin-bottom: var(--spacing-md);
 }
 
@@ -386,8 +467,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--color-card);
-  border-radius: var(--radius-md);
+  background: #FFFFFF;
+  border-radius: 12px;
   padding: var(--spacing-md) var(--spacing-lg);
   box-shadow: var(--shadow-sm);
 }
@@ -402,7 +483,7 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-gradient-start, #D81B60), var(--color-gradient-end, #E91E63));
   color: white;
   display: flex;
   align-items: center;
@@ -412,22 +493,23 @@
 }
 
 .accountName {
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: #1A1A2E;
+  font-size: 15px;
 }
 
 .accountEmail {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
+  color: #9CA3AF;
+  font-size: 13px;
 }
 
 .logoutBtn {
   padding: 0.5rem 1.25rem;
+  height: 44px;
   border: 1px solid #ef4444;
   color: #ef4444;
   background: transparent;
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   cursor: pointer;
@@ -448,10 +530,27 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Staggered animation for profile cards */
+.profileCard:nth-child(1) { animation-delay: 0ms; }
+.profileCard:nth-child(2) { animation-delay: 50ms; }
+.profileCard:nth-child(3) { animation-delay: 100ms; }
+.profileCard:nth-child(4) { animation-delay: 150ms; }
+.profileCard:nth-child(5) { animation-delay: 200ms; }
+.profileCard:nth-child(6) { animation-delay: 250ms; }
+.profileCard:nth-child(7) { animation-delay: 300ms; }
+.profileCard:nth-child(8) { animation-delay: 350ms; }
+.profileCard:nth-child(9) { animation-delay: 400ms; }
+.profileCard:nth-child(10) { animation-delay: 450ms; }
+
 /* --- Mobile Responsive --- */
 @media (max-width: 768px) {
   .page {
-    padding: 0 16px var(--spacing-lg);
+    padding: 16px 16px var(--spacing-lg);
   }
 
   .pageHeader {
@@ -471,6 +570,7 @@
     align-items: center;
     justify-content: center;
     font-size: 0.875rem;
+    width: 100%;
   }
 
   .profilesGrid {
@@ -479,38 +579,38 @@
   }
 
   .profileCard {
-    padding: 0.875rem 1rem;
+    padding: 14px 16px;
   }
 
   .profileAvatar {
-    width: 40px;
-    height: 40px;
-    font-size: 0.9375rem;
+    width: 44px;
+    height: 44px;
+    font-size: 16px;
   }
 
   .profileName {
-    font-size: 0.875rem;
+    font-size: 14px;
   }
 
   .profileRelation {
-    font-size: 0.75rem;
+    font-size: 12px;
   }
 
   .editBtn,
   .deleteBtn {
     min-width: 36px;
     min-height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 36px;
+    height: 36px;
   }
 
   .emptyAction {
     display: block;
     width: 100%;
     text-align: center;
-    padding: 0.75rem 1.5rem;
     min-height: 44px;
+    line-height: 44px;
+    padding: 0 1.5rem;
   }
 
   .dialog {
@@ -538,9 +638,9 @@
   }
 
   .formInput {
-    min-height: 44px;
+    min-height: 48px;
     font-size: 16px;
-    padding: 0.75rem 0.875rem;
+    padding: 0 0.875rem;
   }
 
   .formChipsRow {
@@ -562,7 +662,7 @@
   .formCancelBtn,
   .formSubmitBtn {
     width: 100%;
-    min-height: 44px;
+    min-height: 48px;
     text-align: center;
     display: flex;
     align-items: center;
@@ -578,16 +678,20 @@
     margin-bottom: 1rem;
   }
 
+  .totalCardValue {
+    font-size: 24px;
+  }
+
   .expenseRowActions {
     gap: 0.5rem;
   }
 
   .expenseRowTitle {
-    font-size: 0.875rem;
+    font-size: 14px;
   }
 
   .expenseRowAmount {
-    font-size: 0.875rem;
+    font-size: 14px;
   }
 
   /* Account Section Mobile */
@@ -615,21 +719,23 @@
   }
 
   .accountName {
-    font-size: 0.9375rem;
+    font-size: 15px;
   }
 
   .accountEmail {
-    font-size: 0.8125rem;
+    font-size: 13px;
     word-break: break-all;
   }
 
   .logoutBtn {
     width: 100%;
     min-height: 44px;
+    height: 44px;
     text-align: center;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 0.9375rem;
+    border-radius: 8px;
   }
 }

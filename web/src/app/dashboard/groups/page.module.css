@@ -19,18 +19,24 @@
 }
 
 .createBtn {
-  padding: 0.5rem 1.25rem;
-  background: var(--color-primary);
+  padding: 0 1.5rem;
+  height: 48px;
+  background: linear-gradient(135deg, #D81B60, #E91E63);
   color: #fff;
-  border-radius: var(--radius-md);
-  font-size: 0.875rem;
+  border-radius: 9999px;
+  font-size: 0.9375rem;
   font-weight: 600;
   text-decoration: none;
-  transition: opacity 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
+  transition: transform 200ms ease, box-shadow 200ms ease;
 }
 
 .createBtn:hover {
-  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(233, 30, 99, 0.4);
 }
 
 .loadingText {
@@ -61,13 +67,23 @@
 }
 
 .emptyAction {
-  display: inline-block;
-  padding: 0.6rem 1.5rem;
-  background: var(--color-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.5rem;
+  height: 48px;
+  background: linear-gradient(135deg, #D81B60, #E91E63);
   color: #fff;
-  border-radius: var(--radius-md);
+  border-radius: 9999px;
   text-decoration: none;
   font-weight: 600;
+  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.emptyAction:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(233, 30, 99, 0.4);
 }
 
 .groupsGrid {
@@ -80,22 +96,50 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 1.5rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  padding: 20px;
+  background: #FFFFFF;
+  border: none;
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
   text-decoration: none;
-  transition: box-shadow 0.2s, transform 0.2s;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+  animation: fadeSlideUp 400ms ease both;
 }
 
+.groupCard:nth-child(1) { animation-delay: 0ms; }
+.groupCard:nth-child(2) { animation-delay: 50ms; }
+.groupCard:nth-child(3) { animation-delay: 100ms; }
+.groupCard:nth-child(4) { animation-delay: 150ms; }
+.groupCard:nth-child(5) { animation-delay: 200ms; }
+.groupCard:nth-child(6) { animation-delay: 250ms; }
+.groupCard:nth-child(7) { animation-delay: 300ms; }
+.groupCard:nth-child(8) { animation-delay: 350ms; }
+.groupCard:nth-child(9) { animation-delay: 400ms; }
+.groupCard:nth-child(10) { animation-delay: 450ms; }
+
 .groupCard:hover {
-  box-shadow: var(--shadow-md);
   transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .groupIcon {
-  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7C3AED, #A78BFA);
+  color: #fff;
+  font-size: 1.25rem;
   margin-bottom: 0.75rem;
+  flex-shrink: 0;
+}
+
+.groupInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .groupName {
@@ -123,10 +167,15 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* --- Mobile Responsive --- */
 @media (max-width: 768px) {
   .page {
-    padding: var(--spacing-sm) 16px 16px;
+    padding: 16px 16px 16px;
   }
 
   .pageHeader {
@@ -141,13 +190,10 @@
   }
 
   .createBtn {
-    padding: 12px 20px;
+    padding: 0 20px;
+    height: 48px;
     font-size: 0.9375rem;
     min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 12px;
   }
 
   .groupsGrid {
@@ -164,9 +210,16 @@
   }
 
   .groupIcon {
-    font-size: 1.5rem;
+    width: 44px;
+    height: 44px;
+    font-size: 1.125rem;
     margin-bottom: 0;
     flex-shrink: 0;
+  }
+
+  .groupInfo {
+    flex: 1;
+    min-width: 0;
   }
 
   .groupName {
@@ -188,10 +241,8 @@
   }
 
   .emptyAction {
-    padding: 12px 24px;
+    padding: 0 24px;
+    height: 48px;
     min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    border-radius: 12px;
   }
 }

@@ -7,6 +7,7 @@ import { successResponse, badRequestResponse, unauthorizedResponse } from "@/uti
 import { logger } from "@/utils/logger";
 import { env } from "@/config/env";
 import { createDefaultProfile } from "@/services/profile.service";
+import { seedDefaultCategories } from "@/services/category.service";
 import { z } from "zod";
 import { createLocalJWKSet, jwtVerify, type JSONWebKeySet } from "jose";
 
@@ -85,6 +86,9 @@ export async function register(req: Request): Promise<Response> {
     // Auto-create default profile with user's name
     const userName = [input.firstName, input.lastName].filter(Boolean).join(" ");
     await createDefaultProfile(user._id.toString(), userName);
+
+    // Seed default categories for the new user
+    await seedDefaultCategories(user._id.toString());
 
     logger.info("User registered", { userId: user._id });
 
@@ -261,6 +265,9 @@ export async function googleAuth(req: Request): Promise<Response> {
       const fullName = (firebasePayload.name as string | undefined) ||
         [firstName, lastName].filter(Boolean).join(" ");
       await createDefaultProfile(user._id.toString(), fullName);
+
+      // Seed default categories for the new user
+      await seedDefaultCategories(user._id.toString());
     }
 
     if (!user.isActive) {

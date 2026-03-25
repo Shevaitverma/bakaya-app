@@ -23,10 +23,12 @@ import type { HomeStackParamList } from '../../navigation/types';
 import { groupService } from '../../services/groupService';
 import { profileService } from '../../services/profileService';
 import { expenseService } from '../../services/expenseService';
+import { categoryService } from '../../services/categoryService';
 import { formatCurrency } from '../../utils/currency';
 import type { GroupsResponse } from '../../types/group';
 import type { Profile, ProfilesResponse } from '../../types/profile';
 import type { Expense, PersonalExpensesResponse, BalanceData } from '../../types/expense';
+import type { Category } from '../../types/category';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'Home'>;
 
@@ -92,6 +94,7 @@ const HomeScreen = () => {
   const { logout, user, accessToken, refreshSession } = useAuth();
 
   // Data states
+  const [categories, setCategories] = useState<Category[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -166,6 +169,18 @@ const HomeScreen = () => {
       }
     };
 
+    const fetchCategories = async () => {
+      try {
+        const response = await categoryService.getCategories(accessToken);
+        if (response.success && response.data?.categories) {
+          setCategories(response.data.categories.filter((c) => c.isActive));
+        }
+      } catch (err: any) {
+        if (err?.statusCode === 401) throw err;
+        console.warn('Error fetching categories:', err);
+      }
+    };
+
     const fetchBalance = async () => {
       try {
         setBalanceLoading(true);
@@ -182,7 +197,7 @@ const HomeScreen = () => {
     };
 
     try {
-      await Promise.all([fetchProfiles(), fetchExpenses(), fetchGroups(), fetchBalance()]);
+      await Promise.all([fetchProfiles(), fetchExpenses(), fetchGroups(), fetchBalance(), fetchCategories()]);
     } catch (err: any) {
       if (err?.statusCode === 401) {
         // Attempt token refresh; if it fails, log the user out
@@ -344,20 +359,56 @@ const HomeScreen = () => {
     return profiles.find((p) => p._id === expense.profileId);
   };
 
+  // Build category lookup map
+  const categoryMap = React.useMemo(() => {
+    const map: Record<string, { emoji: string; color: string }> = {};
+    categories.forEach((cat) => {
+      map[cat.name.toLowerCase()] = { emoji: cat.emoji, color: cat.color };
+    });
+    return map;
+  }, [categories]);
+
   const renderExpenseRow = (expense: Expense) => {
     const profile = getExpenseProfile(expense);
     const profileColor = profile
       ? getProfileColor(profile, profiles.indexOf(profile))
       : undefined;
     const isIncome = expense.type === 'income';
-    const iconName = isIncome
-      ? getSourceIcon(expense.source ?? 'other')
-      : getCategoryIcon(expense.category ?? 'other');
-    const iconColor = isIncome ? '#10B981' : Theme.colors.primary;
-    const iconBg = isIncome ? 'rgba(16, 185, 129, 0.1)' : 'rgba(216, 27, 96, 0.1)';
+    const catKey = (expense.category ?? 'other').toLowerCase();
+    const catData = categoryMap[catKey];
     const labelText = isIncome
       ? (expense.source ?? 'Income')
       : (expense.category ?? 'Other');
+
+    // For income, use FontAwesome icon; for expenses, prefer category emoji
+    let iconContent: React.ReactNode;
+    let iconBg: string;
+    if (isIncome) {
+      const iconName = getSourceIcon(expense.source ?? 'other');
+      iconBg = 'rgba(16, 185, 129, 0.1)';
+      iconContent = (
+        <FontAwesome6
+          name={iconName as any}
+          size={16}
+          color="#10B981"
+          solid
+        />
+      );
+    } else if (catData) {
+      iconBg = catData.color + '20';
+      iconContent = <Text style={styles.expenseEmojiIcon}>{catData.emoji}</Text>;
+    } else {
+      const iconName = getCategoryIcon(expense.category ?? 'other');
+      iconBg = 'rgba(216, 27, 96, 0.1)';
+      iconContent = (
+        <FontAwesome6
+          name={iconName as any}
+          size={16}
+          color={Theme.colors.primary}
+          solid
+        />
+      );
+    }
 
     return (
       <TouchableOpacity
@@ -366,12 +417,7 @@ const HomeScreen = () => {
         onPress={() => navigation.navigate('EditExpense', { expenseId: expense._id })}
         activeOpacity={0.7}>
         <View style={[styles.expenseIconWrapper, { backgroundColor: iconBg }]}>
-          <FontAwesome6
-            name={iconName as any}
-            size={16}
-            color={iconColor}
-            solid
-          />
+          {iconContent}
         </View>
         <View style={styles.expenseDetails}>
           <Text style={styles.expenseTitle} numberOfLines={1}>
@@ -865,6 +911,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Theme.spacing.sm,
+  },
+  expenseEmojiIcon: {
+    fontSize: 18,
   },
   expenseDetails: {
     flex: 1,

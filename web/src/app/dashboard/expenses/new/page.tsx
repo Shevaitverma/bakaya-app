@@ -6,7 +6,7 @@ import { ApiError } from "@/lib/api-client";
 import { expensesApi } from "@/lib/api/expenses";
 import { profilesApi } from "@/lib/api/profiles";
 import type { Profile } from "@/types/profile";
-import { CATEGORIES, getCategoryEmoji } from "@/constants/categories";
+import { categoriesApi, type Category } from "@/lib/api/categories";
 import styles from "./page.module.css";
 
 const INCOME_SOURCES = [
@@ -62,6 +62,18 @@ export default function AddExpensePage() {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const isIncome = entryType === "income";
+
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    categoriesApi
+      .list()
+      .then((data) => setCategories(data.categories ?? []))
+      .catch(() => {
+        // categories API not ready -- continue without
+      });
+  }, []);
 
   // Fetch profiles and pre-select default (unless query param already set)
   useEffect(() => {
@@ -224,29 +236,21 @@ export default function AddExpensePage() {
                   <button
                     key={profile._id}
                     type="button"
+                    className={`${styles.profileChip} ${
+                      selectedProfileId === profile._id ? styles.profileChipActive : ""
+                    }`}
                     onClick={() => setSelectedProfileId(profile._id)}
-                    style={{
-                      padding: "0.5rem 1rem",
-                      borderRadius: "2rem",
-                      border: selectedProfileId === profile._id ? "2px solid var(--color-primary, #D81B60)" : "1px solid #ddd",
-                      background: selectedProfileId === profile._id ? "var(--color-primary-bg, #fce4ec)" : "transparent",
-                      cursor: "pointer",
-                      fontSize: "0.875rem",
-                      fontWeight: selectedProfileId === profile._id ? 600 : 400,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.375rem",
-                      whiteSpace: "nowrap",
-                    }}
                   >
-                    <span style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      backgroundColor: profile.color || "var(--color-primary, #D81B60)",
-                      display: "inline-block",
-                      flexShrink: 0,
-                    }} />
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        backgroundColor: profile.color || "var(--color-primary)",
+                        display: "inline-block",
+                        flexShrink: 0,
+                      }}
+                    />
                     {profile.name}
                   </button>
                 ))}
@@ -314,7 +318,7 @@ export default function AddExpensePage() {
                 >
                   {category ? (
                     <span className={styles.categorySelected}>
-                      <span aria-hidden>{getCategoryEmoji(category)}</span>
+                      <span aria-hidden>{categories.find((c) => c.name === category)?.emoji ?? "\u{1F4C4}"}</span>
                       {category}
                     </span>
                   ) : (
@@ -329,25 +333,25 @@ export default function AddExpensePage() {
 
                 {showDropdown && (
                   <div className={styles.categoryList}>
-                    {CATEGORIES.map((cat) => {
-                      const isSelected = category === cat;
+                    {categories.map((cat) => {
+                      const isSelected = category === cat.name;
                       return (
                         <button
-                          key={cat}
+                          key={cat.id}
                           type="button"
                           className={`${styles.categoryItem} ${isSelected ? styles.categoryItemSelected : ""}`}
-                          onClick={() => handleCategorySelect(cat)}
+                          onClick={() => handleCategorySelect(cat.name)}
                         >
                           <span className={styles.categoryItemContent}>
                             <span
                               className={`${styles.categoryItemIcon} ${isSelected ? styles.categoryItemIconSelected : ""}`}
                             >
-                              <span aria-hidden>{getCategoryEmoji(cat)}</span>
+                              <span aria-hidden>{cat.emoji}</span>
                             </span>
                             <span
                               className={`${styles.categoryItemText} ${isSelected ? styles.categoryItemTextSelected : ""}`}
                             >
-                              {cat}
+                              {cat.name}
                             </span>
                           </span>
                           {isSelected && (

@@ -27,7 +27,7 @@ interface StoredUser {
   lastName?: string;
 }
 
-function BottomNavIcon({ label }: { label: string }) {
+function NavIcon({ label }: { label: string }) {
   switch (label) {
     case "Home":
       return (
@@ -139,7 +139,10 @@ export default function DashboardLayout({
       <aside className={styles.sidebar}>
         <Link href="/dashboard" className={styles.sidebarBrand}>
           <span className={styles.brandIcon}>B</span>
-          Bakaya
+          <span className={styles.brandText}>
+            Bakaya
+            <span className={styles.brandSubtitle}>FINANCE TRACKER</span>
+          </span>
         </Link>
 
         <nav className={styles.nav}>
@@ -152,7 +155,7 @@ export default function DashboardLayout({
               }`}
             >
               <span className={styles.navIcon} aria-hidden>
-                {item.icon}
+                <NavIcon label={item.label} />
               </span>
               {item.label}
             </Link>
@@ -188,7 +191,7 @@ export default function DashboardLayout({
               isActive(item.href) ? styles.bottomNavTabActive : ""
             }`}
           >
-            <BottomNavIcon label={item.label} />
+            <NavIcon label={item.label} />
             <span className={styles.bottomNavLabel}>{item.label}</span>
           </Link>
         ))}

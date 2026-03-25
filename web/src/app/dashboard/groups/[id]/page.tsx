@@ -13,7 +13,7 @@ import {
   type GroupBalances,
 } from "@/lib/api/groups";
 import type { Settlement } from "@/types/settlement";
-import { getCategoryEmoji } from "@/constants/categories";
+import { categoriesApi, type Category } from "@/lib/api/categories";
 import styles from "./page.module.css";
 
 function getMemberDisplayName(member: {
@@ -63,6 +63,22 @@ export default function GroupDetailPage() {
   const [settleNotes, setSettleNotes] = useState("");
   const [isSettling, setIsSettling] = useState(false);
   const [settleError, setSettleError] = useState("");
+
+  const [categoriesMap, setCategoriesMap] = useState<Record<string, Category>>({});
+
+  // Fetch categories for emoji lookup
+  useEffect(() => {
+    categoriesApi
+      .list()
+      .then((data) => {
+        const map: Record<string, Category> = {};
+        for (const c of data.categories ?? []) {
+          map[c.name] = c;
+        }
+        setCategoriesMap(map);
+      })
+      .catch(() => {});
+  }, []);
 
   // Read current user ID from localStorage (layout already guards auth)
   useEffect(() => {
@@ -595,7 +611,7 @@ export default function GroupDetailPage() {
                       {/* Category Icon */}
                       <div className={styles.categoryIcon}>
                         <span aria-hidden>
-                          {getCategoryEmoji(expense.category ?? "other")}
+                          {categoriesMap[expense.category ?? ""]?.emoji ?? "\u{1F4C4}"}
                         </span>
                       </div>
 

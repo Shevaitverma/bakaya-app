@@ -1,6 +1,5 @@
 /* ============================================
-   Analytics Page Styles
-   Full dashboard with bar charts & trends
+   Analytics Page Styles - Stitch Reference Design
    ============================================ */
 
 /* --- Page Shell --- */
@@ -9,48 +8,43 @@
   max-width: var(--max-width);
   margin-inline: auto;
   animation: fadeIn 400ms ease both;
+  overflow-x: hidden;
 }
 
 /* --- Page Header --- */
 .pageHeader {
-  margin-bottom: var(--spacing-lg);
-}
-
-.headerTop {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: var(--spacing-lg);
   flex-wrap: wrap;
 }
 
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.headerRight {
+  flex-shrink: 0;
+}
+
 .pageTitle {
-  font-size: var(--font-size-display);
+  font-family: 'Plus Jakarta Sans', var(--font-family-base);
+  font-size: 32px;
   font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  letter-spacing: -1px;
+  color: #1A1A2E;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
 }
 
-.periodBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 14px;
-  background: rgba(216, 27, 96, 0.07);
-  color: var(--color-primary);
-  border-radius: var(--radius-round);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  letter-spacing: 0.01em;
-}
-
-.periodIcon {
-  font-size: var(--font-size-sm);
-  line-height: 1;
-}
-
-/* --- Date Picker Section --- */
-.datePickerSection {
-  margin-bottom: var(--spacing-lg);
+.pageSubtitle {
+  font-size: 15px;
+  color: #6B7280;
+  line-height: 1.4;
+  margin: 0;
 }
 
 /* --- Summary Cards Grid --- */
@@ -61,185 +55,289 @@
   margin-bottom: var(--spacing-xl);
 }
 
-/* --- Individual Card --- */
+/* --- Individual Card (redesigned layout) --- */
 .card {
-  position: relative;
-  padding: 22px 24px;
-  background: var(--color-card);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 24px;
+  background: #FFFFFF;
   border-radius: 12px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
   display: flex;
   flex-direction: column;
-  min-height: 120px;
+  gap: 0;
 }
 
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
-/* Accent top bar on cards */
-.card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  border-radius: 12px 12px 0 0;
-  background: linear-gradient(90deg, var(--color-gradient-start), var(--color-gradient-end));
-  opacity: 0;
-  transition: opacity var(--transition-fast);
+/* Card top row: icon left, label right */
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
 }
 
-.card:hover::before {
-  opacity: 1;
-}
-
-/* Card icon circle */
-.cardIcon {
+/* Icon circle */
+.cardIconCircle {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-sm);
-  font-size: 1rem;
-  margin-bottom: var(--spacing-sm);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
-.cardIconSpent {
-  background: rgba(216, 27, 96, 0.08);
+.cardIconPink {
+  background: rgba(233, 30, 99, 0.1);
 }
 
-.cardIconProfile {
-  background: rgba(59, 130, 246, 0.08);
+.cardIconTeal {
+  background: rgba(13, 148, 136, 0.1);
 }
 
-.cardIconCategory {
-  background: rgba(16, 185, 129, 0.08);
+.cardIconBlue {
+  background: rgba(59, 130, 246, 0.1);
 }
 
 .cardLabel {
-  font-size: 0.6875rem;
+  font-size: 11px;
   font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--color-text-tertiary);
-  margin-bottom: 8px;
+  color: #9CA3AF;
 }
 
 .cardValue {
-  font-size: 1.75rem;
+  font-size: 32px;
   font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  line-height: var(--line-height-tight);
+  font-variant-numeric: tabular-nums;
+  color: #1A1A2E;
+  line-height: 1.1;
   letter-spacing: -0.5px;
-  margin-top: auto;
+  margin: 0 0 8px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.cardSub {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  margin-top: 6px;
-  line-height: var(--line-height-normal);
+/* Card status line colors */
+.cardStatusPink {
+  font-size: 13px;
+  color: #E91E63;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.cardStatusBlue {
+  font-size: 13px;
+  color: #3B82F6;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.cardStatusGreen {
+  font-size: 13px;
+  color: #10B981;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* --- Two-Column Grid (Profile + Category) --- */
+.twoColGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
 }
 
 /* --- Section (chart cards) --- */
 .section {
-  background: var(--color-card);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #FFFFFF;
   border-radius: 12px;
-  box-shadow: var(--shadow-sm);
-  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  padding: 24px;
   margin-bottom: var(--spacing-lg);
 }
 
+/* Remove double margin when inside twoColGrid */
+.twoColGrid > .section {
+  margin-bottom: 0;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
 .sectionTitle {
+  font-family: 'Plus Jakarta Sans', var(--font-family-base);
   font-size: 18px;
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  padding-bottom: 12px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+  color: #1A1A2E;
+  margin: 0;
+  line-height: 1.3;
 }
 
-/* --- Horizontal Bar Chart --- */
-.barsContainer {
+.sectionIcon {
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+/* --- Profile / Category List with Thin Bars --- */
+.profileList {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 20px;
 }
 
-.barRow {
-  display: grid;
-  grid-template-columns: 120px 1fr auto auto;
-  align-items: center;
-  gap: 12px;
+.profileItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.barLabel {
-  font-size: 0.875rem;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.profileRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.barEmoji {
-  font-size: 1rem;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.barTrack {
-  width: 100%;
-  height: 28px;
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.barFill {
-  height: 100%;
-  border-radius: 4px;
-  transition: width 600ms cubic-bezier(0.22, 1, 0.36, 1);
+.profileNameGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
 }
 
-.barAmount {
-  font-size: 0.8125rem;
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  white-space: nowrap;
-  min-width: 70px;
-  text-align: right;
+.profileDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-.barPct {
-  font-size: 0.75rem;
+.profileName {
+  font-size: 14px;
   font-weight: var(--font-weight-medium);
-  color: var(--color-text-tertiary);
+  color: #1A1A2E;
   white-space: nowrap;
-  min-width: 52px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profileValues {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.profileAmount {
+  font-size: 14px;
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  color: #1A1A2E;
+  white-space: nowrap;
+}
+
+.profilePct {
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+  color: #9CA3AF;
+  white-space: nowrap;
+  min-width: 32px;
   text-align: right;
 }
 
-/* --- Vertical Bar Chart (Trends) --- */
+/* Category row styling */
+.categoryName {
+  font-size: 14px;
+  font-weight: var(--font-weight-medium);
+  color: #1A1A2E;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.categoryAmount {
+  font-size: 14px;
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  color: #E91E63;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Thin horizontal bar (8px height) */
+.thinBarTrack {
+  width: 100%;
+  height: 8px;
+  background: #F3F4F6;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.thinBarFill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 600ms ease;
+  min-width: 0;
+}
+
+/* --- Monthly Trends --- */
+.trendsHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 12px;
+}
+
+.trendsSubtitle {
+  font-size: 13px;
+  color: #9CA3AF;
+  margin: 4px 0 0 0;
+  line-height: 1.4;
+}
+
+.trendsLegend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #E91E63;
+}
+
+.legendLabel {
+  font-size: 13px;
+  color: #6B7280;
+  font-weight: var(--font-weight-medium);
+}
+
+/* Vertical bar chart */
 .trendsChart {
   display: flex;
   align-items: flex-end;
-  gap: 0;
   justify-content: space-around;
-  padding: 8px 0 0;
+  gap: 0;
+  padding: 0;
   min-height: 240px;
+  border-bottom: 1px solid #F3F4F6;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .trendCol {
@@ -247,23 +345,20 @@
   flex-direction: column;
   align-items: center;
   flex: 1;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 }
 
 .trendAmount {
-  font-size: 0.6875rem;
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: var(--font-weight-bold);
+  color: #1A1A2E;
   white-space: nowrap;
 }
 
 .trendBarWrapper {
-  width: 100%;
-  max-width: 48px;
-  height: 160px;
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 4px 4px 0 0;
+  width: 48px;
+  height: 180px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -272,228 +367,203 @@
 
 .trendBarFill {
   width: 100%;
-  background: linear-gradient(180deg, var(--color-gradient-start), var(--color-gradient-end));
-  border-radius: 4px 4px 0 0;
-  transition: height 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  background: linear-gradient(180deg, #E91E63 0%, #F48FB1 100%);
+  border-radius: 6px 6px 0 0;
+  transition: height 600ms ease;
   min-height: 0;
 }
 
 .trendLabel {
-  font-size: 0.75rem;
+  font-size: 13px;
   font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
+  color: #6B7280;
   white-space: nowrap;
+  padding-top: 4px;
 }
 
-.trendCount {
-  font-size: 0.6875rem;
-  color: var(--color-text-tertiary);
-  white-space: nowrap;
+.trendLabelActive {
+  color: #E91E63;
+  font-weight: var(--font-weight-semibold);
 }
 
 /* --- Skeleton loading --- */
 .skeletonCard {
-  background: var(--color-card);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: linear-gradient(90deg, #F0F3FF 25%, #E5E7EB 50%, #F0F3FF 75%);
+  background-size: 200% 100%;
   border-radius: 12px;
-  min-height: 120px;
-  animation: pulse 1.2s ease-in-out infinite;
+  min-height: 140px;
+  animation: shimmer 1.5s infinite;
 }
 
 .skeletonBar {
-  height: 28px;
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 4px;
-  animation: pulse 1.2s ease-in-out infinite;
+  height: 40px;
+  background: linear-gradient(90deg, #F0F3FF 25%, #E5E7EB 50%, #F0F3FF 75%);
+  background-size: 200% 100%;
+  border-radius: 8px;
+  animation: shimmer 1.5s infinite;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* --- Empty state --- */
 .emptyState {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px 16px;
-  color: var(--color-text-tertiary);
-  font-size: var(--font-size-sm);
+  padding: 48px 16px;
   text-align: center;
+  gap: 8px;
+  color: #9CA3AF;
+  font-size: 14px;
 }
 
 /* --- Responsive --- */
+@media (max-width: 1024px) {
+  .twoColGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .twoColGrid > .section {
+    margin-bottom: 0;
+  }
+}
+
 @media (max-width: 768px) {
   .page {
-    padding: var(--spacing-sm) 16px 16px;
+    padding: 16px 16px 16px;
   }
 
   .pageHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
     margin-bottom: 16px;
   }
 
-  .headerTop {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
   .pageTitle {
-    font-size: 20px;
-    font-weight: 700;
+    font-size: 24px;
   }
 
-  .periodBadge {
-    font-size: 0.75rem;
-    padding: 6px 12px;
-    gap: 4px;
-    flex-wrap: nowrap;
-    white-space: nowrap;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .pageSubtitle {
+    font-size: 13px;
   }
 
+  .headerRight {
+    width: 100%;
+  }
+
+  /* Cards stack on mobile */
   .cardsGrid {
     grid-template-columns: 1fr;
     gap: 12px;
   }
 
   .card {
-    min-height: unset;
-    padding: 16px;
-    flex-direction: row;
-    align-items: center;
-    gap: 14px;
-    border-radius: 12px;
-    width: 100%;
-    box-sizing: border-box;
+    padding: 20px;
   }
 
-  .card::before {
-    /* Switch to left bar on mobile */
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: unset;
-    width: 3px;
-    height: auto;
-    border-radius: 12px 0 0 12px;
+  .cardTop {
+    margin-bottom: 12px;
   }
 
-  .cardIcon {
-    margin-bottom: 0;
-    width: 40px;
-    height: 40px;
-    flex-shrink: 0;
+  .cardIconCircle {
+    width: 36px;
+    height: 36px;
   }
 
-  .cardBody {
-    flex: 1;
-    min-width: 0;
+  .cardIconCircle svg {
+    width: 18px;
+    height: 18px;
   }
 
   .cardLabel {
-    font-size: 0.625rem;
-    margin-bottom: 4px;
+    font-size: 10px;
   }
 
   .cardValue {
-    font-size: 1.375rem;
-    word-break: break-word;
+    font-size: 26px;
   }
 
-  .cardSub {
-    font-size: 0.8125rem;
-    margin-top: 4px;
+  /* Two-col grid stacks */
+  .twoColGrid {
+    grid-template-columns: 1fr;
   }
 
   /* Sections */
   .section {
-    padding: 14px;
+    padding: 20px;
     border-radius: 12px;
     margin-bottom: 14px;
   }
 
   .sectionTitle {
     font-size: 16px;
-    padding-bottom: 10px;
-    margin-bottom: 12px;
   }
 
-  /* Horizontal bars — stack label above bar on mobile */
-  .barRow {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto;
-    gap: 4px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  /* Profile / Category bars */
+  .profileList {
+    gap: 16px;
   }
 
-  .barRow:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
+  .profileName {
+    font-size: 13px;
   }
 
-  .barLabel {
-    font-size: 0.8125rem;
-    grid-column: 1 / -1;
+  .profileAmount {
+    font-size: 13px;
   }
 
-  .barTrack {
-    grid-column: 1 / -1;
-    height: 24px;
+  .profilePct {
+    font-size: 12px;
   }
 
-  .barAmount {
-    font-size: 0.8125rem;
-    text-align: left;
-    min-width: unset;
+  .categoryName {
+    font-size: 13px;
   }
 
-  .barPct {
-    font-size: 0.75rem;
-    text-align: left;
-    min-width: unset;
+  .categoryAmount {
+    font-size: 13px;
   }
 
-  /* On mobile, put amount + pct in a row after the bar */
-  .barRow {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .barLabel {
-    width: 100%;
-  }
-
-  .barTrack {
-    width: 100%;
+  .thinBarTrack {
+    height: 6px;
   }
 
   /* Trends chart */
   .trendsChart {
     min-height: 200px;
-    gap: 4px;
   }
 
   .trendBarWrapper {
-    max-width: 36px;
+    width: 32px;
+    height: 140px;
+  }
+
+  .trendAmount {
+    font-size: 10px;
+  }
+
+  .trendLabel {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .trendBarWrapper {
+    width: 24px;
     height: 120px;
   }
 
   .trendAmount {
-    font-size: 0.625rem;
+    font-size: 9px;
   }
 
   .trendLabel {
-    font-size: 0.6875rem;
-  }
-
-  .trendCount {
-    font-size: 0.625rem;
+    font-size: 10px;
   }
 }
 

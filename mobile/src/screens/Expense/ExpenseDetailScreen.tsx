@@ -16,8 +16,10 @@ import { useAuth } from '../../context/AuthContext';
 import { Theme } from '../../constants/theme';
 import { expenseService } from '../../services/expenseService';
 import { profileService } from '../../services/profileService';
+import { categoryService } from '../../services/categoryService';
 import type { Expense, PersonalExpensesResponse } from '../../types/expense';
 import type { Profile } from '../../types/profile';
+import type { Category } from '../../types/category';
 import SwipeableExpenseItem from '../../components/SwipeableExpenseItem';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import { formatCurrencyExact } from '../../utils/currency';
@@ -33,17 +35,19 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation })
   const [error, setError] = useState<string | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [totalExpenseAmount, setTotalExpenseAmount] = useState(0);
   const [openSwipeableId, setOpenSwipeableId] = useState<string | null>(null);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState<{ id: string; title: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Fetch expenses and profiles on mount and refresh when screen comes into focus
+  // Fetch expenses, profiles, and categories on mount and refresh when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       fetchExpenses();
       fetchProfiles();
+      fetchCategories();
     }, [accessToken])
   );
 
@@ -57,6 +61,18 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation })
     } catch (err) {
       // Silently fail — profile display is supplementary
       console.warn('Failed to load profiles:', err);
+    }
+  };
+
+  const fetchCategories = async () => {
+    if (!accessToken) return;
+    try {
+      const response = await categoryService.getCategories(accessToken);
+      if (response.success && response.data?.categories) {
+        setCategories(response.data.categories.filter((c) => c.isActive));
+      }
+    } catch (err) {
+      console.warn('Failed to load categories:', err);
     }
   };
 
@@ -208,10 +224,21 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation })
     return profiles.find((p) => p._id === expense.profileId);
   };
 
+  // Build category lookup map
+  const categoryMap = React.useMemo(() => {
+    const map: Record<string, { emoji: string; color: string }> = {};
+    categories.forEach((cat) => {
+      map[cat.name.toLowerCase()] = { emoji: cat.emoji, color: cat.color };
+    });
+    return map;
+  }, [categories]);
+
   const renderExpenseItem = ({ item, index }: { item: Expense; index: number }) => {
     const isLastItem = index === expenses.length - 1;
     const isOpen = openSwipeableId === item._id;
     const profile = getExpenseProfile(item);
+    const catKey = (item.category ?? 'other').toLowerCase();
+    const catData = categoryMap[catKey];
 
     return (
       <SwipeableExpenseItem
@@ -228,6 +255,8 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation })
         onSwipeEnd={(expenseId, isOpen) => handleSwipeEnd(expenseId, isOpen)}
         profileName={profile?.name}
         profileColor={profile?.color}
+        categoryEmoji={catData?.emoji}
+        categoryColor={catData?.color}
       />
     );
   };

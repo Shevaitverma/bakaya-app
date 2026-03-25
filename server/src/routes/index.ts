@@ -51,6 +51,13 @@ import {
   getAnalyticsByCategory,
   getAnalyticsTrends,
 } from "@/controllers/analytics.controller";
+import {
+  getCategories,
+  createCategoryHandler,
+  updateCategoryHandler,
+  deleteCategoryHandler,
+  reorderCategoriesHandler,
+} from "@/controllers/category.controller";
 import { authenticateRequest } from "@/middleware/auth";
 import { notFoundResponse, internalErrorResponse } from "@/utils/response";
 import { logger } from "@/utils/logger";
@@ -124,6 +131,13 @@ const routes: RouteHandler[] = [
   { path: "/api/v1/analytics/by-profile", method: "GET", handler: getAnalyticsByProfile, protected: true },
   { path: "/api/v1/analytics/by-category", method: "GET", handler: getAnalyticsByCategory, protected: true },
   { path: "/api/v1/analytics/trends", method: "GET", handler: getAnalyticsTrends, protected: true },
+
+  // Category routes (protected)
+  { path: "/api/v1/categories", method: "GET", handler: getCategories, protected: true },
+  { path: "/api/v1/categories", method: "POST", handler: createCategoryHandler, protected: true },
+  { path: "/api/v1/categories/reorder", method: "PUT", handler: reorderCategoriesHandler, protected: true },
+  { path: "/api/v1/categories/:id", method: "PUT", handler: updateCategoryHandler, protected: true },
+  { path: "/api/v1/categories/:id", method: "DELETE", handler: deleteCategoryHandler, protected: true },
 ];
 
 interface MatchResult {
