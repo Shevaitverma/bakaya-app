@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { clearAllAuth, ApiError } from "@/lib/api-client";
+import { ApiError } from "@/lib/api-client";
+import { formatCurrencyExact } from "@/utils/currency";
 import { groupsApi, type Group } from "@/lib/api/groups";
 import { CATEGORIES, getCategoryEmoji } from "@/constants/categories";
 import styles from "./page.module.css";
@@ -50,10 +51,19 @@ export default function AddGroupExpensePage() {
   // Paid by
   const [paidBy, setPaidBy] = useState("");
 
+  // Split type: "equal" | "exact" | "percentage"
+  const [splitType, setSplitType] = useState<"equal" | "exact" | "percentage">("equal");
+
   // Split between
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(
     new Set()
   );
+
+  // Exact split amounts per member (userId -> string value)
+  const [exactAmounts, setExactAmounts] = useState<Record<string, string>>({});
+
+  // Percentage split per member (userId -> string value)
+  const [percentages, setPercentages] = useState<Record<string, string>>({});
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -79,12 +89,8 @@ export default function AddGroupExpensePage() {
           groupData.members.map((m) => m.userId.id)
         );
         setSelectedMembers(allMemberIds);
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 401) {
-          clearAllAuth();
-          routerRef.current.push("/login");
-          return;
-        }
+      } catch {
+        // Swallow — session-expired redirect is handled centrally by api-client
       } finally {
         setIsGroupLoading(false);
       }
@@ -114,6 +120,9 @@ export default function AddGroupExpensePage() {
       const next = new Set(prev);
       if (next.has(memberId)) {
         next.delete(memberId);
+        // Clean up custom amounts when deselecting
+        setExactAmounts((ea) => { const n = { ...ea }; delete n[memberId]; return n; });
+        setPercentages((p) => { const n = { ...p }; delete n[memberId]; return n; });
       } else {
         next.add(memberId);
       }
@@ -134,6 +143,60 @@ export default function AddGroupExpensePage() {
 
   const deselectAllMembers = () => {
     setSelectedMembers(new Set());
+    setExactAmounts({});
+    setPercentages({});
+  };
+
+  /** Handle exact amount input change for a member */
+  const handleExactAmountChange = (memberId: string, value: string) => {
+    const cleaned = value.replace(/[^0-9.]/g, "");
+    if ((cleaned.match(/\./g) || []).length > 1) return;
+    setExactAmounts((prev) => ({ ...prev, [memberId]: cleaned }));
+    if (errors.splitAmong) {
+      setErrors((prev) => ({ ...prev, splitAmong: undefined }));
+    }
+  };
+
+  /** Handle percentage input change for a member */
+  const handlePercentageChange = (memberId: string, value: string) => {
+    const cleaned = value.replace(/[^0-9.]/g, "");
+    if ((cleaned.match(/\./g) || []).length > 1) return;
+    setPercentages((prev) => ({ ...prev, [memberId]: cleaned }));
+    if (errors.splitAmong) {
+      setErrors((prev) => ({ ...prev, splitAmong: undefined }));
+    }
+  };
+
+  /** Calculate totals for exact split mode */
+  const getExactTotal = (): number => {
+    return Array.from(selectedMembers).reduce((sum, id) => {
+      const val = parseFloat(exactAmounts[id] || "0");
+      return sum + (isNaN(val) ? 0 : val);
+    }, 0);
+  };
+
+  /** Calculate total percentage */
+  const getPercentageTotal = (): number => {
+    return Array.from(selectedMembers).reduce((sum, id) => {
+      const val = parseFloat(percentages[id] || "0");
+      return sum + (isNaN(val) ? 0 : val);
+    }, 0);
+  };
+
+  /** Get amount from percentage for a member */
+  const getAmountFromPercentage = (memberId: string): number => {
+    const total = parseFloat(amount);
+    const pct = parseFloat(percentages[memberId] || "0");
+    if (isNaN(total) || isNaN(pct) || total <= 0) return 0;
+    return Math.round((total * pct) / 100 * 100) / 100;
+  };
+
+  /** Handle split type change, reset custom inputs */
+  const handleSplitTypeChange = (type: "equal" | "exact" | "percentage") => {
+    setSplitType(type);
+    if (errors.splitAmong) {
+      setErrors((prev) => ({ ...prev, splitAmong: undefined }));
+    }
   };
 
   /** Calculate per-person amounts for equal split (Math.floor + remainder to first) */
@@ -172,6 +235,19 @@ export default function AddGroupExpensePage() {
 
     if (selectedMembers.size === 0) {
       newErrors.splitAmong = "Select at least one member to split with";
+    } else if (splitType === "exact") {
+      const total = parseFloat(amount);
+      if (!isNaN(total) && total > 0) {
+        const exactTotal = getExactTotal();
+        if (Math.abs(exactTotal - total) > 0.01) {
+          newErrors.splitAmong = `Split amounts must equal the total. Currently ${formatCurrencyExact(exactTotal)} of ${formatCurrencyExact(total)} allocated.`;
+        }
+      }
+    } else if (splitType === "percentage") {
+      const pctTotal = getPercentageTotal();
+      if (Math.abs(pctTotal - 100) > 0.01) {
+        newErrors.splitAmong = `Percentages must add up to 100%. Currently ${pctTotal.toFixed(1)}% allocated.`;
+      }
     }
 
     setErrors(newErrors);
@@ -188,14 +264,35 @@ export default function AddGroupExpensePage() {
 
     const totalAmount = parseFloat(amount);
     const memberIds = Array.from(selectedMembers);
-    const splitPerPerson = Math.floor((totalAmount * 100) / memberIds.length) / 100;
-    const remainder = Math.round((totalAmount - splitPerPerson * memberIds.length) * 100) / 100;
 
-    // Build splitAmong array, assigning the rounding remainder to the first member
-    const splitAmong = memberIds.map((userId, idx) => ({
-      userId,
-      amount: idx === 0 ? Math.round((splitPerPerson + remainder) * 100) / 100 : splitPerPerson,
-    }));
+    let splitAmong: { userId: string; amount: number }[];
+
+    if (splitType === "exact") {
+      splitAmong = memberIds.map((userId) => ({
+        userId,
+        amount: Math.round(parseFloat(exactAmounts[userId] || "0") * 100) / 100,
+      }));
+    } else if (splitType === "percentage") {
+      // Convert percentages to amounts; handle rounding by assigning remainder to first member
+      const rawAmounts = memberIds.map((userId) => {
+        const pct = parseFloat(percentages[userId] || "0");
+        return Math.floor((totalAmount * pct) / 100 * 100) / 100;
+      });
+      const rawTotal = rawAmounts.reduce((s, a) => s + a, 0);
+      const diff = Math.round((totalAmount - rawTotal) * 100) / 100;
+      splitAmong = memberIds.map((userId, idx) => ({
+        userId,
+        amount: idx === 0 ? Math.round((rawAmounts[idx] + diff) * 100) / 100 : rawAmounts[idx],
+      }));
+    } else {
+      // Equal split
+      const splitPerPerson = Math.floor((totalAmount * 100) / memberIds.length) / 100;
+      const remainder = Math.round((totalAmount - splitPerPerson * memberIds.length) * 100) / 100;
+      splitAmong = memberIds.map((userId, idx) => ({
+        userId,
+        amount: idx === 0 ? Math.round((splitPerPerson + remainder) * 100) / 100 : splitPerPerson,
+      }));
+    }
 
     try {
       await groupsApi.createExpense(groupId, {
@@ -209,11 +306,6 @@ export default function AddGroupExpensePage() {
       routerRef.current.push(`/dashboard/groups/${groupId}`);
     } catch (error) {
       if (error instanceof ApiError) {
-        if (error.status === 401) {
-          clearAllAuth();
-          routerRef.current.push("/login");
-          return;
-        }
         setErrors({ server: error.message });
       } else {
         setErrors({
@@ -461,8 +553,24 @@ export default function AddGroupExpensePage() {
                 </div>
               </div>
 
-              <div className={styles.splitTypeLabel}>
-                Equal split
+              {/* Split type tabs */}
+              <div className={styles.splitTypeTabs}>
+                {(["equal", "exact", "percentage"] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    className={`${styles.splitTypeTab} ${
+                      splitType === type ? styles.splitTypeTabActive : ""
+                    }`}
+                    onClick={() => handleSplitTypeChange(type)}
+                  >
+                    {type === "equal"
+                      ? "Equal"
+                      : type === "exact"
+                      ? "Exact"
+                      : "Percentage"}
+                  </button>
+                ))}
               </div>
 
               <div className={styles.memberCheckboxList}>
@@ -494,10 +602,59 @@ export default function AddGroupExpensePage() {
                           <span className={styles.checkboxName}>
                             {getMemberDisplayName(member.userId)}
                           </span>
-                          {isChecked && memberAmount > 0 && (
+
+                          {/* Equal mode: show calculated amount */}
+                          {splitType === "equal" && isChecked && memberAmount > 0 && (
                             <span className={styles.checkboxAmount}>
-                              {"\u20B9"}{memberAmount.toFixed(2)}
+                              {formatCurrencyExact(memberAmount)}
                             </span>
+                          )}
+
+                          {/* Exact mode: show amount input */}
+                          {splitType === "exact" && isChecked && (
+                            <div className={styles.splitInputGroup}>
+                              <span className={styles.splitInputSuffix}>{"\u20B9"}</span>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                className={styles.splitInlineInput}
+                                placeholder="0.00"
+                                value={exactAmounts[member.userId.id] || ""}
+                                onChange={(e) =>
+                                  handleExactAmountChange(
+                                    member.userId.id,
+                                    e.target.value
+                                  )
+                                }
+                                onClick={(e) => e.preventDefault()}
+                              />
+                            </div>
+                          )}
+
+                          {/* Percentage mode: show percentage input + calculated amount */}
+                          {splitType === "percentage" && isChecked && (
+                            <div className={styles.splitInputGroup}>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                className={styles.splitInlineInput}
+                                placeholder="0"
+                                value={percentages[member.userId.id] || ""}
+                                onChange={(e) =>
+                                  handlePercentageChange(
+                                    member.userId.id,
+                                    e.target.value
+                                  )
+                                }
+                                onClick={(e) => e.preventDefault()}
+                              />
+                              <span className={styles.splitInputSuffix}>%</span>
+                              {getAmountFromPercentage(member.userId.id) > 0 && (
+                                <span className={styles.splitInputCalculated}>
+                                  ({formatCurrencyExact(getAmountFromPercentage(member.userId.id))})
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
                       <div
@@ -519,17 +676,69 @@ export default function AddGroupExpensePage() {
                 </span>
               )}
 
-              {splitAmounts.base > 0 && (
+              {/* Allocation indicator for Equal mode */}
+              {splitType === "equal" && splitAmounts.base > 0 && (
                 <div className={styles.splitSummary}>
-                  {"\u20B9"}{parseFloat(amount).toFixed(2)} split equally
+                  {formatCurrencyExact(parseFloat(amount))} split equally
                   among {selectedMembers.size}{" "}
                   {selectedMembers.size === 1 ? "person" : "people"} ={" "}
-                  {"\u20B9"}{splitAmounts.base.toFixed(2)} each
+                  {formatCurrencyExact(splitAmounts.base)} each
                   {splitAmounts.first !== splitAmounts.base && (
-                    <> (first person: {"\u20B9"}{splitAmounts.first.toFixed(2)})</>
+                    <> (first person: {formatCurrencyExact(splitAmounts.first)})</>
                   )}
                 </div>
               )}
+
+              {/* Allocation indicator for Exact mode */}
+              {splitType === "exact" && selectedMembers.size > 0 && amount && parseFloat(amount) > 0 && (() => {
+                const total = parseFloat(amount);
+                const allocated = getExactTotal();
+                const diff = Math.round((total - allocated) * 100) / 100;
+                const isMatch = Math.abs(diff) <= 0.01;
+                const isOver = diff < -0.01;
+                return (
+                  <div
+                    className={`${styles.splitAllocationIndicator} ${
+                      isMatch
+                        ? styles.splitAllocationOk
+                        : isOver
+                        ? styles.splitAllocationError
+                        : styles.splitAllocationWarning
+                    }`}
+                  >
+                    {isMatch
+                      ? `${formatCurrencyExact(allocated)} of ${formatCurrencyExact(total)} allocated`
+                      : isOver
+                      ? `${formatCurrencyExact(Math.abs(diff))} over (allocated ${formatCurrencyExact(allocated)} of ${formatCurrencyExact(total)})`
+                      : `${formatCurrencyExact(diff)} remaining (allocated ${formatCurrencyExact(allocated)} of ${formatCurrencyExact(total)})`}
+                  </div>
+                );
+              })()}
+
+              {/* Allocation indicator for Percentage mode */}
+              {splitType === "percentage" && selectedMembers.size > 0 && (() => {
+                const pctTotal = getPercentageTotal();
+                const diff = Math.round((100 - pctTotal) * 100) / 100;
+                const isMatch = Math.abs(diff) <= 0.01;
+                const isOver = diff < -0.01;
+                return (
+                  <div
+                    className={`${styles.splitAllocationIndicator} ${
+                      isMatch
+                        ? styles.splitAllocationOk
+                        : isOver
+                        ? styles.splitAllocationError
+                        : styles.splitAllocationWarning
+                    }`}
+                  >
+                    {isMatch
+                      ? `${pctTotal.toFixed(1)}% of 100% allocated`
+                      : isOver
+                      ? `${Math.abs(diff).toFixed(1)}% over (${pctTotal.toFixed(1)}% of 100%)`
+                      : `${diff.toFixed(1)}% remaining (${pctTotal.toFixed(1)}% of 100%)`}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Notes */}

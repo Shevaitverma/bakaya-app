@@ -20,6 +20,7 @@ import type { Expense, PersonalExpensesResponse } from '../../types/expense';
 import type { Profile } from '../../types/profile';
 import SwipeableExpenseItem from '../../components/SwipeableExpenseItem';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
+import { formatCurrencyExact } from '../../utils/currency';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { HomeStackParamList } from '../../navigation/types';
 
@@ -113,7 +114,7 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation })
   };
 
   const formatAmount = (amount: number): string => {
-    return `₹${amount.toFixed(2)}`;
+    return formatCurrencyExact(amount);
   };
 
   const handleAddExpense = () => {

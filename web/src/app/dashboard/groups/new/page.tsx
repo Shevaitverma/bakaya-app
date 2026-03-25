@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { clearAllAuth, ApiError } from "@/lib/api-client";
+import { ApiError } from "@/lib/api-client";
 import { groupsApi } from "@/lib/api/groups";
 import styles from "./page.module.css";
 
@@ -46,11 +46,6 @@ export default function CreateGroupPage() {
       routerRef.current.push("/dashboard");
     } catch (error) {
       if (error instanceof ApiError) {
-        if (error.status === 401) {
-          clearAllAuth();
-          routerRef.current.push("/login");
-          return;
-        }
         setErrors({ server: error.message });
       } else {
         setErrors({ server: "Unable to connect to server. Please try again." });

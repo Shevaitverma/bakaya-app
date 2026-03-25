@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { clearAllAuth, getToken } from "@/lib/api-client";
+import { clearAllAuth, getToken, setOnSessionExpired } from "@/lib/api-client";
 import { authApi } from "@/lib/api/auth";
 import styles from "./layout.module.css";
 
@@ -27,6 +27,37 @@ interface StoredUser {
   lastName?: string;
 }
 
+function BottomNavIcon({ label }: { label: string }) {
+  switch (label) {
+    case "Home":
+      return (
+        <svg viewBox="0 0 24 24">
+          <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1" />
+        </svg>
+      );
+    case "Groups":
+      return (
+        <svg viewBox="0 0 24 24">
+          <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      );
+    case "Analytics":
+      return (
+        <svg viewBox="0 0 24 24">
+          <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      );
+    case "Profiles":
+      return (
+        <svg viewBox="0 0 24 24">
+          <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
 export default function DashboardLayout({
   children,
 }: {
@@ -37,7 +68,6 @@ export default function DashboardLayout({
   routerRef.current = router;
   const pathname = usePathname();
   const [isAuthChecked, setIsAuthChecked] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<StoredUser | null>(null);
 
   useEffect(() => {
@@ -60,26 +90,20 @@ export default function DashboardLayout({
     } catch {
       clearAllAuth();
       routerRef.current.push("/login");
+      return;
     }
-  }, []);
 
-  // Close sidebar on route change (mobile)
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [pathname]);
+    // Register a global callback so that any API call that detects a truly
+    // expired session (refresh token rejected) can redirect to /login.
+    // This replaces the per-page clearAllAuth+redirect pattern.
+    setOnSessionExpired(() => {
+      routerRef.current.push("/login");
+    });
 
-  // Lock body scroll when sidebar overlay is open on mobile
-  useEffect(() => {
-    const cls = "dashboard-sidebar-open";
-    if (sidebarOpen) {
-      document.body.classList.add(cls);
-    } else {
-      document.body.classList.remove(cls);
-    }
     return () => {
-      document.body.classList.remove(cls);
+      setOnSessionExpired(null);
     };
-  }, [sidebarOpen]);
+  }, []);
 
   const handleLogout = async () => {
     // Best-effort server logout before clearing local tokens
@@ -90,7 +114,8 @@ export default function DashboardLayout({
 
   const isActive = (href: string) => {
     if (href === "/dashboard") {
-      return pathname === "/dashboard";
+      // Home is active for /dashboard and /dashboard/expenses/*
+      return pathname === "/dashboard" || pathname.startsWith("/dashboard/expenses");
     }
     return pathname.startsWith(href);
   };
@@ -110,25 +135,8 @@ export default function DashboardLayout({
 
   return (
     <div className={styles.layout}>
-      {/* Mobile hamburger */}
-      <button
-        className={`${styles.mobileToggle} ${sidebarOpen ? styles.mobileToggleHidden : ""}`}
-        onClick={() => setSidebarOpen(true)}
-        aria-label="Open navigation"
-      >
-        &#9776;
-      </button>
-
-      {/* Overlay (mobile) */}
-      <div
-        className={`${styles.overlay} ${sidebarOpen ? styles.overlayVisible : ""}`}
-        onClick={() => setSidebarOpen(false)}
-      />
-
-      {/* Sidebar */}
-      <aside
-        className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ""}`}
-      >
+      {/* Sidebar (desktop only, hidden on mobile via CSS) */}
+      <aside className={styles.sidebar}>
         <Link href="/dashboard" className={styles.sidebarBrand}>
           <span className={styles.brandIcon}>B</span>
           Bakaya
@@ -169,6 +177,22 @@ export default function DashboardLayout({
 
       {/* Main content */}
       <main className={styles.main}>{children}</main>
+
+      {/* Bottom Navigation Bar (mobile only, hidden on desktop via CSS) */}
+      <nav className={styles.bottomNav} aria-label="Main navigation">
+        {NAV_ITEMS.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`${styles.bottomNavTab} ${
+              isActive(item.href) ? styles.bottomNavTabActive : ""
+            }`}
+          >
+            <BottomNavIcon label={item.label} />
+            <span className={styles.bottomNavLabel}>{item.label}</span>
+          </Link>
+        ))}
+      </nav>
     </div>
   );
 }

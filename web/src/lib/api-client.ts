@@ -50,6 +50,35 @@ class ApiError extends Error {
   }
 }
 
+/**
+ * Global callback invoked when the session is truly expired (refresh token
+ * rejected by the server).  Dashboard layout registers this once so that any
+ * API call from any page can trigger a redirect to /login without every page
+ * needing its own 401 handler.
+ */
+let _onSessionExpired: (() => void) | null = null;
+
+export function setOnSessionExpired(cb: (() => void) | null): void {
+  _onSessionExpired = cb;
+}
+
+function redirectToLogin(): void {
+  if (typeof window !== "undefined") {
+    window.location.href = "/login";
+  }
+}
+
+function handleSessionExpired(): void {
+  clearAllAuth();
+  if (_onSessionExpired) {
+    _onSessionExpired();
+  } else {
+    // Fallback: if no callback is registered (e.g. outside the dashboard
+    // layout), use a hard redirect so the user always reaches /login.
+    redirectToLogin();
+  }
+}
+
 function buildHeaders(options: RequestInit): HeadersInit {
   const headers: HeadersInit = {
     ...(options.body ? { "Content-Type": "application/json" } : {}),
@@ -71,26 +100,44 @@ let refreshPromise: Promise<boolean> | null = null;
 
 async function doRefresh(): Promise<boolean> {
   const refreshToken = getRefreshToken();
-  if (!refreshToken) return false;
+  if (!refreshToken) {
+    // No refresh token at all — session is expired
+    handleSessionExpired();
+    return false;
+  }
 
+  let refreshRes: Response;
   try {
-    const refreshRes = await fetch(`${API_BASE}${REFRESH_ENDPOINT}`, {
+    refreshRes = await fetch(`${API_BASE}${REFRESH_ENDPOINT}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken }),
     });
-    const refreshJson = await refreshRes.json();
-    if (refreshJson.success && refreshJson.data) {
-      setToken(refreshJson.data.accessToken);
-      setRefreshToken(refreshJson.data.refreshToken);
-      return true;
-    }
   } catch {
-    // Refresh failed
+    // Network error — do NOT clear tokens.  The refresh token may still be
+    // valid; clearing it would permanently log the user out on a transient
+    // network blip.  The caller will see `false` and propagate the original
+    // 401, but the user can retry.
+    return false;
   }
-  // Refresh did not succeed — clear tokens
-  clearToken();
-  clearRefreshToken();
+
+  if (refreshRes.ok) {
+    try {
+      const refreshJson = await refreshRes.json();
+      if (refreshJson.success && refreshJson.data) {
+        setToken(refreshJson.data.accessToken);
+        setRefreshToken(refreshJson.data.refreshToken);
+        return true;
+      }
+    } catch {
+      // JSON parse error — treat as transient, don't clear tokens
+      return false;
+    }
+  }
+
+  // Server explicitly rejected the refresh token (401/403) — session is
+  // truly expired.  Clear everything and notify the app.
+  handleSessionExpired();
   return false;
 }
 

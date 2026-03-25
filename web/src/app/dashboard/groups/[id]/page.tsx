@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { formatDate } from "@/utils/format";
-import { clearAllAuth, ApiError } from "@/lib/api-client";
+import { formatCurrency, formatCurrencyExact } from "@/utils/currency";
+import { ApiError } from "@/lib/api-client";
 import {
   groupsApi,
   type Group,
@@ -36,8 +37,6 @@ interface SettleUpTarget {
 
 export default function GroupDetailPage() {
   const router = useRouter();
-  const routerRef = useRef(router);
-  routerRef.current = router;
   const params = useParams();
   const groupId = params.id as string;
 
@@ -94,12 +93,8 @@ export default function GroupDetailPage() {
         setTotalAmount(expensesData.totalAmount);
         setBalances(balancesData);
         setSettlements(settlementsData.settlements);
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 401) {
-          clearAllAuth();
-          routerRef.current.push("/login");
-          return;
-        }
+      } catch {
+        // Swallow — session-expired redirect is handled centrally by api-client
       } finally {
         setIsLoading(false);
       }
@@ -156,11 +151,6 @@ export default function GroupDetailPage() {
       setDeleteTarget(null);
     } catch (error) {
       if (error instanceof ApiError) {
-        if (error.status === 401) {
-          clearAllAuth();
-          routerRef.current.push("/login");
-          return;
-        }
         if (error.status === 404) {
           setDeleteError("Only the expense creator can delete this expense.");
         } else {
@@ -193,11 +183,6 @@ export default function GroupDetailPage() {
       setShowAddMember(false);
     } catch (error) {
       if (error instanceof ApiError) {
-        if (error.status === 401) {
-          clearAllAuth();
-          routerRef.current.push("/login");
-          return;
-        }
         setAddMemberError(error.message);
       } else {
         setAddMemberError("Unable to add member. Please try again.");
@@ -264,11 +249,6 @@ export default function GroupDetailPage() {
       cancelSettle();
     } catch (error) {
       if (error instanceof ApiError) {
-        if (error.status === 401) {
-          clearAllAuth();
-          routerRef.current.push("/login");
-          return;
-        }
         setSettleError(error.message);
       } else {
         setSettleError("Unable to record settlement. Please try again.");
@@ -299,7 +279,7 @@ export default function GroupDetailPage() {
           <div className={styles.totalRow}>
             <p className={styles.totalLabel}>Total expense</p>
             <p className={styles.totalValue}>
-              {"\u20B9"}{totalAmount.toFixed(2)}
+              {formatCurrencyExact(totalAmount)}
             </p>
           </div>
         </div>
@@ -365,7 +345,7 @@ export default function GroupDetailPage() {
                                   : styles.balanceAmountPositive
                               }`}
                             >
-                              {"\u20B9"}{Math.abs(entry.amount).toFixed(2)}
+                              {formatCurrencyExact(Math.abs(entry.amount))}
                             </p>
                           </div>
                         </div>
@@ -504,7 +484,7 @@ export default function GroupDetailPage() {
                         </div>
                       </div>
                       <span className={styles.settlementAmount}>
-                        {"\u20B9"}{s.amount.toFixed(2)}
+                        {formatCurrencyExact(s.amount)}
                       </span>
                     </div>
                   ))}
@@ -637,7 +617,7 @@ export default function GroupDetailPage() {
 
                       {/* Amount */}
                       <span className={styles.expenseAmount}>
-                        {"\u20B9"}{expense.amount.toFixed(2)}
+                        {formatCurrency(expense.amount)}
                       </span>
 
                       {/* Delete (only visible for expenses the current user created) */}

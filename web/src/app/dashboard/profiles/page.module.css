@@ -301,6 +301,11 @@
   margin-bottom: 1rem;
 }
 
+/* --- Date Picker Section --- */
+.datePickerSection {
+  margin-bottom: 1.5rem;
+}
+
 /* --- Profile Detail --- */
 .detailHeaderActions {
   display: flex;

@@ -24,6 +24,7 @@ import { Theme } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { groupService } from '../../services/groupService';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
+import { formatCurrency } from '../../utils/currency';
 import type { HomeStackParamList } from '../../navigation/types';
 import type {
   GroupData,
@@ -48,13 +49,6 @@ const formatDate = (dateString: string): string => {
     day: 'numeric',
     month: 'short',
   });
-};
-
-const formatCurrency = (amount: number): string => {
-  return `\u20B9${Math.abs(amount).toLocaleString('en-IN', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  })}`;
 };
 
 const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route }) => {
@@ -278,7 +272,7 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
                   : Theme.colors.error,
             },
           ]}>
-          {isPositive ? `gets back ${formatCurrency(item.amount)}` : isZero ? 'settled up' : `owes ${formatCurrency(item.amount)}`}
+          {isPositive ? `gets back ${formatCurrency(Math.abs(item.amount))}` : isZero ? 'settled up' : `owes ${formatCurrency(Math.abs(item.amount))}`}
         </Text>
       </View>
     );

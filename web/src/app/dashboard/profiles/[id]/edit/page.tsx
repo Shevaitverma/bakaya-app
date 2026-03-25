@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { clearAllAuth, ApiError } from "@/lib/api-client";
+import { ApiError } from "@/lib/api-client";
 import { profilesApi } from "@/lib/api/profiles";
 import type { Profile } from "@/types/profile";
 import styles from "../../page.module.css";
@@ -37,11 +37,6 @@ export default function EditProfilePage() {
         setIsDefault(profile.isDefault);
       } catch (err) {
         if (err instanceof ApiError) {
-          if (err.status === 401) {
-            clearAllAuth();
-            routerRef.current.push("/login");
-            return;
-          }
           if (err.status === 404) {
             setFetchError("Profile not found.");
             return;
@@ -77,11 +72,6 @@ export default function EditProfilePage() {
       routerRef.current.push("/dashboard/profiles");
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.status === 401) {
-          clearAllAuth();
-          routerRef.current.push("/login");
-          return;
-        }
         setError(err.message);
       } else {
         setError("Failed to update profile");

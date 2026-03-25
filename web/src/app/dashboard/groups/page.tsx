@@ -1,16 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ApiError, clearAllAuth } from "@/lib/api-client";
 import { groupsApi, type Group } from "@/lib/api/groups";
 import styles from "./page.module.css";
 
 export default function GroupsPage() {
-  const router = useRouter();
-  const routerRef = useRef(router);
-  routerRef.current = router;
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -18,14 +13,7 @@ export default function GroupsPage() {
     groupsApi
       .list()
       .then((data) => setGroups(data.groups))
-      .catch((error) => {
-        if (error instanceof ApiError && error.status === 401) {
-          clearAllAuth();
-          routerRef.current.push("/login");
-          return;
-        }
-        setGroups([]);
-      })
+      .catch(() => setGroups([]))
       .finally(() => setIsLoading(false));
   }, []);
 

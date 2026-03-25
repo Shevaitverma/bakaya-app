@@ -183,34 +183,19 @@
   min-width: 0;
 }
 
-/* --- Mobile Toggle --- */
+/* --- Mobile Toggle (hamburger) --- */
 .mobileToggle {
   display: none;
-  position: fixed;
-  top: 12px;
-  left: 12px;
-  z-index: 200;
-  width: 42px;
-  height: 42px;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-card);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  cursor: pointer;
-  font-size: 1.25rem;
-  color: var(--color-text-primary);
-  -webkit-tap-highlight-color: transparent;
 }
 
 /* --- Overlay --- */
 .overlay {
   display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  z-index: 90;
+}
+
+/* --- Bottom Navigation Bar --- */
+.bottomNav {
+  display: none;
 }
 
 /* --- Body scroll lock when sidebar is open on mobile --- */
@@ -220,41 +205,88 @@
 
 /* --- Responsive --- */
 @media (max-width: 768px) {
+  /* Hide sidebar completely on mobile */
   .sidebar {
     transform: translateX(-100%);
     visibility: hidden;
   }
 
+  /* Override: never show sidebar on mobile (even the old sidebarOpen class) */
   .sidebarOpen {
-    transform: translateX(0);
-    visibility: visible;
+    transform: translateX(-100%);
+    visibility: hidden;
   }
 
   .main {
     margin-left: 0;
-    /* Top padding: hamburger top (12px) + height (42px) + gap (6px) = 60px */
-    padding: 60px var(--spacing-md) var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-md) 80px;
   }
 
-  .mobileToggle {
+  /* Bottom Navigation Bar — visible on mobile */
+  .bottomNav {
     display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    height: 60px;
+    background: #ffffff;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+    align-items: stretch;
+    justify-content: space-around;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    -webkit-tap-highlight-color: transparent;
   }
 
-  /* Hide hamburger when sidebar is open so it doesn't stack on top */
-  .mobileToggleHidden {
-    opacity: 0;
-    pointer-events: none;
+  .bottomNavTab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 2px;
+    padding: 6px 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    color: #999999;
+    transition: color 0.2s ease, transform 0.1s ease;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
   }
 
-  .overlay {
-    display: block;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--transition-normal);
+  .bottomNavTab:active {
+    transform: scale(0.92);
+    opacity: 0.8;
   }
 
-  .overlayVisible {
-    opacity: 1;
-    pointer-events: auto;
+  .bottomNavTab svg {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .bottomNavLabel {
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.01em;
+  }
+
+  .bottomNavTabActive {
+    color: #e91e63;
+    font-weight: 600;
+  }
+
+  .bottomNavTabActive .bottomNavLabel {
+    font-weight: 600;
   }
 }

@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ApiError, clearAllAuth } from "@/lib/api-client";
+import { formatCurrency } from "@/utils/currency";
 import { expensesApi, type Expense } from "@/lib/api/expenses";
 import { groupsApi, type Group } from "@/lib/api/groups";
 import { profilesApi } from "@/lib/api/profiles";
@@ -33,9 +32,6 @@ function formatDate(dateStr: string): string {
 }
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const routerRef = useRef(router);
-  routerRef.current = router;
   const [userName, setUserName] = useState("User");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
@@ -57,18 +53,10 @@ export default function DashboardPage() {
 
     async function fetchDashboardData() {
       try {
-        const handle401 = (error: unknown) => {
-          if (error instanceof ApiError && error.status === 401) {
-            clearAllAuth();
-            routerRef.current.push("/login");
-          }
-          return null;
-        };
-
         const [expenseData, groupsData, profilesData] = await Promise.all([
-          expensesApi.list({ limit: 5 }).catch(handle401),
-          groupsApi.list().catch(handle401),
-          profilesApi.getProfiles().catch(handle401),
+          expensesApi.list({ limit: 5 }).catch(() => null),
+          groupsApi.list().catch(() => null),
+          profilesApi.getProfiles().catch(() => null),
         ]);
 
         if (expenseData) {
@@ -185,7 +173,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <span className={styles.expenseAmount}>
-                    &#8377;{expense.amount.toLocaleString("en-IN")}
+                    {formatCurrency(expense.amount)}
                   </span>
                   <span className={styles.expenseDate}>
                     {formatDate(expense.createdAt)}

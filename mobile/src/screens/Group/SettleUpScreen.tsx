@@ -22,6 +22,7 @@ import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { Theme } from '../../constants/theme';
 import { groupService } from '../../services/groupService';
+import { formatCurrency } from '../../utils/currency';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { HomeStackParamList } from '../../navigation/types';
 
@@ -34,13 +35,6 @@ interface DebtEntry {
   toName: string;
   amount: number;
 }
-
-const formatCurrency = (amount: number): string => {
-  return `\u20B9${Math.abs(amount).toLocaleString('en-IN', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  })}`;
-};
 
 const SettleUpScreen: React.FC<SettleUpScreenProps> = ({ navigation, route }) => {
   const { groupId, balances, members } = route.params;

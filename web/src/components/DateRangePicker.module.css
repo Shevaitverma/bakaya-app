@@ -1,0 +1,128 @@
+/* ============================================
+   DateRangePicker Component Styles
+   Matches Bakaya pink/coral theme
+   ============================================ */
+
+/* --- Wrapper --- */
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* --- Presets Row --- */
+.presetsRow {
+  display: flex;
+  gap: var(--spacing-sm);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.presetsRow::-webkit-scrollbar {
+  display: none;
+}
+
+/* --- Preset Button --- */
+.presetBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  background: var(--color-card);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-round);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.presetBtn:hover {
+  background: var(--color-light-grey);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.presetBtnActive {
+  background: rgba(216, 27, 96, 0.08);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.presetBtnActive:hover {
+  background: rgba(216, 27, 96, 0.12);
+}
+
+/* --- Custom Date Inputs Row --- */
+.customRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.dateLabel {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dateInput {
+  padding: 6px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  color: var(--color-text-primary);
+  background: var(--color-card);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  outline: none;
+}
+
+.dateInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(216, 27, 96, 0.12);
+}
+
+.dateSeparator {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}
+
+/* --- Mobile Responsive --- */
+@media (max-width: 768px) {
+  .presetsRow {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .presetBtn {
+    font-size: 0.75rem;
+    padding: 6px 12px;
+  }
+
+  .customRow {
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+  }
+
+  .dateInput {
+    font-size: 16px; /* prevents zoom on iOS */
+    min-height: 40px;
+    padding: 8px 10px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .dateSeparator {
+    flex-shrink: 0;
+  }
+}

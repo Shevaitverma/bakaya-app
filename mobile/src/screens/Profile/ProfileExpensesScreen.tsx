@@ -23,6 +23,7 @@ import { expenseService } from '../../services/expenseService';
 import type { Expense, PersonalExpensesResponse } from '../../types/expense';
 import SwipeableExpenseItem from '../../components/SwipeableExpenseItem';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
+import { formatCurrencyExact } from '../../utils/currency';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { HomeStackParamList } from '../../navigation/types';
 
@@ -113,7 +114,7 @@ const ProfileExpensesScreen: React.FC<ProfileExpensesScreenProps> = ({ route, na
   };
 
   const formatAmount = (amount: number): string => {
-    return `\u20B9${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return formatCurrencyExact(amount);
   };
 
   const handleAddExpense = () => {

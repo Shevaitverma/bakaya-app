@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { ApiError } from "@/lib/api-client";
 import { profilesApi } from "@/lib/api/profiles";
 import { expensesApi, type Expense } from "@/lib/api/expenses";
-import { ApiError, clearAllAuth } from "@/lib/api-client";
+import { formatCurrency } from "@/utils/currency";
 import type { Profile } from "@/types/profile";
+import DateRangePicker from "@/components/DateRangePicker";
 import styles from "../page.module.css";
 
 function formatDate(dateStr: string): string {
@@ -17,8 +19,6 @@ function formatDate(dateStr: string): string {
 export default function ProfileDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const routerRef = useRef(router);
-  routerRef.current = router;
   const profileId = params.id as string;
 
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -28,30 +28,45 @@ export default function ProfileDetailPage() {
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [dateStart, setDateStart] = useState<string | undefined>(undefined);
+  const [dateEnd, setDateEnd] = useState<string | undefined>(undefined);
+
+  // Fetch profile info once on mount
+  useEffect(() => {
+    profilesApi
+      .getProfile(profileId)
+      .then((profileData) => setProfile(profileData))
+      .catch(() => {
+        // Swallow — session-expired redirect is handled centrally by api-client
+      });
+  }, [profileId]);
+
+  // Fetch expenses (re-runs when date range changes)
+  const fetchExpenses = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const params: {
+        limit: number;
+        profileId: string;
+        startDate?: string;
+        endDate?: string;
+      } = { limit: 100, profileId };
+      if (dateStart) params.startDate = dateStart;
+      if (dateEnd) params.endDate = dateEnd;
+      const expenseData = await expensesApi.list(params);
+      setExpenses(expenseData.expenses);
+      setTotalAmount(expenseData.totalExpenseAmount);
+    } catch {
+      setExpenses([]);
+      setTotalAmount(0);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [profileId, dateStart, dateEnd]);
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const [profileData, expenseData] = await Promise.all([
-          profilesApi.getProfile(profileId),
-          expensesApi.list({ limit: 100, profileId } as Parameters<typeof expensesApi.list>[0]),
-        ]);
-        setProfile(profileData);
-        setExpenses(expenseData.expenses);
-        setTotalAmount(expenseData.totalExpenseAmount);
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 401) {
-          clearAllAuth();
-          routerRef.current.push("/login");
-          return;
-        }
-        // graceful fallback
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchData();
-  }, [profileId]);
+    fetchExpenses();
+  }, [fetchExpenses]);
 
   const confirmDelete = async () => {
     if (!deleteTarget || isDeleting) return;
@@ -63,11 +78,6 @@ export default function ProfileDetailPage() {
       setTotalAmount((prev) => prev - deleteTarget.amount);
       setDeleteTarget(null);
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
-        clearAllAuth();
-        routerRef.current.push("/login");
-        return;
-      }
       if (error instanceof ApiError) {
         setDeleteError(error.message);
       } else {
@@ -77,14 +87,6 @@ export default function ProfileDetailPage() {
       setIsDeleting(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className={styles.page}>
-        <p className={styles.loadingText}>Loading profile...</p>
-      </div>
-    );
-  }
 
   return (
     <div className={styles.page}>
@@ -129,12 +131,24 @@ export default function ProfileDetailPage() {
           Total Spent
         </p>
         <p className={styles.totalCardValue}>
-          &#8377;{totalAmount.toLocaleString("en-IN")}
+          {formatCurrency(totalAmount)}
         </p>
       </div>
 
+      {/* Date Range Picker */}
+      <div className={styles.datePickerSection}>
+        <DateRangePicker
+          onChange={(startDate, endDate) => {
+            setDateStart(startDate);
+            setDateEnd(endDate);
+          }}
+        />
+      </div>
+
       {/* Expenses List */}
-      {expenses.length === 0 ? (
+      {isLoading ? (
+        <p className={styles.loadingText}>Loading expenses...</p>
+      ) : expenses.length === 0 ? (
         <div className={styles.emptyState}>
           <p className={styles.emptyTitle}>No expenses for this profile</p>
           <p className={styles.emptySubtitle}>Add an expense to start tracking</p>
@@ -153,7 +167,7 @@ export default function ProfileDetailPage() {
               </div>
               <div className={styles.expenseRowActions}>
                 <span className={styles.expenseRowAmount}>
-                  &#8377;{expense.amount.toLocaleString("en-IN")}
+                  {formatCurrency(expense.amount)}
                 </span>
                 <Link
                   href={`/dashboard/expenses/${expense._id}/edit`}

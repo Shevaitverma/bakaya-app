@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDate } from "@/utils/format";
-import { clearAllAuth, ApiError } from "@/lib/api-client";
+import { formatCurrency, formatCurrencyExact } from "@/utils/currency";
 import { expensesApi, type Expense } from "@/lib/api/expenses";
 import { profilesApi } from "@/lib/api/profiles";
 import type { Profile } from "@/types/profile";
+import DateRangePicker from "@/components/DateRangePicker";
 import styles from "./page.module.css";
 
 /** Emoji equivalents for category icons (matching mobile categoryIcons.ts) */
@@ -37,8 +38,6 @@ function getCategoryEmoji(category: string): string {
 
 export default function ExpensesPage() {
   const router = useRouter();
-  const routerRef = useRef(router);
-  routerRef.current = router;
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [totalAmount, setTotalAmount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,47 +45,48 @@ export default function ExpensesPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [activeProfileFilter, setActiveProfileFilter] = useState<string | null>(null);
+  const [dateStartFilter, setDateStartFilter] = useState<string | undefined>(undefined);
+  const [dateEndFilter, setDateEndFilter] = useState<string | undefined>(undefined);
 
   // Fetch profiles once on mount
   useEffect(() => {
-    async function fetchProfiles() {
-      try {
-        const data = await profilesApi.getProfiles();
-        setProfiles(data.profiles ?? []);
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 401) {
-          clearAllAuth();
-          routerRef.current.push("/login");
-        }
-      }
-    }
-
-    fetchProfiles();
+    profilesApi
+      .getProfiles()
+      .then((data) => setProfiles(data.profiles ?? []))
+      .catch(() => {
+        // Swallow — session-expired redirect is handled centrally by api-client
+      });
   }, []);
 
-  // Fetch expenses from API (re-runs when profile filter changes)
+  // Fetch expenses from API (re-runs when profile or date filter changes)
   const fetchExpenses = useCallback(async () => {
     setIsLoading(true);
     try {
-      const params: { limit: number; profileId?: string } = { limit: 100 };
+      const params: {
+        limit: number;
+        profileId?: string;
+        startDate?: string;
+        endDate?: string;
+      } = { limit: 100 };
       if (activeProfileFilter) {
         params.profileId = activeProfileFilter;
+      }
+      if (dateStartFilter) {
+        params.startDate = dateStartFilter;
+      }
+      if (dateEndFilter) {
+        params.endDate = dateEndFilter;
       }
       const data = await expensesApi.list(params);
       setExpenses(data.expenses);
       setTotalAmount(data.totalExpenseAmount);
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
-        clearAllAuth();
-        routerRef.current.push("/login");
-        return;
-      }
+    } catch {
       setExpenses([]);
       setTotalAmount(0);
     } finally {
       setIsLoading(false);
     }
-  }, [activeProfileFilter]);
+  }, [activeProfileFilter, dateStartFilter, dateEndFilter]);
 
   useEffect(() => {
     fetchExpenses();
@@ -104,12 +104,8 @@ export default function ExpensesPage() {
       await expensesApi.delete(deleteTarget._id);
       setExpenses((prev) => prev.filter((e) => e._id !== deleteTarget._id));
       setTotalAmount((prev) => prev - deleteTarget.amount);
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
-        clearAllAuth();
-        routerRef.current.push("/login");
-        return;
-      }
+    } catch {
+      // Swallow — session-expired redirect is handled centrally by api-client
     } finally {
       setDeleteTarget(null);
       setIsDeleting(false);
@@ -137,7 +133,7 @@ export default function ExpensesPage() {
           <div className={styles.totalRow}>
             <p className={styles.totalLabel}>Total amount</p>
             <p className={styles.totalValue}>
-              ₹{totalAmount.toFixed(2)}
+              {formatCurrencyExact(totalAmount)}
             </p>
           </div>
         </div>
@@ -177,6 +173,16 @@ export default function ExpensesPage() {
           ))}
         </div>
       )}
+
+      {/* ---------- Date Range Picker ---------- */}
+      <div className={styles.content} style={{ paddingBottom: 0 }}>
+        <DateRangePicker
+          onChange={(startDate, endDate) => {
+            setDateStartFilter(startDate);
+            setDateEndFilter(endDate);
+          }}
+        />
+      </div>
 
       {/* ---------- Content ---------- */}
       <main className={styles.content}>
@@ -235,7 +241,7 @@ export default function ExpensesPage() {
 
                 {/* Amount */}
                 <span className={styles.expenseAmount}>
-                  ₹{expense.amount.toFixed(2)}
+                  {formatCurrency(expense.amount)}
                 </span>
 
                 {/* Edit */}

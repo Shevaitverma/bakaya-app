@@ -1,17 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { ApiError } from "@/lib/api-client";
 import { profilesApi } from "@/lib/api/profiles";
 import type { Profile } from "@/types/profile";
-import { ApiError, clearAllAuth } from "@/lib/api-client";
 import styles from "./page.module.css";
 
 export default function ProfilesPage() {
-  const router = useRouter();
-  const routerRef = useRef(router);
-  routerRef.current = router;
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null);
@@ -22,14 +18,7 @@ export default function ProfilesPage() {
     profilesApi
       .getProfiles()
       .then((data) => setProfiles(data.profiles ?? []))
-      .catch((error) => {
-        if (error instanceof ApiError && error.status === 401) {
-          clearAllAuth();
-          routerRef.current.push("/login");
-          return;
-        }
-        setProfiles([]);
-      })
+      .catch(() => setProfiles([]))
       .finally(() => setIsLoading(false));
   }, []);
 

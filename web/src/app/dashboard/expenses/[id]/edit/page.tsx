@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { clearAllAuth, ApiError } from "@/lib/api-client";
+import { ApiError } from "@/lib/api-client";
 import { expensesApi, type Expense } from "@/lib/api/expenses";
 import { profilesApi } from "@/lib/api/profiles";
 import type { Profile } from "@/types/profile";
@@ -55,11 +55,6 @@ export default function EditExpensePage() {
         setProfiles(list);
       } catch (error) {
         if (error instanceof ApiError) {
-          if (error.status === 401) {
-            clearAllAuth();
-            routerRef.current.push("/login");
-            return;
-          }
           if (error.status === 404) {
             setFetchError("Expense not found.");
             return;
@@ -135,11 +130,6 @@ export default function EditExpensePage() {
       routerRef.current.push("/dashboard/expenses");
     } catch (error) {
       if (error instanceof ApiError) {
-        if (error.status === 401) {
-          clearAllAuth();
-          routerRef.current.push("/login");
-          return;
-        }
         setErrors({ server: error.message });
       } else {
         setErrors({ server: "Unable to connect to server. Please try again." });

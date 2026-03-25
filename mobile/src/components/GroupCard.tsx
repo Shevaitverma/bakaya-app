@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { Theme } from '../constants/theme';
+import { formatCurrencyExact } from '../utils/currency';
 import { GroupCardProps } from '../interfaces/groupCard';
 
 const GroupCard: React.FC<GroupCardProps> = ({
@@ -10,10 +11,6 @@ const GroupCard: React.FC<GroupCardProps> = ({
   imageUri,
   onPress,
 }) => {
-  const formatAmount = (value: number): string => {
-    return value.toFixed(2);
-  };
-
   const hasAmount = amount > 0;
   const amountColor = hasAmount ? Theme.colors.error : Theme.colors.success;
 
@@ -73,7 +70,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
             {getAmountLabel()}
           </Text>
           <Text style={[styles.amount, { color: amountColor }]}>
-            ₹{formatAmount(amount)}
+            {formatCurrencyExact(amount)}
           </Text>
         </View>
       </View>

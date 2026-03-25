@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   Modal,
   StatusBar,
+  TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
@@ -25,6 +26,7 @@ import { Theme } from '../../constants/theme';
 import { groupService } from '../../services/groupService';
 import { getCategoryIcon } from '../../utils/categoryIcons';
 import { CATEGORIES } from '../../constants/categories';
+import { formatCurrencyExact } from '../../utils/currency';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { HomeStackParamList } from '../../navigation/types';
 
@@ -47,10 +49,19 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
   const currentUserId = user?.id || '';
   const [paidBy, setPaidBy] = useState(currentUserId);
 
+  // Split type: "equal" | "exact" | "percentage"
+  const [splitType, setSplitType] = useState<'equal' | 'exact' | 'percentage'>('equal');
+
   // Split between - default all members selected
   const [splitMembers, setSplitMembers] = useState<Set<string>>(
     new Set(members.map((m) => m.userId))
   );
+
+  // Exact split amounts per member (userId -> string value)
+  const [exactAmounts, setExactAmounts] = useState<Record<string, string>>({});
+
+  // Percentage split per member (userId -> string value)
+  const [percentages, setPercentages] = useState<Record<string, string>>({});
 
   const [errors, setErrors] = useState<{
     title?: string;
@@ -87,6 +98,19 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
 
     if (splitMembers.size < 1) {
       newErrors.split = 'Select at least one member to split with';
+    } else if (splitType === 'exact') {
+      const amountNum = parseFloat(amount);
+      if (!isNaN(amountNum) && amountNum > 0) {
+        const exactTotal = getExactTotal();
+        if (Math.abs(exactTotal - amountNum) > 0.01) {
+          newErrors.split = `Split amounts must equal the total. Currently ${formatCurrencyExact(exactTotal)} of ${formatCurrencyExact(amountNum)} allocated.`;
+        }
+      }
+    } else if (splitType === 'percentage') {
+      const pctTotal = getPercentageTotal();
+      if (Math.abs(pctTotal - 100) > 0.01) {
+        newErrors.split = `Percentages must add up to 100%. Currently ${pctTotal.toFixed(1)}% allocated.`;
+      }
     }
 
     setErrors(newErrors);
@@ -102,17 +126,37 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
     }
 
     const amountNum = parseFloat(amount);
-    const splitCount = splitMembers.size;
-    // Use Math.floor to match server logic (floor base, remainder to first person)
-    const baseAmount = Math.floor((amountNum / splitCount) * 100) / 100;
-    const remainder = Math.round((amountNum - baseAmount * splitCount) * 100) / 100;
-
-    // Build splitAmong array
     const splitMemberIds = Array.from(splitMembers);
-    const splitAmong = splitMemberIds.map((userId, i) => ({
-      userId,
-      amount: i === 0 ? baseAmount + remainder : baseAmount,
-    }));
+
+    let splitAmong: { userId: string; amount: number }[];
+
+    if (splitType === 'exact') {
+      splitAmong = splitMemberIds.map((userId) => ({
+        userId,
+        amount: Math.round(parseFloat(exactAmounts[userId] || '0') * 100) / 100,
+      }));
+    } else if (splitType === 'percentage') {
+      // Convert percentages to amounts; assign rounding remainder to first member
+      const rawAmounts = splitMemberIds.map((userId) => {
+        const pct = parseFloat(percentages[userId] || '0');
+        return Math.floor(((amountNum * pct) / 100) * 100) / 100;
+      });
+      const rawTotal = rawAmounts.reduce((s, a) => s + a, 0);
+      const diff = Math.round((amountNum - rawTotal) * 100) / 100;
+      splitAmong = splitMemberIds.map((userId, i) => ({
+        userId,
+        amount: i === 0 ? Math.round((rawAmounts[i] + diff) * 100) / 100 : rawAmounts[i],
+      }));
+    } else {
+      // Equal split
+      const splitCount = splitMembers.size;
+      const baseAmount = Math.floor((amountNum / splitCount) * 100) / 100;
+      const remainder = Math.round((amountNum - baseAmount * splitCount) * 100) / 100;
+      splitAmong = splitMemberIds.map((userId, i) => ({
+        userId,
+        amount: i === 0 ? baseAmount + remainder : baseAmount,
+      }));
+    }
 
     try {
       setLoading(true);
@@ -166,6 +210,17 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
       const newSet = new Set(prev);
       if (newSet.has(userId)) {
         newSet.delete(userId);
+        // Clean up custom amounts when deselecting
+        setExactAmounts((ea) => {
+          const n = { ...ea };
+          delete n[userId];
+          return n;
+        });
+        setPercentages((p) => {
+          const n = { ...p };
+          delete n[userId];
+          return n;
+        });
       } else {
         newSet.add(userId);
       }
@@ -176,12 +231,62 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
     }
   };
 
+  /** Handle exact amount input change for a member */
+  const handleExactAmountChange = (userId: string, value: string) => {
+    let cleaned = value.replace(/[^0-9.]/g, '');
+    const parts = cleaned.split('.');
+    if (parts.length > 2) {
+      cleaned = parts[0] + '.' + parts.slice(1).join('');
+    }
+    setExactAmounts((prev) => ({ ...prev, [userId]: cleaned }));
+    if (errors.split) {
+      setErrors({ ...errors, split: undefined });
+    }
+  };
+
+  /** Handle percentage input change for a member */
+  const handlePercentageChange = (userId: string, value: string) => {
+    let cleaned = value.replace(/[^0-9.]/g, '');
+    const parts = cleaned.split('.');
+    if (parts.length > 2) {
+      cleaned = parts[0] + '.' + parts.slice(1).join('');
+    }
+    setPercentages((prev) => ({ ...prev, [userId]: cleaned }));
+    if (errors.split) {
+      setErrors({ ...errors, split: undefined });
+    }
+  };
+
+  /** Calculate total of exact amounts for selected members */
+  const getExactTotal = (): number => {
+    return Array.from(splitMembers).reduce((sum, id) => {
+      const val = parseFloat(exactAmounts[id] || '0');
+      return sum + (isNaN(val) ? 0 : val);
+    }, 0);
+  };
+
+  /** Calculate total percentage for selected members */
+  const getPercentageTotal = (): number => {
+    return Array.from(splitMembers).reduce((sum, id) => {
+      const val = parseFloat(percentages[id] || '0');
+      return sum + (isNaN(val) ? 0 : val);
+    }, 0);
+  };
+
+  /** Get amount from percentage for a member */
+  const getAmountFromPercentage = (userId: string): number => {
+    const total = parseFloat(amount);
+    const pct = parseFloat(percentages[userId] || '0');
+    if (isNaN(total) || isNaN(pct) || total <= 0) return 0;
+    return Math.round(((total * pct) / 100) * 100) / 100;
+  };
+
   const splitPerPerson = (): string => {
-    if (!amount || splitMembers.size === 0) return '\u20B90.00';
+    if (!amount || splitMembers.size === 0) return formatCurrencyExact(0);
     const amountNum = parseFloat(amount);
-    if (isNaN(amountNum) || amountNum <= 0) return '\u20B90.00';
+    if (isNaN(amountNum) || amountNum <= 0) return formatCurrencyExact(0);
     const perPerson = amountNum / splitMembers.size;
-    return `\u20B9${perPerson.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return formatCurrencyExact(perPerson);
   };
 
   const selectedCategoryIcon = category ? getCategoryIcon(category) : 'receipt';
@@ -313,12 +418,113 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
 
           {/* Split Between */}
           <View style={styles.fieldContainer}>
-            <View style={styles.splitHeader}>
-              <Text style={styles.fieldLabel}>Split between</Text>
-              <Text style={styles.splitInfo}>
-                Equal split {'\u00B7'} {splitPerPerson()} each
-              </Text>
+            <Text style={styles.fieldLabel}>Split between</Text>
+
+            {/* Split type tabs */}
+            <View style={styles.splitTypeTabs}>
+              {(['equal', 'exact', 'percentage'] as const).map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.splitTypeTab,
+                    splitType === type && styles.splitTypeTabActive,
+                  ]}
+                  onPress={() => {
+                    setSplitType(type);
+                    if (errors.split) setErrors({ ...errors, split: undefined });
+                  }}
+                  activeOpacity={0.7}>
+                  <Text
+                    style={[
+                      styles.splitTypeTabText,
+                      splitType === type && styles.splitTypeTabTextActive,
+                    ]}>
+                    {type === 'equal' ? 'Equal' : type === 'exact' ? 'Exact' : 'Percentage'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
+
+            {/* Equal mode info */}
+            {splitType === 'equal' && (
+              <View style={styles.splitHeader}>
+                <Text style={styles.splitInfo}>
+                  Equal split {'\u00B7'} {splitPerPerson()} each
+                </Text>
+              </View>
+            )}
+
+            {/* Allocation indicator for Exact mode */}
+            {splitType === 'exact' && splitMembers.size > 0 && amount && parseFloat(amount) > 0 && (() => {
+              const total = parseFloat(amount);
+              const allocated = getExactTotal();
+              const diff = Math.round((total - allocated) * 100) / 100;
+              const isMatch = Math.abs(diff) <= 0.01;
+              const isOver = diff < -0.01;
+              return (
+                <View
+                  style={[
+                    styles.allocationIndicator,
+                    isMatch
+                      ? styles.allocationOk
+                      : isOver
+                      ? styles.allocationError
+                      : styles.allocationWarning,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.allocationText,
+                      isMatch
+                        ? styles.allocationTextOk
+                        : isOver
+                        ? styles.allocationTextError
+                        : styles.allocationTextWarning,
+                    ]}>
+                    {isMatch
+                      ? `${formatCurrencyExact(allocated)} of ${formatCurrencyExact(total)} allocated`
+                      : isOver
+                      ? `${formatCurrencyExact(Math.abs(diff))} over`
+                      : `${formatCurrencyExact(diff)} remaining`}
+                  </Text>
+                </View>
+              );
+            })()}
+
+            {/* Allocation indicator for Percentage mode */}
+            {splitType === 'percentage' && splitMembers.size > 0 && (() => {
+              const pctTotal = getPercentageTotal();
+              const diff = Math.round((100 - pctTotal) * 100) / 100;
+              const isMatch = Math.abs(diff) <= 0.01;
+              const isOver = diff < -0.01;
+              return (
+                <View
+                  style={[
+                    styles.allocationIndicator,
+                    isMatch
+                      ? styles.allocationOk
+                      : isOver
+                      ? styles.allocationError
+                      : styles.allocationWarning,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.allocationText,
+                      isMatch
+                        ? styles.allocationTextOk
+                        : isOver
+                        ? styles.allocationTextError
+                        : styles.allocationTextWarning,
+                    ]}>
+                    {isMatch
+                      ? `${pctTotal.toFixed(1)}% of 100% allocated`
+                      : isOver
+                      ? `${Math.abs(diff).toFixed(1)}% over`
+                      : `${diff.toFixed(1)}% remaining`}
+                  </Text>
+                </View>
+              );
+            })()}
+
             <View style={styles.splitMembersList}>
               {members.map((member) => {
                 const isSelected = splitMembers.has(member.userId);
@@ -326,43 +532,83 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
                 const displayName = isCurrentUser ? 'You' : member.name;
 
                 return (
-                  <TouchableOpacity
-                    key={member.userId}
-                    style={[
-                      styles.splitMemberRow,
-                      isSelected && styles.splitMemberRowSelected,
-                    ]}
-                    onPress={() => toggleSplitMember(member.userId)}
-                    activeOpacity={0.7}>
-                    <View style={styles.splitMemberInfo}>
-                      <View
-                        style={[
-                          styles.checkbox,
-                          isSelected && styles.checkboxSelected,
-                        ]}>
-                        {isSelected && (
-                          <FontAwesome6
-                            name="check"
-                            size={10}
-                            color={Theme.colors.white}
-                            solid
-                          />
-                        )}
+                  <View key={member.userId}>
+                    <TouchableOpacity
+                      style={[
+                        styles.splitMemberRow,
+                        isSelected && styles.splitMemberRowSelected,
+                      ]}
+                      onPress={() => toggleSplitMember(member.userId)}
+                      activeOpacity={0.7}>
+                      <View style={styles.splitMemberInfo}>
+                        <View
+                          style={[
+                            styles.checkbox,
+                            isSelected && styles.checkboxSelected,
+                          ]}>
+                          {isSelected && (
+                            <FontAwesome6
+                              name="check"
+                              size={10}
+                              color={Theme.colors.white}
+                              solid
+                            />
+                          )}
+                        </View>
+                        <Text
+                          style={[
+                            styles.splitMemberName,
+                            isSelected && styles.splitMemberNameSelected,
+                          ]}>
+                          {displayName}
+                        </Text>
                       </View>
-                      <Text
-                        style={[
-                          styles.splitMemberName,
-                          isSelected && styles.splitMemberNameSelected,
-                        ]}>
-                        {displayName}
-                      </Text>
-                    </View>
-                    {isSelected && amount && parseFloat(amount) > 0 && splitMembers.size > 0 && (
-                      <Text style={styles.splitMemberAmount}>
-                        {splitPerPerson()}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
+
+                      {/* Equal mode: show per-person amount */}
+                      {splitType === 'equal' &&
+                        isSelected &&
+                        amount &&
+                        parseFloat(amount) > 0 &&
+                        splitMembers.size > 0 && (
+                          <Text style={styles.splitMemberAmount}>{splitPerPerson()}</Text>
+                        )}
+
+                      {/* Exact mode: show amount input */}
+                      {splitType === 'exact' && isSelected && (
+                        <View style={styles.splitInputGroup}>
+                          <Text style={styles.splitInputPrefix}>{'\u20B9'}</Text>
+                          <TextInput
+                            style={styles.splitInlineInput}
+                            placeholder="0.00"
+                            placeholderTextColor={Theme.colors.textTertiary}
+                            value={exactAmounts[member.userId] || ''}
+                            onChangeText={(text) => handleExactAmountChange(member.userId, text)}
+                            keyboardType="decimal-pad"
+                          />
+                        </View>
+                      )}
+
+                      {/* Percentage mode: show percentage input + calculated amount */}
+                      {splitType === 'percentage' && isSelected && (
+                        <View style={styles.splitInputGroup}>
+                          <TextInput
+                            style={styles.splitInlineInput}
+                            placeholder="0"
+                            placeholderTextColor={Theme.colors.textTertiary}
+                            value={percentages[member.userId] || ''}
+                            onChangeText={(text) => handlePercentageChange(member.userId, text)}
+                            keyboardType="decimal-pad"
+                          />
+                          <Text style={styles.splitInputSuffix}>%</Text>
+                          {getAmountFromPercentage(member.userId) > 0 && (
+                            <Text style={styles.splitInputCalculated}>
+                              ({formatCurrencyExact(getAmountFromPercentage(member.userId))})
+                            </Text>
+                          )}
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 );
               })}
             </View>
@@ -653,6 +899,106 @@ const styles = StyleSheet.create({
     color: Theme.colors.white,
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.bold,
+  },
+
+  // Split type tabs
+  splitTypeTabs: {
+    flexDirection: 'row',
+    gap: Theme.spacing.xs,
+    marginBottom: Theme.spacing.sm,
+  },
+  splitTypeTab: {
+    paddingHorizontal: Theme.spacing.md,
+    paddingVertical: Theme.spacing.xs + 2,
+    borderRadius: Theme.borderRadius.round,
+    backgroundColor: Theme.colors.lightGrey,
+    minHeight: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  splitTypeTabActive: {
+    backgroundColor: Theme.colors.primary,
+  },
+  splitTypeTabText: {
+    fontSize: Theme.typography.fontSize.small,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.semibold,
+    color: Theme.colors.textSecondary,
+  },
+  splitTypeTabTextActive: {
+    color: Theme.colors.white,
+  },
+
+  // Allocation indicator
+  allocationIndicator: {
+    paddingHorizontal: Theme.spacing.md,
+    paddingVertical: Theme.spacing.sm,
+    borderRadius: Theme.borderRadius.md,
+    marginBottom: Theme.spacing.sm,
+    alignItems: 'center',
+  },
+  allocationOk: {
+    backgroundColor: '#f0fdf4',
+  },
+  allocationWarning: {
+    backgroundColor: '#fffbeb',
+  },
+  allocationError: {
+    backgroundColor: '#fef2f2',
+  },
+  allocationText: {
+    fontSize: Theme.typography.fontSize.small,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.semibold,
+  },
+  allocationTextOk: {
+    color: '#15803d',
+  },
+  allocationTextWarning: {
+    color: '#b45309',
+  },
+  allocationTextError: {
+    color: '#dc2626',
+  },
+
+  // Inline split inputs
+  splitInputGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexShrink: 0,
+  },
+  splitInputPrefix: {
+    fontSize: Theme.typography.fontSize.medium,
+    color: Theme.colors.textSecondary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.medium,
+  },
+  splitInputSuffix: {
+    fontSize: Theme.typography.fontSize.small,
+    color: Theme.colors.textSecondary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.medium,
+  },
+  splitInlineInput: {
+    width: 80,
+    minHeight: 44,
+    paddingHorizontal: Theme.spacing.sm,
+    paddingVertical: Theme.spacing.xs,
+    fontSize: Theme.typography.fontSize.medium,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.medium,
+    color: Theme.colors.textPrimary,
+    backgroundColor: Theme.colors.white,
+    borderWidth: 1,
+    borderColor: '#D0D0D0',
+    borderRadius: Theme.borderRadius.sm,
+    textAlign: 'right',
+  },
+  splitInputCalculated: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily,
   },
 
   // Split section

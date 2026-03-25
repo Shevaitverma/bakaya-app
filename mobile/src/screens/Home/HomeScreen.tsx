@@ -22,6 +22,7 @@ import type { HomeStackParamList } from '../../navigation/types';
 import { groupService } from '../../services/groupService';
 import { profileService } from '../../services/profileService';
 import { expenseService } from '../../services/expenseService';
+import { formatCurrency } from '../../utils/currency';
 import type { GroupsResponse } from '../../types/group';
 import type { Profile, ProfilesResponse } from '../../types/profile';
 import type { Expense, PersonalExpensesResponse } from '../../types/expense';
@@ -305,7 +306,7 @@ const HomeScreen = () => {
           </View>
         </View>
         <Text style={styles.expenseAmount}>
-          {'\u20B9'}{expense.amount.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+          {formatCurrency(expense.amount)}
         </Text>
       </TouchableOpacity>
     );
