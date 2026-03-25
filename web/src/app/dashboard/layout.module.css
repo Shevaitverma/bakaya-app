@@ -209,12 +209,14 @@
   .sidebar {
     transform: translateX(-100%);
     visibility: hidden;
+    display: none;
   }
 
   /* Override: never show sidebar on mobile (even the old sidebarOpen class) */
   .sidebarOpen {
     transform: translateX(-100%);
     visibility: hidden;
+    display: none;
   }
 
   .main {
