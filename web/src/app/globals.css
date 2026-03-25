@@ -139,7 +139,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   line-height: var(--line-height-normal);
   min-height: 100dvh;
-  overflow-x: clip;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 a {

@@ -492,24 +492,7 @@ export default function DashboardPage() {
             )}
           </section>
 
-          {/* Spending Trends Mini Card */}
-          <div className={styles.spendingTrends}>
-            <p className={styles.spendingTrendsTitle}>Spending Trends</p>
-            <div className={styles.miniChart}>
-              {[35, 55, 25, 70, 45, 60, 30].map((h, i) => (
-                <div
-                  key={i}
-                  className={styles.miniBar}
-                  style={{ height: `${h}%` }}
-                />
-              ))}
-            </div>
-            <p className={styles.spendingInsight}>
-              Your spending{" "}
-              <span className={styles.spendingHighlight}>decreased by 12%</span>{" "}
-              this week
-            </p>
-          </div>
+          {/* Spending Trends removed — real analytics available at /dashboard/analytics */}
         </div>
       </div>
     </div>

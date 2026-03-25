@@ -238,17 +238,15 @@
 /* --- Responsive --- */
 @media (max-width: 768px) {
   /* Hide sidebar completely on mobile */
-  .sidebar {
-    transform: translateX(-100%);
-    visibility: hidden;
-    display: none;
-  }
-
-  /* Override: never show sidebar on mobile (even the old sidebarOpen class) */
+  .sidebar,
   .sidebarOpen {
-    transform: translateX(-100%);
-    visibility: hidden;
-    display: none;
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    left: -9999px !important;
   }
 
   .main {
@@ -264,10 +262,10 @@
     left: 0;
     right: 0;
     z-index: 9999;
-    height: 60px;
+    height: 64px;
     background: #ffffff;
-    border-top: none;
-    box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.06), 0 -2px 10px rgba(0, 0, 0, 0.05);
+    border-top: 1px solid rgba(0, 0, 0, 0.04);
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.04);
     align-items: stretch;
     justify-content: space-around;
     padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -298,18 +296,22 @@
   }
 
   .bottomNavTab svg {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     flex-shrink: 0;
     stroke: currentColor;
     fill: none;
-    stroke-width: 1.5;
+    stroke-width: 1.8;
     stroke-linecap: round;
     stroke-linejoin: round;
   }
 
+  .bottomNavTabActive svg {
+    stroke-width: 2.2;
+  }
+
   .bottomNavLabel {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 500;
     line-height: 1;
     letter-spacing: 0.01em;
@@ -317,19 +319,22 @@
 
   .bottomNavTabActive {
     color: #E91E63;
-    font-weight: 600;
   }
 
   .bottomNavTabActive::before {
     content: '';
     position: absolute;
-    inset: 4px 8px;
-    background: rgba(233, 30, 99, 0.1);
-    border-radius: 9999px;
-    z-index: -1;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 32px;
+    height: 3px;
+    background: #E91E63;
+    border-radius: 0 0 3px 3px;
   }
 
   .bottomNavTabActive .bottomNavLabel {
     font-weight: 600;
+    color: #E91E63;
   }
 }

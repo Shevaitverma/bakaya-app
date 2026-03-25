@@ -24,7 +24,6 @@
 .page {
   min-height: 100vh;
   background: #F9F9FF;
-  overflow-x: hidden;
 }
 
 /* --- Header --- */
@@ -194,6 +193,7 @@
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
+  white-space: nowrap;
   cursor: pointer;
   transition: all var(--transition-fast);
   text-align: center;
@@ -357,6 +357,7 @@
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   white-space: nowrap;
+  flex-shrink: 0;
   cursor: pointer;
   transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
@@ -754,6 +755,18 @@
   .typeFilterRow {
     padding: 16px 16px 0;
     gap: 8px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .typeFilterRow::-webkit-scrollbar {
+    display: none;
+  }
+
+  .typeFilterBtn {
+    flex: 0 0 auto;
   }
 
   .searchRow {

@@ -315,6 +315,10 @@
   flex-wrap: wrap;
 }
 
+.formChipsRow > * {
+  flex-shrink: 0;
+}
+
 .formActions {
   display: flex;
   gap: 0.75rem;

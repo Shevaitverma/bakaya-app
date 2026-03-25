@@ -338,6 +338,7 @@
   font-weight: var(--font-weight-medium);
   color: #1A1A2E;
   white-space: nowrap;
+  flex-shrink: 0;
   cursor: pointer;
   transition: background 200ms ease, border-color 200ms ease;
 }

@@ -716,6 +716,13 @@
   .splitTypeTabs {
     gap: 0;
     padding: 3px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .splitTypeTabs::-webkit-scrollbar {
+    display: none;
   }
 
   .splitTypeTab {
@@ -726,6 +733,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
   }
 
   /* Inline split input */

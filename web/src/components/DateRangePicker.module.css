@@ -13,8 +13,9 @@
 /* --- Presets Row --- */
 .presetsRow {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: 6px;
   overflow-x: auto;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   padding-bottom: 2px;
@@ -36,6 +37,7 @@
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   white-space: nowrap;
+  flex-shrink: 0;
   cursor: pointer;
   transition: background var(--transition-fast),
     border-color var(--transition-fast),
@@ -105,8 +107,9 @@
   }
 
   .presetBtn {
-    font-size: 0.75rem;
-    padding: 6px 12px;
+    font-size: 11px;
+    padding: 5px 10px;
+    flex-shrink: 0;
   }
 
   .customRow {
