@@ -12,7 +12,7 @@ export type AuthStackParamList = {
 export type HomeStackParamList = {
   Home: undefined;
   ExpenseDetail: undefined;
-  AddExpense: { profileId?: string } | undefined;
+  AddExpense: { profileId?: string; type?: 'income' | 'expense' } | undefined;
   EditExpense: { expenseId: string };
   CreateGroup: undefined;
   ProfileExpenses: { profileId: string; profileName: string; profileColor?: string };
@@ -43,7 +43,7 @@ export type MainTabParamList = {
 export type MainStackParamList = {
   Home: undefined;
   ExpenseDetail: undefined;
-  AddExpense: { profileId?: string } | undefined;
+  AddExpense: { profileId?: string; type?: 'income' | 'expense' } | undefined;
 };
 
 export type RootStackParamList = {

@@ -12,6 +12,7 @@ import type {
   UpdateExpenseResponse,
   DeleteExpenseResponse,
   ExpenseQueryParams,
+  BalanceResponse,
 } from '../types/expense';
 
 class ExpenseService {
@@ -193,6 +194,9 @@ class ExpenseService {
 
     if (filters?.profileId) params.set('profileId', filters.profileId);
     if (filters?.category) params.set('category', filters.category);
+    if (filters?.type) params.set('type', filters.type);
+    if (filters?.source) params.set('source', filters.source);
+    if (filters?.search) params.set('search', filters.search);
     if (filters?.startDate) params.set('startDate', filters.startDate);
     if (filters?.endDate) params.set('endDate', filters.endDate);
 
@@ -287,6 +291,30 @@ class ExpenseService {
 
     return this.request<DeleteExpenseResponse>(endpoint, {
       method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  /**
+   * GET /analytics/balance
+   * Fetch balance analytics (totalIncome, totalExpenses, balance, spending rates).
+   */
+  async getBalance(
+    token: string,
+    params?: { startDate?: string; endDate?: string; profileId?: string }
+  ): Promise<BalanceResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.startDate) searchParams.set('startDate', params.startDate);
+    if (params?.endDate) searchParams.set('endDate', params.endDate);
+    if (params?.profileId) searchParams.set('profileId', params.profileId);
+
+    const query = searchParams.toString();
+    const endpoint = `${API_CONFIG.ENDPOINTS.ANALYTICS.BALANCE}${query ? `?${query}` : ''}`;
+
+    return this.request<BalanceResponse>(endpoint, {
+      method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
       },

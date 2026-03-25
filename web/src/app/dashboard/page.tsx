@@ -6,7 +6,9 @@ import { formatCurrency } from "@/utils/currency";
 import { expensesApi, type Expense } from "@/lib/api/expenses";
 import { groupsApi, type Group } from "@/lib/api/groups";
 import { profilesApi } from "@/lib/api/profiles";
+import { analyticsApi, type BalanceData } from "@/lib/api/analytics";
 import type { Profile } from "@/types/profile";
+import BalanceCard from "@/components/BalanceCard";
 import styles from "./page.module.css";
 
 function formatDate(dateStr: string): string {
@@ -39,6 +41,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [expensesLoading, setExpensesLoading] = useState(false);
+  const [balanceData, setBalanceData] = useState<BalanceData | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("bakaya_user");
@@ -55,10 +58,11 @@ export default function DashboardPage() {
 
     async function fetchDashboardData() {
       try {
-        const [expenseData, groupsData, profilesData] = await Promise.all([
+        const [expenseData, groupsData, profilesData, balData] = await Promise.all([
           expensesApi.list({ limit: 5 }).catch(() => null),
           groupsApi.list().catch(() => null),
           profilesApi.getProfiles().catch(() => null),
+          analyticsApi.balance().catch(() => null),
         ]);
 
         if (expenseData) {
@@ -69,6 +73,9 @@ export default function DashboardPage() {
         }
         if (profilesData) {
           setProfiles(profilesData.profiles ?? []);
+        }
+        if (balData) {
+          setBalanceData(balData);
         }
       } catch {
         // graceful fallback — dashboard still renders
@@ -105,11 +112,31 @@ export default function DashboardPage() {
         <h1 className={styles.pageTitle}>Dashboard</h1>
       </div>
 
-      {/* Add Expense CTA */}
-      <Link href="/dashboard/expenses/new" className={styles.addExpenseCta}>
-        <span className={styles.ctaIcon}>+</span>
-        Add Expense
-      </Link>
+      {/* Balance Card */}
+      {balanceData && (
+        <BalanceCard
+          totalIncome={balanceData.totalIncome}
+          totalExpenses={balanceData.totalExpenses}
+          balance={balanceData.balance}
+          spentPercentage={balanceData.spentPercentage}
+          dailySpendingRate={balanceData.dailySpendingRate}
+          dailyBudgetRate={balanceData.dailyBudgetRate}
+          daysRemaining={balanceData.daysRemaining}
+          period={balanceData.period}
+        />
+      )}
+
+      {/* Add Expense / Income CTAs */}
+      <div className={styles.ctaRow}>
+        <Link href="/dashboard/expenses/new" className={styles.addExpenseCta}>
+          <span className={styles.ctaIcon}>+</span>
+          Add Expense
+        </Link>
+        <Link href="/dashboard/expenses/new?type=income" className={styles.addIncomeCta}>
+          <span className={styles.ctaIcon}>+</span>
+          Add Income
+        </Link>
+      </div>
 
       {/* Profiles Section */}
       <section className={styles.section}>
@@ -152,10 +179,10 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* Recent Expenses Section */}
+      {/* Recent Transactions Section */}
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Recent Expenses</h2>
+          <h2 className={styles.sectionTitle}>Recent Transactions</h2>
           <Link href="/dashboard/expenses" className={styles.sectionLink}>
             View All
           </Link>
@@ -165,11 +192,12 @@ export default function DashboardPage() {
           <p className={styles.loadingText}>Loading...</p>
         ) : recentExpenses.length === 0 ? (
           <div className={styles.emptyState}>
-            <p>No expenses yet. Add your first expense!</p>
+            <p>No transactions yet. Add your first expense or income!</p>
           </div>
         ) : (
           <div className={styles.expensesTable}>
             {recentExpenses.map((expense) => {
+              const isIncome = expense.type === "income";
               // Find the profile that matches the expense's profileId
               const expenseProfile = expense.profileId
                 ? profiles.find((p) => p._id === expense.profileId)
@@ -180,10 +208,18 @@ export default function DashboardPage() {
                   <div className={styles.expenseInfo}>
                     <p className={styles.expenseTitle}>{expense.title}</p>
                     <div className={styles.expenseMeta}>
-                      {expense.category && (
-                        <span className={styles.expenseCategory}>
-                          {expense.category}
-                        </span>
+                      {isIncome ? (
+                        expense.source && (
+                          <span className={styles.incomeSource}>
+                            {expense.source}
+                          </span>
+                        )
+                      ) : (
+                        expense.category && (
+                          <span className={styles.expenseCategory}>
+                            {expense.category}
+                          </span>
+                        )
                       )}
                       {expenseProfile && (
                         <span className={styles.expenseProfile}>
@@ -199,7 +235,14 @@ export default function DashboardPage() {
                       )}
                     </div>
                   </div>
-                  <span className={styles.expenseAmount}>
+                  <span
+                    className={
+                      isIncome
+                        ? styles.incomeAmount
+                        : styles.expenseAmount
+                    }
+                  >
+                    {isIncome ? "+" : "-"}
                     {formatCurrency(expense.amount)}
                   </span>
                   <span className={styles.expenseDate}>

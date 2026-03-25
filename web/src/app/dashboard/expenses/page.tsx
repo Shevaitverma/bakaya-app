@@ -13,33 +13,52 @@ import styles from "./page.module.css";
 
 /** Emoji equivalents for category icons (matching mobile categoryIcons.ts) */
 const CATEGORY_EMOJI: Record<string, string> = {
-  food: "🍽️",
-  accessory: "📱",
-  transport: "🚗",
-  shopping: "🛍️",
-  bills: "🧾",
-  entertainment: "🎬",
-  groceries: "🛒",
-  healthcare: "💊",
-  education: "🎓",
-  travel: "✈️",
-  utilities: "⚡",
-  clothing: "👕",
-  restaurant: "🍴",
-  gas: "⛽",
-  insurance: "🛡️",
-  rent: "🏠",
-  other: "📄",
+  food: "\u{1F37D}\uFE0F",
+  accessory: "\u{1F4F1}",
+  transport: "\u{1F697}",
+  shopping: "\u{1F6CD}\uFE0F",
+  bills: "\u{1F9FE}",
+  entertainment: "\u{1F3AC}",
+  groceries: "\u{1F6D2}",
+  healthcare: "\u{1F48A}",
+  education: "\u{1F393}",
+  travel: "\u2708\uFE0F",
+  utilities: "\u26A1",
+  clothing: "\u{1F455}",
+  restaurant: "\u{1F374}",
+  gas: "\u26FD",
+  insurance: "\u{1F6E1}\uFE0F",
+  rent: "\u{1F3E0}",
+  other: "\u{1F4C4}",
+};
+
+const SOURCE_EMOJI: Record<string, string> = {
+  salary: "\u{1F4B0}",
+  freelance: "\u{1F4BB}",
+  investment: "\u{1F4C8}",
+  gift: "\u{1F381}",
+  refund: "\u{1F504}",
+  rental: "\u{1F3E0}",
+  other: "\u{1F4B5}",
 };
 
 function getCategoryEmoji(category: string): string {
-  return CATEGORY_EMOJI[category.toLowerCase()] ?? "📄";
+  return CATEGORY_EMOJI[category.toLowerCase()] ?? "\u{1F4C4}";
 }
+
+function getSourceEmoji(source: string): string {
+  return SOURCE_EMOJI[source.toLowerCase()] ?? "\u{1F4B5}";
+}
+
+type TypeFilter = "all" | "expense" | "income";
 
 export default function ExpensesPage() {
   const router = useRouter();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [totalAmount, setTotalAmount] = useState(0);
+  const [totalIncome, setTotalIncome] = useState(0);
+  const [totalExpenses, setTotalExpenses] = useState(0);
+  const [balance, setBalance] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -47,6 +66,18 @@ export default function ExpensesPage() {
   const [activeProfileFilter, setActiveProfileFilter] = useState<string | null>(null);
   const [dateStartFilter, setDateStartFilter] = useState<string | undefined>(undefined);
   const [dateEndFilter, setDateEndFilter] = useState<string | undefined>(undefined);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   // Fetch profiles once on mount
   useEffect(() => {
@@ -54,20 +85,28 @@ export default function ExpensesPage() {
       .getProfiles()
       .then((data) => setProfiles(data.profiles ?? []))
       .catch(() => {
-        // Swallow — session-expired redirect is handled centrally by api-client
+        // Swallow -- session-expired redirect is handled centrally by api-client
       });
   }, []);
 
-  // Fetch expenses from API (re-runs when profile or date filter changes)
+  // Fetch expenses from API (re-runs when filters change)
   const fetchExpenses = useCallback(async () => {
     setIsLoading(true);
     try {
       const params: {
         limit: number;
+        type?: "income" | "expense";
+        search?: string;
         profileId?: string;
         startDate?: string;
         endDate?: string;
       } = { limit: 100 };
+      if (typeFilter !== "all") {
+        params.type = typeFilter;
+      }
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
+      }
       if (activeProfileFilter) {
         params.profileId = activeProfileFilter;
       }
@@ -80,13 +119,19 @@ export default function ExpensesPage() {
       const data = await expensesApi.list(params);
       setExpenses(data.expenses);
       setTotalAmount(data.totalExpenseAmount);
+      setTotalIncome(data.totalIncome ?? 0);
+      setTotalExpenses(data.totalExpenses ?? 0);
+      setBalance(data.balance ?? 0);
     } catch {
       setExpenses([]);
       setTotalAmount(0);
+      setTotalIncome(0);
+      setTotalExpenses(0);
+      setBalance(0);
     } finally {
       setIsLoading(false);
     }
-  }, [activeProfileFilter, dateStartFilter, dateEndFilter]);
+  }, [activeProfileFilter, dateStartFilter, dateEndFilter, typeFilter, searchQuery]);
 
   useEffect(() => {
     fetchExpenses();
@@ -103,9 +148,11 @@ export default function ExpensesPage() {
     try {
       await expensesApi.delete(deleteTarget._id);
       setExpenses((prev) => prev.filter((e) => e._id !== deleteTarget._id));
-      setTotalAmount((prev) => prev - deleteTarget.amount);
+      if (deleteTarget.type !== "income") {
+        setTotalAmount((prev) => prev - deleteTarget.amount);
+      }
     } catch {
-      // Swallow — session-expired redirect is handled centrally by api-client
+      // Swallow -- session-expired redirect is handled centrally by api-client
     } finally {
       setDeleteTarget(null);
       setIsDeleting(false);
@@ -114,6 +161,22 @@ export default function ExpensesPage() {
 
   const cancelDelete = () => {
     setDeleteTarget(null);
+  };
+
+  const handleExportCSV = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      await expensesApi.exportCSV({
+        startDate: dateStartFilter,
+        endDate: dateEndFilter,
+        type: typeFilter !== "all" ? typeFilter : undefined,
+      });
+    } catch {
+      // Silently fail -- could show a toast in the future
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -129,7 +192,7 @@ export default function ExpensesPage() {
         </button>
 
         <div className={styles.headerCenter}>
-          <h1 className={styles.headerTitle}>My Expense</h1>
+          <h1 className={styles.headerTitle}>My Transactions</h1>
           <div className={styles.totalRow}>
             <p className={styles.totalLabel}>Total amount</p>
             <p className={styles.totalValue}>
@@ -140,6 +203,70 @@ export default function ExpensesPage() {
 
         <div className={styles.headerPlaceholder} />
       </header>
+
+      {/* ---------- Summary Bar ---------- */}
+      <div className={styles.summaryBar}>
+        <div className={styles.summaryItem}>
+          <span className={styles.summaryLabel}>Income</span>
+          <span className={styles.summaryIncome}>{formatCurrency(totalIncome)}</span>
+        </div>
+        <div className={styles.summarySep} />
+        <div className={styles.summaryItem}>
+          <span className={styles.summaryLabel}>Expenses</span>
+          <span className={styles.summaryExpense}>{formatCurrency(totalExpenses)}</span>
+        </div>
+        <div className={styles.summarySep} />
+        <div className={styles.summaryItem}>
+          <span className={styles.summaryLabel}>Balance</span>
+          <span className={balance >= 0 ? styles.summaryBalancePositive : styles.summaryBalanceNegative}>
+            {formatCurrency(Math.abs(balance))}
+          </span>
+        </div>
+      </div>
+
+      {/* ---------- Type Filter Tabs ---------- */}
+      <div className={styles.typeFilterRow}>
+        {(["all", "expense", "income"] as TypeFilter[]).map((t) => (
+          <button
+            key={t}
+            className={`${styles.typeFilterBtn} ${typeFilter === t ? styles.typeFilterBtnActive : ""}`}
+            onClick={() => setTypeFilter(t)}
+          >
+            {t === "all" ? "All" : t === "expense" ? "Expenses" : "Income"}
+          </button>
+        ))}
+      </div>
+
+      {/* ---------- Search & Export Row ---------- */}
+      <div className={styles.searchRow}>
+        <div className={styles.searchInputWrap}>
+          <span className={styles.searchIcon} aria-hidden>&#128269;</span>
+          <input
+            type="text"
+            className={styles.searchInput}
+            placeholder="Search transactions..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+          />
+          {searchInput && (
+            <button
+              className={styles.searchClear}
+              onClick={() => setSearchInput("")}
+              aria-label="Clear search"
+            >
+              &#10005;
+            </button>
+          )}
+        </div>
+        <button
+          className={styles.exportBtn}
+          onClick={handleExportCSV}
+          disabled={isExporting}
+          title="Export as CSV"
+        >
+          {isExporting ? "..." : "Export CSV"}
+        </button>
+      </div>
 
       {/* ---------- Profile Filter ---------- */}
       {profiles.length > 0 && (
@@ -188,31 +315,34 @@ export default function ExpensesPage() {
       <main className={styles.content}>
         {isLoading ? (
           <p style={{ textAlign: "center", padding: "2rem", opacity: 0.6 }}>
-            Loading expenses...
+            Loading transactions...
           </p>
         ) : expenses.length === 0 ? (
           <div className={styles.empty}>
             <span className={styles.emptyIcon} aria-hidden>
-              🧾
+              {"\u{1F9FE}"}
             </span>
-            <p className={styles.emptyTitle}>No expenses yet</p>
+            <p className={styles.emptyTitle}>No transactions yet</p>
             <p className={styles.emptySubtitle}>
-              Add your first expense to get started
+              Add your first expense or income to get started
             </p>
           </div>
         ) : (
           <div className={styles.expenseList}>
             {expenses.map((expense) => {
+              const isIncome = expense.type === "income";
               const expenseProfile = expense.profileId
                 ? profiles.find((p) => p._id === expense.profileId)
                 : profiles.find((p) => p.isDefault);
 
               return (
               <div key={expense._id} className={styles.expenseCard}>
-                {/* Category Icon */}
-                <div className={styles.categoryIcon}>
+                {/* Category/Source Icon */}
+                <div className={`${styles.categoryIcon} ${isIncome ? styles.categoryIconIncome : ""}`}>
                   <span aria-hidden>
-                    {getCategoryEmoji(expense.category ?? "other")}
+                    {isIncome
+                      ? getSourceEmoji(expense.source ?? "other")
+                      : getCategoryEmoji(expense.category ?? "other")}
                   </span>
                 </div>
 
@@ -220,9 +350,15 @@ export default function ExpensesPage() {
                 <div className={styles.expenseInfo}>
                   <p className={styles.expenseTitle}>{expense.title}</p>
                   <div className={styles.expenseMeta}>
-                    <span className={styles.expenseCategory}>
-                      {expense.category ?? "Other"}
-                    </span>
+                    {isIncome ? (
+                      <span className={styles.incomeSourceTag}>
+                        {expense.source ?? "Income"}
+                      </span>
+                    ) : (
+                      <span className={styles.expenseCategory}>
+                        {expense.category ?? "Other"}
+                      </span>
+                    )}
                     {expenseProfile && (
                       <span className={styles.expenseProfile}>
                         <span
@@ -240,8 +376,8 @@ export default function ExpensesPage() {
                 </div>
 
                 {/* Amount */}
-                <span className={styles.expenseAmount}>
-                  {formatCurrency(expense.amount)}
+                <span className={isIncome ? styles.incomeAmount : styles.expenseAmount}>
+                  {isIncome ? "+" : "-"}{formatCurrency(expense.amount)}
                 </span>
 
                 {/* Edit */}
@@ -249,7 +385,7 @@ export default function ExpensesPage() {
                   href={`/dashboard/expenses/${expense._id}/edit`}
                   className={styles.expenseEdit}
                   aria-label={`Edit ${expense.title}`}
-                  title="Edit expense"
+                  title="Edit"
                 >
                   &#9998;
                 </Link>
@@ -259,9 +395,9 @@ export default function ExpensesPage() {
                   className={styles.expenseDelete}
                   onClick={() => handleDelete(expense)}
                   aria-label={`Delete ${expense.title}`}
-                  title="Delete expense"
+                  title="Delete"
                 >
-                  ✕
+                  {"\u2715"}
                 </button>
               </div>
               );
@@ -282,7 +418,7 @@ export default function ExpensesPage() {
             className={styles.dialog}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className={styles.dialogTitle}>Delete Expense</h2>
+            <h2 className={styles.dialogTitle}>Delete {deleteTarget.type === "income" ? "Income" : "Expense"}</h2>
             <p className={styles.dialogMessage}>
               Are you sure you want to delete &ldquo;{deleteTarget.title}
               &rdquo;? This action cannot be undone.

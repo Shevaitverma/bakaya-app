@@ -1,5 +1,5 @@
 import { getAuthUser } from "@/middleware/auth";
-import { createExpenseSchema, updateExpenseSchema, expenseQuerySchema } from "@/schemas/expense.schema";
+import { createExpenseSchema, updateExpenseSchema, expenseQuerySchema, type ExpenseQueryInput } from "@/schemas/expense.schema";
 import * as expenseService from "@/services/expense.service";
 import { createDefaultProfile, findProfileById } from "@/services/profile.service";
 import { User } from "@/models/User";
@@ -14,11 +14,14 @@ export async function getPersonalExpenses(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const query = expenseQuerySchema.parse(Object.fromEntries(url.searchParams));
 
-    const { expenses, total, totalExpenseAmount } = await expenseService.findExpensesByUser(userId, query);
+    const { expenses, total, totalExpenseAmount, totalIncome, totalExpenses, balance } = await expenseService.findExpensesByUser(userId, query);
 
     return successResponse({
       expenses,
       totalExpenseAmount,
+      totalIncome,
+      totalExpenses,
+      balance,
       pagination: createPaginationMeta(query.page, query.limit, total),
     });
   } catch (error) {
@@ -151,4 +154,60 @@ export async function deletePersonalExpense(req: Request, params?: Record<string
     logger.error("Delete expense error", { error });
     throw error;
   }
+}
+
+export async function exportExpensesCSVHandler(req: Request): Promise<Response> {
+  try {
+    const { userId } = getAuthUser(req);
+    const url = new URL(req.url);
+    const query = expenseQuerySchema.parse(Object.fromEntries(url.searchParams));
+
+    const expenses = await expenseService.exportExpensesCSV(userId, {
+      type: query.type,
+      category: query.category,
+      profileId: query.profileId,
+      startDate: query.startDate,
+      endDate: query.endDate,
+    });
+
+    const csvHeaders = "Date,Type,Title,Amount,Category,Source,Profile,Notes";
+    const csvRows = expenses.map((e) => {
+      const date = e.createdAt.toISOString().split("T")[0];
+      const type = e.type || "expense";
+      const title = csvEscape(e.title);
+      const amount = e.amount;
+      const category = csvEscape(e.category || "");
+      const source = csvEscape(e.source || "");
+      const profile = csvEscape(
+        (e.profileId && typeof e.profileId === "object" && "name" in e.profileId)
+          ? (e.profileId as unknown as { name: string }).name
+          : ""
+      );
+      const notes = csvEscape(e.notes || "");
+      return `${date},${type},${title},${amount},${category},${source},${profile},${notes}`;
+    });
+
+    const csv = [csvHeaders, ...csvRows].join("\n");
+
+    return new Response(csv, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/csv",
+        "Content-Disposition": 'attachment; filename="bakaya-export.csv"',
+      },
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return badRequestResponse("Invalid query parameters");
+    }
+    logger.error("Export expenses CSV error", { error });
+    throw error;
+  }
+}
+
+function csvEscape(value: string): string {
+  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
 }

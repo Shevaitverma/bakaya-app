@@ -60,6 +60,17 @@ export interface TrendsData {
   period: AnalyticsPeriod;
 }
 
+export interface BalanceData {
+  totalIncome: number;
+  totalExpenses: number;
+  balance: number;
+  spentPercentage: number;
+  dailySpendingRate: number;
+  dailyBudgetRate: number;
+  daysRemaining: number;
+  period: { start: string; end: string };
+}
+
 function buildQueryString(params: AnalyticsQueryParams): string {
   const searchParams = new URLSearchParams();
   if (params.startDate) searchParams.set("startDate", params.startDate);
@@ -91,6 +102,12 @@ export const analyticsApi = {
   trends(params: AnalyticsQueryParams = {}): Promise<TrendsData> {
     return api.get<TrendsData>(
       `/api/v1/analytics/trends${buildQueryString(params)}`
+    );
+  },
+
+  balance(params: AnalyticsQueryParams = {}): Promise<BalanceData> {
+    return api.get<BalanceData>(
+      `/api/v1/analytics/balance${buildQueryString(params)}`
     );
   },
 };

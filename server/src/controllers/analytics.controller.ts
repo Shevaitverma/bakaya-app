@@ -59,6 +59,24 @@ export async function getAnalyticsByCategory(req: Request): Promise<Response> {
   }
 }
 
+export async function getAnalyticsBalance(req: Request): Promise<Response> {
+  try {
+    const { userId } = getAuthUser(req);
+    const url = new URL(req.url);
+    const query = analyticsQuerySchema.parse(Object.fromEntries(url.searchParams));
+
+    const data = await analyticsService.getBalance(userId, query);
+
+    return successResponse(data);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return badRequestResponse("Invalid query parameters");
+    }
+    logger.error("Get analytics balance error", { error });
+    throw error;
+  }
+}
+
 export async function getAnalyticsTrends(req: Request): Promise<Response> {
   try {
     const { userId } = getAuthUser(req);

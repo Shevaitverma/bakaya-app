@@ -8,7 +8,9 @@ export interface Expense {
   profileId?: string;
   title: string;
   amount: number;
+  type: 'income' | 'expense';
   category?: string;
+  source?: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -27,6 +29,9 @@ export interface Pagination {
 export interface PersonalExpensesData {
   expenses: Expense[];
   totalExpenseAmount: number;
+  totalIncome: number;
+  totalExpenses: number;
+  balance: number;
   pagination: Pagination;
 }
 
@@ -49,7 +54,9 @@ export interface SingleExpenseResponse {
 export interface CreateExpenseRequest {
   title: string;
   amount: number;
+  type?: 'income' | 'expense';
   category?: string;
+  source?: string;
   notes?: string;
   profileId?: string;
 }
@@ -65,8 +72,10 @@ export interface CreateExpenseResponse {
 export interface UpdateExpenseRequest {
   title?: string;
   amount?: number;
+  type?: 'income' | 'expense';
   profileId?: string;
   category?: string;
+  source?: string;
   notes?: string;
 }
 
@@ -90,8 +99,30 @@ export interface DeleteExpenseResponse {
 export interface ExpenseQueryParams {
   page?: number;
   limit?: number;
+  type?: 'income' | 'expense';
   category?: string;
+  source?: string;
+  search?: string;
   profileId?: string;
   startDate?: string;
   endDate?: string;
+}
+
+/** Balance analytics response from GET /analytics/balance */
+export interface BalanceData {
+  totalIncome: number;
+  totalExpenses: number;
+  balance: number;
+  spentPercentage: number;
+  dailySpendingRate: number;
+  dailyBudgetRate: number;
+  daysRemaining: number;
+}
+
+export interface BalanceResponse {
+  success: boolean;
+  data: BalanceData;
+  meta: {
+    timestamp: string;
+  };
 }

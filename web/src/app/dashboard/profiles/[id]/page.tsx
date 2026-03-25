@@ -75,7 +75,9 @@ export default function ProfileDetailPage() {
     try {
       await expensesApi.delete(deleteTarget._id);
       setExpenses((prev) => prev.filter((e) => e._id !== deleteTarget._id));
-      setTotalAmount((prev) => prev - deleteTarget.amount);
+      if ((deleteTarget as any).type !== "income") {
+        setTotalAmount((prev) => prev - deleteTarget.amount);
+      }
       setDeleteTarget(null);
     } catch (error) {
       if (error instanceof ApiError) {

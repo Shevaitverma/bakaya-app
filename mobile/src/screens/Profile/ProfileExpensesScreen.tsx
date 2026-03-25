@@ -157,7 +157,9 @@ const ProfileExpensesScreen: React.FC<ProfileExpensesScreenProps> = ({ route, na
     const deletedExpense = expenses.find((exp) => exp._id === expenseToDelete.id);
     if (deletedExpense) {
       setExpenses((prevExpenses) => prevExpenses.filter((exp) => exp._id !== expenseToDelete.id));
-      setTotalExpenseAmount((prevTotal) => prevTotal - deletedExpense.amount);
+      if ((deletedExpense as any).type !== "income") {
+        setTotalExpenseAmount((prevTotal) => prevTotal - deletedExpense.amount);
+      }
     }
 
     // Close dialog immediately for better UX

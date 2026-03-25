@@ -32,6 +32,7 @@ function buildMatchStage(
   const match: Record<string, unknown> = {
     userId: new mongoose.Types.ObjectId(userId),
     createdAt: { $gte: start, $lte: end },
+    type: { $ne: "income" },
   };
 
   if (query.profileId) {
@@ -185,6 +186,72 @@ export async function getByCategory(
   };
 }
 
+export async function getBalance(userId: string, query: AnalyticsQueryInput) {
+  const { start, end } = getDateRange(query);
+  const match: Record<string, unknown> = {
+    userId: new mongoose.Types.ObjectId(userId),
+    createdAt: { $gte: start, $lte: end },
+  };
+  if (query.profileId) {
+    match.profileId = new mongoose.Types.ObjectId(query.profileId);
+  }
+
+  const results = await Expense.aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: { $ifNull: ["$type", "expense"] },
+        total: { $sum: "$amount" },
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const byType = Object.fromEntries(
+    results.map((r: { _id: string; total: number; count: number }) => [
+      r._id,
+      { total: r.total, count: r.count },
+    ])
+  );
+  const totalIncome = byType.income?.total ?? 0;
+  const totalExpenses = byType.expense?.total ?? 0;
+  const balance = totalIncome - totalExpenses;
+
+  const daysPassed = Math.max(
+    1,
+    Math.ceil(
+      (Math.min(end.getTime(), Date.now()) - start.getTime()) / 86400000
+    )
+  );
+  const endOfMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+  const daysInPeriod = Math.ceil(
+    (endOfMonth.getTime() - start.getTime()) / 86400000
+  );
+  const dailySpendingRate = Math.round(totalExpenses / daysPassed);
+  const dailyBudgetRate =
+    totalIncome > 0 ? Math.round(totalIncome / daysInPeriod) : 0;
+  const daysRemaining = Math.max(0, daysInPeriod - daysPassed);
+
+  return {
+    totalIncome,
+    totalExpenses,
+    balance,
+    expenseCount: byType.expense?.count ?? 0,
+    incomeCount: byType.income?.count ?? 0,
+    spentPercentage:
+      totalIncome > 0
+        ? Math.round((totalExpenses / totalIncome) * 100)
+        : 0,
+    dailySpendingRate,
+    dailyBudgetRate,
+    daysRemaining,
+    period: {
+      start: start.toISOString().split("T")[0],
+      end: end.toISOString().split("T")[0],
+    },
+  };
+}
+
 export async function getTrends(userId: string, query: AnalyticsQueryInput) {
   // For trends, default to last 6 months if no date range provided
   const hasCustomRange = query.startDate && query.endDate;
@@ -203,6 +270,7 @@ export async function getTrends(userId: string, query: AnalyticsQueryInput) {
   const match: Record<string, unknown> = {
     userId: new mongoose.Types.ObjectId(userId),
     createdAt: { $gte: start, $lte: end },
+    type: { $ne: "income" },
   };
 
   if (query.profileId) {

@@ -9,16 +9,43 @@ import type { Profile } from "@/types/profile";
 import { CATEGORIES, getCategoryEmoji } from "@/constants/categories";
 import styles from "./page.module.css";
 
+const INCOME_SOURCES = [
+  "Salary",
+  "Freelance",
+  "Investment",
+  "Gift",
+  "Refund",
+  "Rental",
+  "Other",
+] as const;
+
+const SOURCE_EMOJI: Record<string, string> = {
+  salary: "\u{1F4B0}",
+  freelance: "\u{1F4BB}",
+  investment: "\u{1F4C8}",
+  gift: "\u{1F381}",
+  refund: "\u{1F504}",
+  rental: "\u{1F3E0}",
+  other: "\u{1F4B5}",
+};
+
+function getSourceEmoji(source: string): string {
+  return SOURCE_EMOJI[source.toLowerCase()] ?? "\u{1F4B5}";
+}
+
 export default function AddExpensePage() {
   const router = useRouter();
   const routerRef = useRef(router);
   routerRef.current = router;
   const searchParams = useSearchParams();
   const queryProfileId = searchParams.get("profileId") || "";
+  const queryType = searchParams.get("type") === "income" ? "income" : "expense";
 
+  const [entryType, setEntryType] = useState<"expense" | "income">(queryType);
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
+  const [source, setSource] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedProfileId, setSelectedProfileId] = useState(queryProfileId);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -28,11 +55,13 @@ export default function AddExpensePage() {
     title?: string;
     amount?: string;
     category?: string;
+    source?: string;
     profile?: string;
     server?: string;
   }>({});
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const isIncome = entryType === "income";
 
   // Fetch profiles and pre-select default (unless query param already set)
   useEffect(() => {
@@ -46,7 +75,7 @@ export default function AddExpensePage() {
         if (defaultProfile) setSelectedProfileId(defaultProfile._id);
       }
     }).catch(() => {
-      // profiles API not ready — continue without
+      // profiles API not ready -- continue without
     });
   }, [queryProfileId]);
 
@@ -82,8 +111,14 @@ export default function AddExpensePage() {
       }
     }
 
-    if (!category.trim()) {
-      newErrors.category = "Category is required";
+    if (isIncome) {
+      if (!source.trim()) {
+        newErrors.source = "Source is required";
+      }
+    } else {
+      if (!category.trim()) {
+        newErrors.category = "Category is required";
+      }
     }
 
     setErrors(newErrors);
@@ -102,11 +137,13 @@ export default function AddExpensePage() {
       await expensesApi.create({
         title: title.trim(),
         amount: parseFloat(amount),
-        profileId: selectedProfileId || undefined,
-        category: category.trim(),
+        type: entryType,
+        profileId: isIncome ? undefined : (selectedProfileId || undefined),
+        category: isIncome ? undefined : category.trim(),
+        source: isIncome ? source.trim() : undefined,
         notes: notes.trim() || undefined,
       });
-      routerRef.current.push("/dashboard/expenses");
+      routerRef.current.push("/dashboard");
     } catch (error) {
       if (error instanceof ApiError) {
         setErrors({ server: error.message });
@@ -126,10 +163,18 @@ export default function AddExpensePage() {
     }
   };
 
+  const handleSourceSelect = (src: string) => {
+    setSource(src);
+    setShowDropdown(false);
+    if (errors.source) {
+      setErrors((prev) => ({ ...prev, source: undefined }));
+    }
+  };
+
   return (
     <div className={styles.page}>
       {/* ---------- Header ---------- */}
-      <header className={styles.header}>
+      <header className={`${styles.header} ${isIncome ? styles.headerIncome : ""}`}>
         <button
           className={styles.backBtn}
           onClick={() => router.back()}
@@ -137,7 +182,9 @@ export default function AddExpensePage() {
         >
           &larr;
         </button>
-        <h1 className={styles.headerTitle}>Add expense</h1>
+        <h1 className={styles.headerTitle}>
+          {isIncome ? "Add Income" : "Add Expense"}
+        </h1>
         <div className={styles.headerPlaceholder} />
       </header>
 
@@ -150,8 +197,26 @@ export default function AddExpensePage() {
             </div>
           )}
 
-          {/* Profile Selector */}
-          {profiles.length > 0 && (
+          {/* Type Toggle */}
+          <div className={styles.typeToggle}>
+            <button
+              type="button"
+              className={`${styles.typeBtn} ${!isIncome ? styles.typeBtnActiveExpense : ""}`}
+              onClick={() => setEntryType("expense")}
+            >
+              Expense
+            </button>
+            <button
+              type="button"
+              className={`${styles.typeBtn} ${isIncome ? styles.typeBtnActiveIncome : ""}`}
+              onClick={() => setEntryType("income")}
+            >
+              Income
+            </button>
+          </div>
+
+          {/* Profile Selector (only for expenses) */}
+          {!isIncome && profiles.length > 0 && (
             <div className={styles.field}>
               <label className={styles.label}>Who is this for?</label>
               <div className={styles.profileChipsRow}>
@@ -198,7 +263,7 @@ export default function AddExpensePage() {
               id="title"
               type="text"
               className={`${styles.input} ${errors.title ? styles.inputError : ""}`}
-              placeholder="Enter expense title"
+              placeholder={isIncome ? "Enter income title" : "Enter expense title"}
               value={title}
               onChange={(e) => {
                 setTitle(e.target.value);
@@ -237,68 +302,135 @@ export default function AddExpensePage() {
             )}
           </div>
 
-          {/* Category */}
-          <div className={styles.field}>
-            <label className={styles.label}>Category</label>
-            <div className={styles.categoryDropdown} ref={dropdownRef}>
-              <button
-                type="button"
-                className={`${styles.categoryTrigger} ${errors.category ? styles.categoryTriggerError : ""}`}
-                onClick={() => setShowDropdown(!showDropdown)}
-              >
-                {category ? (
-                  <span className={styles.categorySelected}>
-                    <span aria-hidden>{getCategoryEmoji(category)}</span>
-                    {category}
+          {/* Category (expenses only) */}
+          {!isIncome && (
+            <div className={styles.field}>
+              <label className={styles.label}>Category</label>
+              <div className={styles.categoryDropdown} ref={dropdownRef}>
+                <button
+                  type="button"
+                  className={`${styles.categoryTrigger} ${errors.category ? styles.categoryTriggerError : ""}`}
+                  onClick={() => setShowDropdown(!showDropdown)}
+                >
+                  {category ? (
+                    <span className={styles.categorySelected}>
+                      <span aria-hidden>{getCategoryEmoji(category)}</span>
+                      {category}
+                    </span>
+                  ) : (
+                    <span className={styles.categoryPlaceholder}>
+                      Select category
+                    </span>
+                  )}
+                  <span className={styles.categoryChevron} aria-hidden>
+                    {showDropdown ? "\u25B2" : "\u25BC"}
                   </span>
-                ) : (
-                  <span className={styles.categoryPlaceholder}>
-                    Select category
-                  </span>
-                )}
-                <span className={styles.categoryChevron} aria-hidden>
-                  {showDropdown ? "▲" : "▼"}
-                </span>
-              </button>
+                </button>
 
-              {showDropdown && (
-                <div className={styles.categoryList}>
-                  {CATEGORIES.map((cat) => {
-                    const isSelected = category === cat;
-                    return (
-                      <button
-                        key={cat}
-                        type="button"
-                        className={`${styles.categoryItem} ${isSelected ? styles.categoryItemSelected : ""}`}
-                        onClick={() => handleCategorySelect(cat)}
-                      >
-                        <span className={styles.categoryItemContent}>
-                          <span
-                            className={`${styles.categoryItemIcon} ${isSelected ? styles.categoryItemIconSelected : ""}`}
-                          >
-                            <span aria-hidden>{getCategoryEmoji(cat)}</span>
+                {showDropdown && (
+                  <div className={styles.categoryList}>
+                    {CATEGORIES.map((cat) => {
+                      const isSelected = category === cat;
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          className={`${styles.categoryItem} ${isSelected ? styles.categoryItemSelected : ""}`}
+                          onClick={() => handleCategorySelect(cat)}
+                        >
+                          <span className={styles.categoryItemContent}>
+                            <span
+                              className={`${styles.categoryItemIcon} ${isSelected ? styles.categoryItemIconSelected : ""}`}
+                            >
+                              <span aria-hidden>{getCategoryEmoji(cat)}</span>
+                            </span>
+                            <span
+                              className={`${styles.categoryItemText} ${isSelected ? styles.categoryItemTextSelected : ""}`}
+                            >
+                              {cat}
+                            </span>
                           </span>
-                          <span
-                            className={`${styles.categoryItemText} ${isSelected ? styles.categoryItemTextSelected : ""}`}
-                          >
-                            {cat}
-                          </span>
-                        </span>
-                        {isSelected && (
-                          <span className={styles.categoryCheck} aria-hidden>
-                            ✓
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                          {isSelected && (
+                            <span className={styles.categoryCheck} aria-hidden>
+                              {"\u2713"}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              {errors.category && (
+                <span className={styles.errorText}>{errors.category}</span>
               )}
             </div>
-            {errors.category && (
-              <span className={styles.errorText}>{errors.category}</span>
-            )}
-          </div>
+          )}
+
+          {/* Source (income only) */}
+          {isIncome && (
+            <div className={styles.field}>
+              <label className={styles.label}>Source</label>
+              <div className={styles.categoryDropdown} ref={dropdownRef}>
+                <button
+                  type="button"
+                  className={`${styles.categoryTrigger} ${errors.source ? styles.categoryTriggerError : ""}`}
+                  onClick={() => setShowDropdown(!showDropdown)}
+                >
+                  {source ? (
+                    <span className={styles.categorySelected}>
+                      <span aria-hidden>{getSourceEmoji(source)}</span>
+                      {source}
+                    </span>
+                  ) : (
+                    <span className={styles.categoryPlaceholder}>
+                      Select source
+                    </span>
+                  )}
+                  <span className={styles.categoryChevron} aria-hidden>
+                    {showDropdown ? "\u25B2" : "\u25BC"}
+                  </span>
+                </button>
+
+                {showDropdown && (
+                  <div className={styles.categoryList}>
+                    {INCOME_SOURCES.map((src) => {
+                      const isSelected = source === src;
+                      return (
+                        <button
+                          key={src}
+                          type="button"
+                          className={`${styles.categoryItem} ${isSelected ? styles.categoryItemSelected : ""}`}
+                          onClick={() => handleSourceSelect(src)}
+                        >
+                          <span className={styles.categoryItemContent}>
+                            <span
+                              className={`${styles.categoryItemIcon} ${isSelected ? styles.categoryItemIconSelected : ""}`}
+                            >
+                              <span aria-hidden>{getSourceEmoji(src)}</span>
+                            </span>
+                            <span
+                              className={`${styles.categoryItemText} ${isSelected ? styles.categoryItemTextSelected : ""}`}
+                            >
+                              {src}
+                            </span>
+                          </span>
+                          {isSelected && (
+                            <span className={styles.categoryCheck} aria-hidden>
+                              {"\u2713"}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              {errors.source && (
+                <span className={styles.errorText}>{errors.source}</span>
+              )}
+            </div>
+          )}
 
           {/* Notes */}
           <div className={styles.field}>
@@ -317,10 +449,16 @@ export default function AddExpensePage() {
           {/* Submit */}
           <button
             type="submit"
-            className={styles.submitBtn}
+            className={`${styles.submitBtn} ${isIncome ? styles.submitBtnIncome : ""}`}
             disabled={isLoading}
           >
-            {isLoading ? <span className={styles.spinner} /> : "Add Expense"}
+            {isLoading ? (
+              <span className={styles.spinner} />
+            ) : isIncome ? (
+              "Save Income"
+            ) : (
+              "Add Expense"
+            )}
           </button>
         </form>
       </div>

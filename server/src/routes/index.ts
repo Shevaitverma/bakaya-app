@@ -13,6 +13,7 @@ import {
   createPersonalExpense,
   updatePersonalExpense,
   deletePersonalExpense,
+  exportExpensesCSVHandler,
 } from "@/controllers/expense.controller";
 import {
   getProfiles,
@@ -45,6 +46,7 @@ import {
 } from "@/controllers/settlement.controller";
 import {
   getAnalyticsSummary,
+  getAnalyticsBalance,
   getAnalyticsByProfile,
   getAnalyticsByCategory,
   getAnalyticsTrends,
@@ -85,6 +87,7 @@ const routes: RouteHandler[] = [
   // Personal expenses routes (protected)
   { path: "/api/v1/personal-expenses", method: "GET", handler: getPersonalExpenses, protected: true },
   { path: "/api/v1/personal-expenses", method: "POST", handler: createPersonalExpense, protected: true },
+  { path: "/api/v1/personal-expenses/export", method: "GET", handler: exportExpensesCSVHandler, protected: true },
   { path: "/api/v1/personal-expenses/:id", method: "GET", handler: getPersonalExpense, protected: true },
   { path: "/api/v1/personal-expenses/:id", method: "PUT", handler: updatePersonalExpense, protected: true },
   { path: "/api/v1/personal-expenses/:id", method: "DELETE", handler: deletePersonalExpense, protected: true },
@@ -116,6 +119,7 @@ const routes: RouteHandler[] = [
   { path: "/api/v1/groups/:id/settlements/:settlementId", method: "DELETE", handler: deleteSettlementHandler, protected: true },
 
   // Analytics routes (protected)
+  { path: "/api/v1/analytics/balance", method: "GET", handler: getAnalyticsBalance, protected: true },
   { path: "/api/v1/analytics/summary", method: "GET", handler: getAnalyticsSummary, protected: true },
   { path: "/api/v1/analytics/by-profile", method: "GET", handler: getAnalyticsByProfile, protected: true },
   { path: "/api/v1/analytics/by-category", method: "GET", handler: getAnalyticsByCategory, protected: true },

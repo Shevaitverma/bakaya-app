@@ -47,6 +47,58 @@
   width: 40px;
 }
 
+/* --- Header Income variant --- */
+.headerIncome {
+  background: var(--color-success);
+}
+
+/* --- Type Toggle (segmented pill) --- */
+.typeToggle {
+  display: flex;
+  background: var(--color-light-grey);
+  border-radius: var(--radius-round);
+  padding: 3px;
+  gap: 0;
+  margin-bottom: var(--spacing-sm);
+}
+
+.typeBtn {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: none;
+  border-radius: var(--radius-round);
+  background: transparent;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.typeBtnActiveExpense {
+  background: var(--color-primary);
+  color: var(--color-text-on-primary);
+  font-weight: var(--font-weight-semibold);
+  box-shadow: var(--shadow-sm);
+}
+
+.typeBtnActiveIncome {
+  background: var(--color-success);
+  color: var(--color-text-on-primary);
+  font-weight: var(--font-weight-semibold);
+  box-shadow: var(--shadow-sm);
+}
+
+/* --- Submit Button Income variant --- */
+.submitBtnIncome {
+  background: var(--color-success);
+}
+
+.submitBtnIncome:hover {
+  background: #059669;
+}
+
 /* --- Form Container --- */
 .formContainer {
   max-width: 600px;

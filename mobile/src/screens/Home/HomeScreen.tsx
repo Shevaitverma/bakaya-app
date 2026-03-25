@@ -16,6 +16,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../context/AuthContext';
 import { Theme } from '../../constants/theme';
 import GroupCard from '../../components/GroupCard';
+import BalanceCard from '../../components/BalanceCard';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import { Group } from '../../interfaces/group';
 import type { HomeStackParamList } from '../../navigation/types';
@@ -25,7 +26,7 @@ import { expenseService } from '../../services/expenseService';
 import { formatCurrency } from '../../utils/currency';
 import type { GroupsResponse } from '../../types/group';
 import type { Profile, ProfilesResponse } from '../../types/profile';
-import type { Expense, PersonalExpensesResponse } from '../../types/expense';
+import type { Expense, PersonalExpensesResponse, BalanceData } from '../../types/expense';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'Home'>;
 
@@ -72,6 +73,19 @@ const getCategoryIcon = (category: string): string => {
   return map[category.toLowerCase()] || 'receipt';
 };
 
+const getSourceIcon = (source: string): string => {
+  const map: Record<string, string> = {
+    salary: 'briefcase',
+    freelance: 'laptop',
+    investment: 'chart-line',
+    gift: 'gift',
+    refund: 'rotate-left',
+    rental: 'house',
+    other: 'money-bill',
+  };
+  return map[source.toLowerCase()] || 'money-bill';
+};
+
 const HomeScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<HomeScreenNavigationProp>();
@@ -81,6 +95,7 @@ const HomeScreen = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [balanceData, setBalanceData] = useState<BalanceData | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null); // null = "All"
   const selectedProfileIdRef = useRef<string | null>(null);
 
@@ -88,6 +103,7 @@ const HomeScreen = () => {
   const [profilesLoading, setProfilesLoading] = useState(true);
   const [expensesLoading, setExpensesLoading] = useState(true);
   const [groupsLoading, setGroupsLoading] = useState(true);
+  const [balanceLoading, setBalanceLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   // Logout dialog
@@ -150,8 +166,23 @@ const HomeScreen = () => {
       }
     };
 
+    const fetchBalance = async () => {
+      try {
+        setBalanceLoading(true);
+        const response = await expenseService.getBalance(accessToken);
+        if (response.success && response.data) {
+          setBalanceData(response.data);
+        }
+      } catch (err: any) {
+        if (err?.statusCode === 401) throw err;
+        console.error('Error fetching balance:', err);
+      } finally {
+        setBalanceLoading(false);
+      }
+    };
+
     try {
-      await Promise.all([fetchProfiles(), fetchExpenses(), fetchGroups()]);
+      await Promise.all([fetchProfiles(), fetchExpenses(), fetchGroups(), fetchBalance()]);
     } catch (err: any) {
       if (err?.statusCode === 401) {
         // Attempt token refresh; if it fails, log the user out
@@ -178,7 +209,11 @@ const HomeScreen = () => {
   }, [fetchAllData]);
 
   const handleAddExpense = () => {
-    navigation.navigate('AddExpense');
+    navigation.navigate('AddExpense', { type: 'expense' });
+  };
+
+  const handleAddIncome = () => {
+    navigation.navigate('AddExpense', { type: 'income' });
   };
 
   const fetchExpensesForProfile = useCallback(async (profileId: string | null) => {
@@ -314,6 +349,15 @@ const HomeScreen = () => {
     const profileColor = profile
       ? getProfileColor(profile, profiles.indexOf(profile))
       : undefined;
+    const isIncome = expense.type === 'income';
+    const iconName = isIncome
+      ? getSourceIcon(expense.source ?? 'other')
+      : getCategoryIcon(expense.category ?? 'other');
+    const iconColor = isIncome ? '#10B981' : Theme.colors.primary;
+    const iconBg = isIncome ? 'rgba(16, 185, 129, 0.1)' : 'rgba(216, 27, 96, 0.1)';
+    const labelText = isIncome
+      ? (expense.source ?? 'Income')
+      : (expense.category ?? 'Other');
 
     return (
       <TouchableOpacity
@@ -321,11 +365,11 @@ const HomeScreen = () => {
         style={styles.expenseRow}
         onPress={() => navigation.navigate('EditExpense', { expenseId: expense._id })}
         activeOpacity={0.7}>
-        <View style={styles.expenseIconWrapper}>
+        <View style={[styles.expenseIconWrapper, { backgroundColor: iconBg }]}>
           <FontAwesome6
-            name={getCategoryIcon(expense.category ?? 'other') as any}
+            name={iconName as any}
             size={16}
-            color={Theme.colors.primary}
+            color={iconColor}
             solid
           />
         </View>
@@ -335,7 +379,7 @@ const HomeScreen = () => {
           </Text>
           <View style={styles.expenseMeta}>
             <Text style={styles.expenseCategory}>
-              {expense.category} {'\u00B7'} {formatDate(expense.createdAt)}
+              {labelText} {'\u00B7'} {formatDate(expense.createdAt)}
             </Text>
             {profile && profileColor && (
               <View style={[styles.profileBadge, { backgroundColor: profileColor + '18' }]}>
@@ -347,8 +391,8 @@ const HomeScreen = () => {
             )}
           </View>
         </View>
-        <Text style={styles.expenseAmount}>
-          {formatCurrency(expense.amount)}
+        <Text style={[styles.expenseAmount, isIncome && styles.incomeAmount]}>
+          {isIncome ? '+' : '-'}{formatCurrency(expense.amount)}
         </Text>
       </TouchableOpacity>
     );
@@ -417,31 +461,57 @@ const HomeScreen = () => {
             />
           }
         >
-          {/* --- Add Expense CTA --- */}
-          <TouchableOpacity
-            style={styles.addExpenseButton}
-            onPress={handleAddExpense}
-            activeOpacity={0.85}
-          >
-            <View style={styles.addExpenseIconCircle}>
-              <FontAwesome6
-                name="plus"
-                size={18}
-                color={Theme.colors.primary}
-                solid
-              />
+          {/* --- Balance Card --- */}
+          {balanceLoading ? (
+            <View style={styles.balanceLoadingContainer}>
+              <ActivityIndicator size="small" color={Theme.colors.primary} />
             </View>
-            <View style={styles.addExpenseTextContainer}>
-              <Text style={styles.addExpenseTitle}>Add Expense</Text>
-              <Text style={styles.addExpenseSubtitle}>Track a new personal expense</Text>
-            </View>
-            <FontAwesome6
-              name="chevron-right"
-              size={14}
-              color={Theme.colors.textOnPrimary}
-              solid
+          ) : balanceData ? (
+            <BalanceCard
+              totalIncome={balanceData.totalIncome}
+              totalExpenses={balanceData.totalExpenses}
+              balance={balanceData.balance}
+              spentPercentage={balanceData.spentPercentage}
+              dailySpendingRate={balanceData.dailySpendingRate}
+              dailyBudgetRate={balanceData.dailyBudgetRate}
+              daysRemaining={balanceData.daysRemaining}
             />
-          </TouchableOpacity>
+          ) : null}
+
+          {/* --- Add Expense / Income CTAs --- */}
+          <View style={styles.ctaRow}>
+            <TouchableOpacity
+              style={styles.addExpenseButton}
+              onPress={handleAddExpense}
+              activeOpacity={0.85}
+            >
+              <View style={styles.addExpenseIconCircle}>
+                <FontAwesome6
+                  name="plus"
+                  size={16}
+                  color={Theme.colors.primary}
+                  solid
+                />
+              </View>
+              <Text style={styles.addExpenseTitle}>Add Expense</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.addIncomeButton}
+              onPress={handleAddIncome}
+              activeOpacity={0.85}
+            >
+              <View style={styles.addIncomeIconCircle}>
+                <FontAwesome6
+                  name="plus"
+                  size={16}
+                  color="#10B981"
+                  solid
+                />
+              </View>
+              <Text style={styles.addIncomeTitle}>Add Income</Text>
+            </TouchableOpacity>
+          </View>
 
           {/* --- Profiles Section --- */}
           <View style={styles.section}>
@@ -471,7 +541,7 @@ const HomeScreen = () => {
           {/* --- Recent Expenses Section --- */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionHeaderLabel}>Recent Expenses</Text>
+              <Text style={styles.sectionHeaderLabel}>Recent Transactions</Text>
               {recentExpenses.length > 0 && (
                 <TouchableOpacity onPress={handleViewAllExpenses}>
                   <Text style={styles.viewAllLink}>View All</Text>
@@ -622,42 +692,73 @@ const styles = StyleSheet.create({
     paddingTop: Theme.spacing.lg,
   },
 
-  // --- Add Expense CTA ---
+  // --- Balance Loading ---
+  balanceLoadingContainer: {
+    marginHorizontal: Theme.spacing.md,
+    paddingVertical: Theme.spacing.lg,
+    alignItems: 'center',
+  },
+
+  // --- Add Expense / Income CTAs ---
+  ctaRow: {
+    flexDirection: 'row',
+    marginHorizontal: Theme.spacing.md,
+    marginTop: Theme.spacing.md,
+    gap: Theme.spacing.sm,
+  },
   addExpenseButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: Theme.colors.primary,
-    marginHorizontal: Theme.spacing.md,
     paddingVertical: Theme.spacing.md,
-    paddingHorizontal: Theme.spacing.md,
+    paddingHorizontal: Theme.spacing.sm,
     borderRadius: Theme.borderRadius.lg,
-    ...Theme.shadows.large,
+    minHeight: 50,
+    ...Theme.shadows.medium,
   },
   addExpenseIconCircle: {
-    width: 44,
-    height: 44,
+    width: 32,
+    height: 32,
     borderRadius: Theme.borderRadius.round,
     backgroundColor: Theme.colors.white,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Theme.spacing.sm,
   },
-  addExpenseTextContainer: {
-    flex: 1,
-  },
   addExpenseTitle: {
-    fontSize: Theme.typography.fontSize.large,
+    fontSize: Theme.typography.fontSize.medium,
     color: Theme.colors.textOnPrimary,
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.bold,
-    marginBottom: 2,
   },
-  addExpenseSubtitle: {
-    fontSize: Theme.typography.fontSize.small,
+  addIncomeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#10B981',
+    paddingVertical: Theme.spacing.md,
+    paddingHorizontal: Theme.spacing.sm,
+    borderRadius: Theme.borderRadius.lg,
+    minHeight: 50,
+    ...Theme.shadows.medium,
+  },
+  addIncomeIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: Theme.borderRadius.round,
+    backgroundColor: Theme.colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Theme.spacing.sm,
+  },
+  addIncomeTitle: {
+    fontSize: Theme.typography.fontSize.medium,
     color: Theme.colors.textOnPrimary,
     fontFamily: Theme.typography.fontFamily,
-    fontWeight: Theme.typography.fontWeight.regular,
-    opacity: 0.85,
+    fontWeight: Theme.typography.fontWeight.bold,
   },
 
   // --- Sections ---
@@ -813,6 +914,9 @@ const styles = StyleSheet.create({
     fontWeight: Theme.typography.fontWeight.bold,
     marginLeft: Theme.spacing.sm,
     letterSpacing: -0.3,
+  },
+  incomeAmount: {
+    color: '#10B981',
   },
   expenseDivider: {
     height: 1,

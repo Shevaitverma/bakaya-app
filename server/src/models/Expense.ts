@@ -5,6 +5,8 @@ export interface IExpense {
   profileId?: mongoose.Types.ObjectId;
   title: string;
   amount: number;
+  type: "income" | "expense";
+  source?: string;
   category?: string;
   notes?: string;
   createdAt: Date;
@@ -36,6 +38,18 @@ const expenseSchema = new Schema<IExpenseDocument>(
       required: [true, "Amount is required"],
       min: [0, "Amount must be non-negative"],
     },
+    type: {
+      type: String,
+      enum: ["income", "expense"],
+      default: "expense",
+      required: true,
+      index: true,
+    },
+    source: {
+      type: String,
+      trim: true,
+      maxlength: 50,
+    },
     category: {
       type: String,
       trim: true,
@@ -51,7 +65,7 @@ const expenseSchema = new Schema<IExpenseDocument>(
   }
 );
 
-expenseSchema.index({ userId: 1, createdAt: -1 });
+expenseSchema.index({ userId: 1, type: 1, createdAt: -1 });
 expenseSchema.index({ userId: 1, profileId: 1, createdAt: -1 });
 
 export const Expense = mongoose.model<IExpenseDocument>("Expense", expenseSchema);

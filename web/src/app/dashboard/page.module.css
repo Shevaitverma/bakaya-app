@@ -30,15 +30,21 @@
   letter-spacing: -1px;
 }
 
+/* --- CTA Row --- */
+.ctaRow {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xl);
+}
+
 /* --- Add Expense CTA --- */
 .addExpenseCta {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--spacing-sm);
-  width: 100%;
+  flex: 1;
   padding: var(--spacing-md) var(--spacing-lg);
-  margin-bottom: var(--spacing-xl);
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-on-primary);
@@ -57,6 +63,35 @@
 }
 
 .addExpenseCta:active {
+  transform: scale(0.99);
+}
+
+/* --- Add Income CTA --- */
+.addIncomeCta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  flex: 1;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-on-primary);
+  background: linear-gradient(135deg, #10B981, #059669);
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  text-decoration: none;
+}
+
+.addIncomeCta:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+.addIncomeCta:active {
   transform: scale(0.99);
 }
 
@@ -256,9 +291,23 @@
 .expenseAmount {
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
+  color: var(--color-error);
   white-space: nowrap;
   letter-spacing: -0.3px;
+}
+
+.incomeAmount {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-success);
+  white-space: nowrap;
+  letter-spacing: -0.3px;
+}
+
+.incomeSource {
+  font-size: var(--font-size-xs);
+  color: var(--color-success);
+  font-weight: var(--font-weight-medium);
 }
 
 .expenseDate {
@@ -366,7 +415,7 @@
     font-size: var(--font-size-title);
   }
 
-  .addExpenseCta {
+  .ctaRow {
     margin-bottom: var(--spacing-lg);
   }
 
@@ -380,6 +429,10 @@
 }
 
 @media (max-width: 480px) {
+  .ctaRow {
+    flex-direction: column;
+  }
+
   .groupsGrid {
     grid-template-columns: 1fr;
   }
