@@ -144,14 +144,14 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation, route
     return (
       <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
         <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
-        <ActivityIndicator size="large" color={Theme.colors.primary} />
+        <ActivityIndicator size="large" color={Theme.colors.textOnPrimary} />
         <Text style={styles.loadingText}>Loading profile...</Text>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
 
       {/* Header */}
@@ -315,6 +315,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Theme.spacing.md,
     paddingBottom: Theme.spacing.md,
+    backgroundColor: Theme.colors.primary,
   },
   backButton: {
     width: 40,

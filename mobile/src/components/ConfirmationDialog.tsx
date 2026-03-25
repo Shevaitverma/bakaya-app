@@ -38,9 +38,11 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   const opacityAnim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
+    let animation: Animated.CompositeAnimation | null = null;
+
     if (visible) {
       // Animate in immediately
-      Animated.parallel([
+      animation = Animated.parallel([
         Animated.spring(scaleAnim, {
           toValue: 1,
           useNativeDriver: true,
@@ -52,11 +54,16 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
           duration: 200,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]);
+      animation.start();
     } else {
       scaleAnim.setValue(0);
       opacityAnim.setValue(0);
     }
+
+    return () => {
+      animation?.stop();
+    };
   }, [visible, scaleAnim, opacityAnim]);
 
   const getVariantColor = () => {

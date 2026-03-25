@@ -30,7 +30,7 @@ type LoginScreenProps = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { login, googleLogin, isLoading, error } = useAuth();
-  const { signIn: googleSignIn, isLoading: isGoogleLoading } = useGoogleSignIn();
+  const { signIn: googleSignIn, isLoading: isGoogleLoading, isAvailable: isGoogleAvailable } = useGoogleSignIn();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -170,20 +170,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               style={styles.loginButton}
             />
 
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
-            </View>
+            {/* Google Sign-In (hidden on iOS without iosClientId) */}
+            {isGoogleAvailable && (
+              <>
+                <View style={styles.divider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or</Text>
+                  <View style={styles.dividerLine} />
+                </View>
 
-            {/* Google Sign-In */}
-            <GoogleSignInButton
-              onPress={handleGoogleSignIn}
-              isLoading={isGoogleLoading}
-              disabled={isLoading}
-              label="Sign in with Google"
-            />
+                <GoogleSignInButton
+                  onPress={handleGoogleSignIn}
+                  isLoading={isGoogleLoading}
+                  disabled={isLoading}
+                  label="Sign in with Google"
+                />
+              </>
+            )}
           </View>
 
           {/* Footer */}

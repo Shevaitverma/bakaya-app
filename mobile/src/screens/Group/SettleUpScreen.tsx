@@ -3,7 +3,7 @@
  * Shows who owes whom and allows recording settlements
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -48,15 +48,15 @@ const SettleUpScreen: React.FC<SettleUpScreenProps> = ({ navigation, route }) =>
 
   const currentUserId = user?.id || '';
 
-  const getMemberName = (userId: string): string => {
+  const getMemberName = useCallback((userId: string): string => {
     if (userId === currentUserId) return 'You';
     const member = members.find((m) => m.userId === userId);
     return member?.name || userId;
-  };
+  }, [currentUserId, members]);
 
   // Calculate simplified debts from balances
   // Negative balance = owes money, Positive balance = is owed money
-  const calculateDebts = (): DebtEntry[] => {
+  const allDebts = useMemo((): DebtEntry[] => {
     const debts: DebtEntry[] = [];
     const debtors: { userId: string; amount: number }[] = [];
     const creditors: { userId: string; amount: number }[] = [];
@@ -97,12 +97,14 @@ const SettleUpScreen: React.FC<SettleUpScreenProps> = ({ navigation, route }) =>
     }
 
     return debts;
-  };
+  }, [balances, getMemberName]);
 
-  const allDebts = calculateDebts();
   // Only show debts where the current user is the debtor (from),
   // since the server only allows settlements where paidBy === authenticated user
-  const debts = allDebts.filter((debt) => debt.from === currentUserId);
+  const debts = useMemo(
+    () => allDebts.filter((debt) => debt.from === currentUserId),
+    [allDebts, currentUserId]
+  );
 
   const handleSelectDebt = (debt: DebtEntry) => {
     setSelectedDebt(debt);
@@ -358,6 +360,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Theme.spacing.md,
     paddingBottom: Theme.spacing.md,
+    backgroundColor: Theme.colors.primary,
   },
   backButton: {
     width: 40,

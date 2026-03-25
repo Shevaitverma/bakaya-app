@@ -70,7 +70,17 @@
       "Bash(find E:/shevait-projects/bakaya-app/server/src -type f -name *.ts -o -name *.js)",
       "Bash(./node_modules/.bin/tsc --noEmit)",
       "Bash(find /e/shevait-projects/bakaya-app/mobile -maxdepth 3 -type f \\\\\\(-name *dashboard* -o -name *home* -o -name *profile* -o -name *expense* \\\\\\))",
-      "Bash(find /e/shevait-projects/bakaya-app/mobile/src -type f -name *.tsx -o -name *.ts)"
+      "Bash(find /e/shevait-projects/bakaya-app/mobile/src -type f -name *.tsx -o -name *.ts)",
+      "Bash(claude mcp:*)",
+      "mcp__stitch__create_project",
+      "mcp__stitch__create_design_system",
+      "mcp__stitch__update_design_system",
+      "mcp__stitch__generate_screen_from_text",
+      "mcp__stitch__list_screens",
+      "mcp__stitch__get_project",
+      "mcp__stitch__list_projects",
+      "Bash(find E:shevait-projectsbakaya-appwebsrcappdashboardgroups -name *.tsx -type f)",
+      "Bash(find E:shevait-projectsbakaya-appwebsrcappdashboardgroups -type f -name *.tsx)"
     ]
   }
 }

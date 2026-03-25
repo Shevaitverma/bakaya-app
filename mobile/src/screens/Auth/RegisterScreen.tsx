@@ -35,7 +35,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const { register, googleLogin, isLoading, error } = useAuth();
-  const { signIn: googleSignIn, isLoading: isGoogleLoading } = useGoogleSignIn();
+  const { signIn: googleSignIn, isLoading: isGoogleLoading, isAvailable: isGoogleAvailable } = useGoogleSignIn();
 
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -361,20 +361,23 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               style={styles.registerButton}
             />
 
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
-            </View>
+            {/* Google Sign-In (hidden on iOS without iosClientId) */}
+            {isGoogleAvailable && (
+              <>
+                <View style={styles.divider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or</Text>
+                  <View style={styles.dividerLine} />
+                </View>
 
-            {/* Google Sign-In */}
-            <GoogleSignInButton
-              onPress={handleGoogleSignIn}
-              isLoading={isGoogleLoading}
-              disabled={isLoading}
-              label="Sign up with Google"
-            />
+                <GoogleSignInButton
+                  onPress={handleGoogleSignIn}
+                  isLoading={isGoogleLoading}
+                  disabled={isLoading}
+                  label="Sign up with Google"
+                />
+              </>
+            )}
           </View>
 
           {/* Footer */}

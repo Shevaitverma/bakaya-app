@@ -3,4 +3,7 @@ export interface Group {
   title: string;
   amount: number;
   imageUri?: string;
+  memberCount?: number;
+  memberNames?: string[];
+  totalExpenses?: number;
 }

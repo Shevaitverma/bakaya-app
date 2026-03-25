@@ -72,8 +72,14 @@ export function checkAuthRateLimit(req: Request): Response | null {
 }
 
 export function checkRateLimit(req: Request): Response | null {
-  const clientIP = getClientIP(req);
-  return checkLimit(rateLimitStore, clientIP, env.RATE_LIMIT_MAX, env.RATE_LIMIT_WINDOW_MS);
+  // Use Authorization token (per-user) if available, otherwise fall back to IP.
+  // This prevents all clients from sharing a single "unknown" bucket when
+  // TRUST_PROXY is not set (e.g. local development).
+  const authHeader = req.headers.get("authorization");
+  const key = authHeader
+    ? `user:${authHeader.slice(-16)}`   // last 16 chars of token as key
+    : `ip:${getClientIP(req)}`;
+  return checkLimit(rateLimitStore, key, env.RATE_LIMIT_MAX, env.RATE_LIMIT_WINDOW_MS);
 }
 
 export function getRateLimitHeaders(req: Request): Record<string, string> {

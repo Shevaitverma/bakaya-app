@@ -15,8 +15,6 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../context/AuthContext';
 import { Theme } from '../../constants/theme';
-import GroupCard from '../../components/GroupCard';
-import BalanceCard from '../../components/BalanceCard';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import { Group } from '../../interfaces/group';
 import type { HomeStackParamList } from '../../navigation/types';
@@ -88,6 +86,23 @@ const getSourceIcon = (source: string): string => {
   return map[source.toLowerCase()] || 'money-bill';
 };
 
+const getCurrentMonthYear = (): string => {
+  const now = new Date();
+  return now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+};
+
+const getBalanceColor = (balance: number): string => {
+  if (balance > 0) return Theme.colors.success;
+  if (balance < 0) return Theme.colors.error;
+  return Theme.colors.textSecondary;
+};
+
+const getProgressColor = (percentage: number): string => {
+  if (percentage <= 50) return Theme.colors.primary;
+  if (percentage <= 75) return Theme.colors.warning;
+  return Theme.colors.error;
+};
+
 const HomeScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<HomeScreenNavigationProp>();
@@ -101,6 +116,7 @@ const HomeScreen = () => {
   const [balanceData, setBalanceData] = useState<BalanceData | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null); // null = "All"
   const selectedProfileIdRef = useRef<string | null>(null);
+  const lastFetchTime = useRef<number>(0);
 
   // Loading states (independent per section)
   const [profilesLoading, setProfilesLoading] = useState(true);
@@ -115,6 +131,10 @@ const HomeScreen = () => {
 
   const fetchAllData = useCallback(async () => {
     if (!accessToken) return;
+
+    // Staleness check: skip fetch if data was fetched less than 30s ago.
+    // Pull-to-refresh bypasses this by resetting lastFetchTime to 0 before calling fetchAllData.
+    if (Date.now() - lastFetchTime.current < 30000) return;
 
     const fetchProfiles = async () => {
       try {
@@ -156,8 +176,10 @@ const HomeScreen = () => {
           const apiGroups: Group[] = response.data.groups.map((group) => ({
             id: group._id,
             title: group.name,
-            amount: 10,
+            amount: 0,
             imageUri: undefined,
+            memberCount: group.members?.length ?? 0,
+            memberNames: group.members?.map((m) => m.userId?.email?.split('@')[0] ?? 'User') ?? [],
           }));
           setGroups(apiGroups);
         }
@@ -197,7 +219,11 @@ const HomeScreen = () => {
     };
 
     try {
-      await Promise.all([fetchProfiles(), fetchExpenses(), fetchGroups(), fetchBalance(), fetchCategories()]);
+      // Stagger requests to avoid hitting server rate limits.
+      // Batch into two groups with a small delay between them.
+      await Promise.all([fetchProfiles(), fetchExpenses(), fetchBalance()]);
+      await Promise.all([fetchGroups(), fetchCategories()]);
+      lastFetchTime.current = Date.now();
     } catch (err: any) {
       if (err?.statusCode === 401) {
         // Attempt token refresh; if it fails, log the user out
@@ -219,6 +245,7 @@ const HomeScreen = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    lastFetchTime.current = 0; // Bypass staleness check for pull-to-refresh
     await fetchAllData();
     setRefreshing(false);
   }, [fetchAllData]);
@@ -275,6 +302,27 @@ const HomeScreen = () => {
 
   const handleViewAllExpenses = () => {
     navigation.navigate('ExpenseDetail');
+  };
+
+  const handleViewAllProfiles = () => {
+    const parentNav = navigation.getParent();
+    if (parentNav) {
+      parentNav.navigate('MeTab', { screen: 'Profiles' });
+    }
+  };
+
+  const handleQuickAnalytics = () => {
+    const parentNav = navigation.getParent();
+    if (parentNav) {
+      parentNav.navigate('AnalyticsTab');
+    }
+  };
+
+  const handleQuickCategories = () => {
+    const parentNav = navigation.getParent();
+    if (parentNav) {
+      parentNav.navigate('MeTab', { screen: 'Categories' });
+    }
   };
 
   const handleLogout = () => {
@@ -368,7 +416,7 @@ const HomeScreen = () => {
     return map;
   }, [categories]);
 
-  const renderExpenseRow = (expense: Expense) => {
+  const renderExpenseRow = (expense: Expense, isLast: boolean) => {
     const profile = getExpenseProfile(expense);
     const profileColor = profile
       ? getProfileColor(profile, profiles.indexOf(profile))
@@ -390,7 +438,7 @@ const HomeScreen = () => {
         <FontAwesome6
           name={iconName as any}
           size={16}
-          color="#10B981"
+          color={Theme.colors.success}
           solid
         />
       );
@@ -411,48 +459,32 @@ const HomeScreen = () => {
     }
 
     return (
-      <TouchableOpacity
-        key={expense._id}
-        style={styles.expenseRow}
-        onPress={() => navigation.navigate('EditExpense', { expenseId: expense._id })}
-        activeOpacity={0.7}>
-        <View style={[styles.expenseIconWrapper, { backgroundColor: iconBg }]}>
-          {iconContent}
-        </View>
-        <View style={styles.expenseDetails}>
-          <Text style={styles.expenseTitle} numberOfLines={1}>
-            {expense.title}
-          </Text>
-          <View style={styles.expenseMeta}>
-            <Text style={styles.expenseCategory}>
-              {labelText} {'\u00B7'} {formatDate(expense.createdAt)}
-            </Text>
-            {profile && profileColor && (
-              <View style={[styles.profileBadge, { backgroundColor: profileColor + '18' }]}>
-                <View style={[styles.profileBadgeDot, { backgroundColor: profileColor }]} />
-                <Text style={[styles.profileBadgeText, { color: profileColor }]} numberOfLines={1}>
-                  {profile.name}
-                </Text>
-              </View>
-            )}
+      <React.Fragment key={expense._id}>
+        <TouchableOpacity
+          style={styles.expenseRow}
+          onPress={() => navigation.navigate('EditExpense', { expenseId: expense._id })}
+          activeOpacity={0.7}>
+          <View style={[styles.expenseIconWrapper, { backgroundColor: iconBg }]}>
+            {iconContent}
           </View>
-        </View>
-        <Text style={[styles.expenseAmount, isIncome && styles.incomeAmount]}>
-          {isIncome ? '+' : '-'}{formatCurrency(expense.amount)}
-        </Text>
-      </TouchableOpacity>
+          <View style={styles.expenseDetails}>
+            <Text style={styles.expenseTitle} numberOfLines={1}>
+              {expense.title}
+            </Text>
+            <Text style={styles.expenseCategory} numberOfLines={1}>
+              {labelText}
+              {profile ? ` \u00B7 ${profile.name}` : ''}
+              {` \u00B7 ${formatDate(expense.createdAt)}`}
+            </Text>
+          </View>
+          <Text style={[styles.expenseAmount, { color: isIncome ? Theme.colors.success : Theme.colors.error }]}>
+            {isIncome ? '+' : '-'}{formatCurrency(expense.amount)}
+          </Text>
+        </TouchableOpacity>
+        {!isLast && <View style={styles.expenseDivider} />}
+      </React.Fragment>
     );
   };
-
-  const renderGroupCard = (item: Group) => (
-    <GroupCard
-      key={item.id}
-      title={item.title}
-      amount={item.amount}
-      imageUri={item.imageUri}
-      onPress={() => handleGroupPress(item)}
-    />
-  );
 
   const renderSectionLoading = () => (
     <View style={styles.sectionLoadingContainer}>
@@ -461,209 +493,193 @@ const HomeScreen = () => {
     </View>
   );
 
+  // Balance card derived values
+  const clampedPercentage = balanceData ? Math.min(Math.max(balanceData.spentPercentage, 0), 100) : 0;
+  const progressColor = getProgressColor(clampedPercentage);
+  const balanceColor = balanceData ? getBalanceColor(balanceData.balance) : Theme.colors.textSecondary;
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
 
-      {/* Header */}
+      {/* ===== Header ===== */}
       <View style={[styles.header, { paddingTop: insets.top + Theme.spacing.md }]}>
-        <View style={styles.headerContent}>
-          <View style={styles.titleContainer}>
-            <Text style={styles.greeting}>
-              Hello{user?.firstName ? `, ${user.firstName}` : ''}
-            </Text>
-            <Text style={styles.title}>Bakaya</Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={handleLogout}
-            activeOpacity={0.8}
-          >
-            <FontAwesome6
-              name="right-from-bracket"
-              size={18}
-              color={Theme.colors.textOnPrimary}
-              solid
-            />
-          </TouchableOpacity>
+        <View style={styles.headerLeft}>
+          <Text style={styles.greeting}>
+            Hello{user?.firstName ? `, ${user.firstName}` : ''}
+          </Text>
+          <Text style={styles.title}>Bakaya</Text>
+        </View>
+        <View style={styles.avatarCircle}>
+          <Text style={styles.avatarText}>
+            {user?.firstName ? user.firstName.charAt(0).toUpperCase() : 'U'}
+          </Text>
         </View>
       </View>
 
-      {/* Scrollable Content */}
-      <View style={styles.contentWrapper}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: insets.bottom + Theme.spacing.xxl },
-          ]}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[Theme.colors.primary]}
-              tintColor={Theme.colors.primary}
-            />
-          }
-        >
-          {/* --- Balance Card --- */}
-          {balanceLoading ? (
-            <View style={styles.balanceLoadingContainer}>
-              <ActivityIndicator size="small" color={Theme.colors.primary} />
-            </View>
-          ) : balanceData ? (
-            <BalanceCard
-              totalIncome={balanceData.totalIncome}
-              totalExpenses={balanceData.totalExpenses}
-              balance={balanceData.balance}
-              spentPercentage={balanceData.spentPercentage}
-              dailySpendingRate={balanceData.dailySpendingRate}
-              dailyBudgetRate={balanceData.dailyBudgetRate}
-              daysRemaining={balanceData.daysRemaining}
-            />
-          ) : null}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: 100 },
+        ]}
+        style={styles.contentSheet}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[Theme.colors.primary]}
+            tintColor={Theme.colors.primary}
+          />
+        }
+      >
 
-          {/* --- Add Expense / Income CTAs --- */}
-          <View style={styles.ctaRow}>
-            <TouchableOpacity
-              style={styles.addExpenseButton}
-              onPress={handleAddExpense}
-              activeOpacity={0.85}
-            >
-              <View style={styles.addExpenseIconCircle}>
-                <FontAwesome6
-                  name="plus"
-                  size={16}
-                  color={Theme.colors.primary}
-                  solid
-                />
-              </View>
-              <Text style={styles.addExpenseTitle}>Add Expense</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.addIncomeButton}
-              onPress={handleAddIncome}
-              activeOpacity={0.85}
-            >
-              <View style={styles.addIncomeIconCircle}>
-                <FontAwesome6
-                  name="plus"
-                  size={16}
-                  color="#10B981"
-                  solid
-                />
-              </View>
-              <Text style={styles.addIncomeTitle}>Add Income</Text>
-            </TouchableOpacity>
+        {/* ===== Balance Summary Card ===== */}
+        {balanceLoading ? (
+          <View style={styles.balanceLoadingContainer}>
+            <ActivityIndicator size="small" color={Theme.colors.primary} />
           </View>
-
-          {/* --- Profiles Section --- */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Profiles</Text>
-            {profilesLoading ? (
-              renderSectionLoading()
-            ) : profiles.length === 0 ? (
-              <View style={styles.emptyStateRow}>
-                <Text style={styles.emptyStateText}>No profiles yet.</Text>
-                <TouchableOpacity onPress={handleAddProfile}>
-                  <Text style={styles.emptyStateLink}>Create one</Text>
-                </TouchableOpacity>
+        ) : balanceData ? (
+          <View style={styles.balanceCard}>
+            {/* Top row: Month chip + Income button */}
+            <View style={styles.balanceCardTopRow}>
+              <View style={styles.monthChip}>
+                <FontAwesome6 name="calendar" size={12} color={Theme.colors.primary} />
+                <Text style={styles.monthChipText}>{getCurrentMonthYear()}</Text>
               </View>
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.profileChipsContainer}
-              >
-                {renderAllChip()}
-                {profiles.map((profile, index) => renderProfileChip(profile, index))}
-                {renderAddProfileChip()}
-              </ScrollView>
-            )}
-          </View>
-
-          {/* --- Recent Expenses Section --- */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionHeaderLabel}>Recent Transactions</Text>
-              {recentExpenses.length > 0 && (
-                <TouchableOpacity onPress={handleViewAllExpenses}>
-                  <Text style={styles.viewAllLink}>View All</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            {expensesLoading ? (
-              renderSectionLoading()
-            ) : recentExpenses.length === 0 ? (
-              <View style={styles.emptyStateCard}>
-                <FontAwesome6
-                  name="receipt"
-                  size={28}
-                  color={Theme.colors.textTertiary}
-                  solid
-                />
-                <Text style={styles.emptyStateCardText}>
-                  No expenses yet. Tap "Add Expense" to get started!
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.expensesCard}>
-                {recentExpenses.map((expense, index) => (
-                  <React.Fragment key={expense._id}>
-                    {renderExpenseRow(expense)}
-                    {index < recentExpenses.length - 1 && (
-                      <View style={styles.expenseDivider} />
-                    )}
-                  </React.Fragment>
-                ))}
-              </View>
-            )}
-          </View>
-
-          {/* --- My Groups Section --- */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionHeaderLabel}>My Groups</Text>
               <TouchableOpacity
-                style={[styles.profileChip, styles.addProfileChip]}
-                onPress={handleCreateGroup}
+                style={styles.incomeButton}
+                onPress={handleAddIncome}
                 activeOpacity={0.7}
               >
-                <FontAwesome6
-                  name="plus"
-                  size={12}
-                  color={Theme.colors.primary}
-                  solid
-                />
-                <Text style={[styles.profileChipText, styles.addProfileChipText]}>
-                  Create
-                </Text>
+                <FontAwesome6 name="plus" size={10} color={Theme.colors.primary} solid />
+                <Text style={styles.incomeButtonText}>Income</Text>
               </TouchableOpacity>
             </View>
-            {groupsLoading ? (
-              renderSectionLoading()
-            ) : groups.length === 0 ? (
-              <View style={styles.emptyStateCard}>
-                <FontAwesome6
-                  name="users"
-                  size={28}
-                  color={Theme.colors.textTertiary}
-                  solid
-                />
-                <Text style={styles.emptyStateCardText}>
-                  No groups yet. Create a group to split expenses with friends.
+
+            {/* Three columns: Income | Expenses | Balance */}
+            <View style={styles.balanceSummaryRow}>
+              <View style={styles.balanceSummaryItem}>
+                <Text style={[styles.balanceSummaryValue, { color: Theme.colors.success }]}>
+                  {formatCurrency(balanceData.totalIncome)}
                 </Text>
+                <Text style={styles.balanceSummaryLabel}>INCOME</Text>
               </View>
-            ) : (
-              <View style={styles.groupsList}>
-                {groups.map((group) => renderGroupCard(group))}
+              <View style={styles.balanceSummaryItem}>
+                <Text style={[styles.balanceSummaryValue, { color: Theme.colors.error }]}>
+                  {formatCurrency(balanceData.totalExpenses)}
+                </Text>
+                <Text style={styles.balanceSummaryLabel}>EXPENSES</Text>
               </View>
+              <View style={styles.balanceSummaryItem}>
+                <Text style={[styles.balanceSummaryValue, { color: balanceColor }]}>
+                  {formatCurrency(Math.abs(balanceData.balance))}
+                </Text>
+                <Text style={styles.balanceSummaryLabel}>BALANCE</Text>
+              </View>
+            </View>
+
+            {/* Progress bar */}
+            <View style={styles.progressBarBackground}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  {
+                    width: `${clampedPercentage}%`,
+                    backgroundColor: progressColor,
+                  },
+                ]}
+              />
+            </View>
+
+            {/* Bottom row: daily rates + days remaining */}
+            <View style={styles.balanceBottomRow}>
+              <Text style={styles.balanceBottomLeft}>
+                {formatCurrency(balanceData.dailySpendingRate)}/day spent  {'\u00B7'}  Budget: {formatCurrency(balanceData.dailyBudgetRate)}/day
+              </Text>
+              {balanceData.daysRemaining > 0 && (
+                <Text style={styles.balanceBottomRight}>
+                  {balanceData.daysRemaining} days left
+                </Text>
+              )}
+            </View>
+          </View>
+        ) : null}
+
+        {/* ===== Profiles Section ===== */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionHeaderLabel}>Profiles</Text>
+            {profiles.length > 0 && (
+              <TouchableOpacity onPress={handleViewAllProfiles}>
+                <Text style={styles.viewAllLink}>View All</Text>
+              </TouchableOpacity>
             )}
           </View>
-        </ScrollView>
-      </View>
+          {profilesLoading ? (
+            renderSectionLoading()
+          ) : profiles.length === 0 ? (
+            <View style={styles.emptyStateRow}>
+              <Text style={styles.emptyStateText}>No profiles yet.</Text>
+              <TouchableOpacity onPress={handleAddProfile}>
+                <Text style={styles.emptyStateLink}>Create one</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.profileChipsContainer}
+            >
+              {renderAllChip()}
+              {profiles.map((profile, index) => renderProfileChip(profile, index))}
+              {renderAddProfileChip()}
+            </ScrollView>
+          )}
+        </View>
+
+        {/* ===== Recent Transactions Section ===== */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionHeaderLabel}>Recent Transactions</Text>
+            {recentExpenses.length > 0 && (
+              <TouchableOpacity onPress={handleViewAllExpenses}>
+                <Text style={styles.viewAllLink}>View All</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {expensesLoading ? (
+            renderSectionLoading()
+          ) : recentExpenses.length === 0 ? (
+            <View style={styles.emptyStateCard}>
+              <FontAwesome6
+                name="receipt"
+                size={28}
+                color={Theme.colors.textTertiary}
+                solid
+              />
+              <Text style={styles.emptyStateCardText}>
+                No expenses yet. Tap the + button to get started!
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.expensesCard}>
+              {recentExpenses.map((expense, index) =>
+                renderExpenseRow(expense, index === recentExpenses.length - 1)
+              )}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* ===== FAB (Floating Action Button) ===== */}
+      <TouchableOpacity
+        style={[styles.fab, { bottom: insets.bottom + 24 }]}
+        onPress={handleAddExpense}
+        activeOpacity={0.85}
+      >
+        <FontAwesome6 name="plus" size={22} color={Theme.colors.white} solid />
+      </TouchableOpacity>
 
       <ConfirmationDialog
         visible={showLogoutDialog}
@@ -686,123 +702,169 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.primary,
   },
 
+  contentSheet: {
+    backgroundColor: Theme.colors.surface,
+    borderTopLeftRadius: Theme.borderRadius.xl,
+    borderTopRightRadius: Theme.borderRadius.xl,
+    marginTop: -Theme.borderRadius.xl,
+  },
+
+  scrollContent: {
+    paddingHorizontal: 0,
+    paddingTop: Theme.spacing.xl,
+  },
+
   // --- Header ---
   header: {
-    paddingHorizontal: Theme.spacing.md,
-    paddingBottom: Theme.spacing.lg,
     backgroundColor: Theme.colors.primary,
-  },
-  headerContent: {
+    paddingHorizontal: Theme.spacing.md,
+    paddingBottom: Theme.spacing.xl + Theme.borderRadius.xl,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
-  titleContainer: {
+  headerLeft: {
     flex: 1,
   },
   greeting: {
     fontSize: Theme.typography.fontSize.medium,
-    color: Theme.colors.textOnPrimary,
+    color: 'rgba(255, 255, 255, 0.8)',
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.regular,
-    opacity: 0.9,
     marginBottom: Theme.spacing.xs,
   },
   title: {
-    fontSize: Theme.typography.fontSize.display,
-    color: Theme.colors.textOnPrimary,
+    fontSize: Theme.typography.fontSize.title,
+    color: Theme.colors.white,
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.bold,
-    letterSpacing: -1,
+    letterSpacing: -0.5,
   },
-  logoutButton: {
-    width: 40,
-    height: 40,
-    borderRadius: Theme.borderRadius.md,
+  avatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    marginTop: Theme.spacing.xs,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  avatarText: {
+    fontSize: Theme.typography.fontSize.large,
+    color: Theme.colors.white,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.bold,
   },
 
-  // --- Content wrapper ---
-  contentWrapper: {
-    flex: 1,
-    backgroundColor: Theme.colors.surface,
-    borderTopLeftRadius: Theme.borderRadius.xl,
-    borderTopRightRadius: Theme.borderRadius.xl,
-    overflow: 'hidden',
+  // --- Balance Card ---
+  balanceCard: {
+    backgroundColor: Theme.colors.white,
+    marginHorizontal: Theme.spacing.md,
+    borderRadius: Theme.borderRadius.lg,
+    padding: Theme.spacing.md,
+    ...Theme.shadows.medium,
   },
-  scrollContent: {
-    paddingTop: Theme.spacing.lg,
-  },
-
-  // --- Balance Loading ---
   balanceLoadingContainer: {
     marginHorizontal: Theme.spacing.md,
     paddingVertical: Theme.spacing.lg,
     alignItems: 'center',
   },
-
-  // --- Add Expense / Income CTAs ---
-  ctaRow: {
+  balanceCardTopRow: {
     flexDirection: 'row',
-    marginHorizontal: Theme.spacing.md,
-    marginTop: Theme.spacing.md,
-    gap: Theme.spacing.sm,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Theme.spacing.md,
   },
-  addExpenseButton: {
-    flex: 1,
+  monthChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Theme.colors.primary,
-    paddingVertical: Theme.spacing.md,
-    paddingHorizontal: Theme.spacing.sm,
-    borderRadius: Theme.borderRadius.lg,
-    minHeight: 50,
-    ...Theme.shadows.medium,
-  },
-  addExpenseIconCircle: {
-    width: 32,
-    height: 32,
+    paddingHorizontal: Theme.spacing.sm + 4,
+    paddingVertical: Theme.spacing.xs + 2,
     borderRadius: Theme.borderRadius.round,
-    backgroundColor: Theme.colors.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: Theme.colors.primaryLight,
+    backgroundColor: 'rgba(216, 27, 96, 0.05)',
+    gap: 6,
   },
-  addExpenseTitle: {
-    fontSize: Theme.typography.fontSize.medium,
-    color: Theme.colors.textOnPrimary,
+  monthChipText: {
+    fontSize: Theme.typography.fontSize.small,
+    color: Theme.colors.primary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.semibold,
+  },
+  incomeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Theme.spacing.sm + 4,
+    paddingVertical: Theme.spacing.xs + 2,
+    borderRadius: Theme.borderRadius.round,
+    borderWidth: 1,
+    borderColor: Theme.colors.primary,
+    gap: 4,
+  },
+  incomeButtonText: {
+    fontSize: Theme.typography.fontSize.small,
+    color: Theme.colors.primary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.semibold,
+  },
+
+  // Balance summary row
+  balanceSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: Theme.spacing.md,
+  },
+  balanceSummaryItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  balanceSummaryValue: {
+    fontSize: Theme.typography.fontSize.xlarge,
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.bold,
+    letterSpacing: -0.3,
+    marginBottom: 4,
   },
-  addIncomeButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#10B981',
-    paddingVertical: Theme.spacing.md,
-    paddingHorizontal: Theme.spacing.sm,
-    borderRadius: Theme.borderRadius.lg,
-    minHeight: 50,
-    ...Theme.shadows.medium,
+  balanceSummaryLabel: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.semibold,
+    letterSpacing: 0.5,
   },
-  addIncomeIconCircle: {
-    width: 32,
-    height: 32,
+
+  // Progress bar
+  progressBarBackground: {
+    height: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
     borderRadius: Theme.borderRadius.round,
-    backgroundColor: Theme.colors.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Theme.spacing.sm,
+    overflow: 'hidden',
+    marginBottom: Theme.spacing.sm,
   },
-  addIncomeTitle: {
-    fontSize: Theme.typography.fontSize.medium,
-    color: Theme.colors.textOnPrimary,
+  progressBarFill: {
+    height: '100%',
+    borderRadius: Theme.borderRadius.round,
+  },
+
+  // Balance bottom row
+  balanceBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  balanceBottomLeft: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.textSecondary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.regular,
+    flex: 1,
+  },
+  balanceBottomRight: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.success,
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.bold,
   },
@@ -817,15 +879,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Theme.spacing.md,
     marginBottom: Theme.spacing.sm,
-  },
-  sectionLabel: {
-    fontSize: Theme.typography.fontSize.large,
-    color: Theme.colors.textPrimary,
-    fontFamily: Theme.typography.fontFamily,
-    fontWeight: Theme.typography.fontWeight.bold,
-    paddingHorizontal: Theme.spacing.md,
-    marginBottom: Theme.spacing.sm,
-    letterSpacing: -0.3,
   },
   sectionHeaderLabel: {
     fontSize: Theme.typography.fontSize.large,
@@ -849,7 +902,7 @@ const styles = StyleSheet.create({
   profileChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Theme.colors.cardBackground,
+    backgroundColor: Theme.colors.white,
     paddingHorizontal: Theme.spacing.md,
     paddingVertical: Theme.spacing.sm,
     borderRadius: Theme.borderRadius.round,
@@ -889,24 +942,22 @@ const styles = StyleSheet.create({
 
   // --- Expense rows ---
   expensesCard: {
-    backgroundColor: Theme.colors.cardBackground,
+    backgroundColor: Theme.colors.white,
     marginHorizontal: Theme.spacing.md,
     borderRadius: Theme.borderRadius.lg,
-    padding: Theme.spacing.sm,
+    paddingVertical: Theme.spacing.xs,
     ...Theme.shadows.small,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
   },
   expenseRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Theme.spacing.sm,
-    paddingHorizontal: Theme.spacing.sm,
+    paddingVertical: Theme.spacing.sm + 2,
+    paddingHorizontal: Theme.spacing.md,
   },
   expenseIconWrapper: {
     width: 40,
     height: 40,
-    borderRadius: Theme.borderRadius.md,
+    borderRadius: 20,
     backgroundColor: 'rgba(216, 27, 96, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -925,57 +976,36 @@ const styles = StyleSheet.create({
     fontWeight: Theme.typography.fontWeight.semibold,
     marginBottom: 2,
   },
-  expenseMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Theme.spacing.xs,
-    flexWrap: 'wrap',
-  },
   expenseCategory: {
     fontSize: Theme.typography.fontSize.small,
     color: Theme.colors.textSecondary,
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.regular,
   },
-  profileBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: Theme.borderRadius.round,
-    gap: 4,
-  },
-  profileBadgeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: Theme.borderRadius.round,
-  },
-  profileBadgeText: {
-    fontSize: Theme.typography.fontSize.xs,
-    fontFamily: Theme.typography.fontFamily,
-    fontWeight: Theme.typography.fontWeight.semibold,
-    maxWidth: 80,
-  },
   expenseAmount: {
     fontSize: Theme.typography.fontSize.large,
-    color: Theme.colors.textPrimary,
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.bold,
     marginLeft: Theme.spacing.sm,
     letterSpacing: -0.3,
   },
-  incomeAmount: {
-    color: '#10B981',
-  },
   expenseDivider: {
     height: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.06)',
-    marginHorizontal: Theme.spacing.sm,
+    marginHorizontal: Theme.spacing.md,
   },
 
-  // --- Groups ---
-  groupsList: {
-    gap: 0,
+  // --- FAB ---
+  fab: {
+    position: 'absolute',
+    right: Theme.spacing.md + 4,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Theme.shadows.large,
   },
 
   // --- Loading ---
@@ -1011,14 +1041,12 @@ const styles = StyleSheet.create({
     fontWeight: Theme.typography.fontWeight.semibold,
   },
   emptyStateCard: {
-    backgroundColor: Theme.colors.cardBackground,
+    backgroundColor: Theme.colors.white,
     marginHorizontal: Theme.spacing.md,
     borderRadius: Theme.borderRadius.lg,
     padding: Theme.spacing.lg,
     alignItems: 'center',
     gap: Theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
   },
   emptyStateCardText: {
     fontSize: Theme.typography.fontSize.medium,

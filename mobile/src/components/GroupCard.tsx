@@ -5,11 +5,33 @@ import { Theme } from '../constants/theme';
 import { formatCurrencyExact } from '../utils/currency';
 import { GroupCardProps } from '../interfaces/groupCard';
 
+// Color palette for member avatars — picked by hashing the name
+const AVATAR_COLORS = [
+  '#D81B60', '#E91E63', '#9C27B0', '#673AB7',
+  '#3F51B5', '#2196F3', '#00BCD4', '#009688',
+  '#4CAF50', '#FF9800', '#FF5722', '#795548',
+];
+
+const hashName = (name: string): number => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash);
+};
+
+const getAvatarColor = (name: string): string => {
+  return AVATAR_COLORS[hashName(name) % AVATAR_COLORS.length] ?? '#D81B60';
+};
+
 const GroupCard: React.FC<GroupCardProps> = ({
   title,
   amount,
   imageUri,
   onPress,
+  memberCount,
+  memberNames,
+  totalExpenses,
 }) => {
   const hasAmount = amount > 0;
   const amountColor = hasAmount ? Theme.colors.error : Theme.colors.success;
@@ -45,6 +67,13 @@ const GroupCard: React.FC<GroupCardProps> = ({
     return Theme.colors.blue;
   };
 
+  // Determine display amount: prefer totalExpenses if provided
+  const displayAmount = totalExpenses !== undefined ? totalExpenses : amount;
+
+  // Build avatar list (max 3 visible)
+  const visibleNames = memberNames ? memberNames.slice(0, 3) : [];
+  const overflowCount = memberNames ? memberNames.length - 3 : 0;
+
   const CardContent = ({ pressed }: { pressed?: boolean }) => (
     <View style={[styles.card, pressed && styles.cardPressed]}>
       <View style={styles.imageContainer}>
@@ -65,12 +94,40 @@ const GroupCard: React.FC<GroupCardProps> = ({
         <Text style={styles.title} numberOfLines={1}>
           {title}
         </Text>
+        {visibleNames.length > 0 && (
+          <View style={styles.avatarRow}>
+            {visibleNames.map((name, idx) => (
+              <View
+                key={name + idx}
+                style={[
+                  styles.avatarCircle,
+                  { backgroundColor: getAvatarColor(name) },
+                  idx > 0 && { marginLeft: -8 },
+                ]}
+              >
+                <Text style={styles.avatarText}>
+                  {name.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            ))}
+            {overflowCount > 0 && (
+              <View style={[styles.avatarCircle, styles.avatarOverflow, { marginLeft: -8 }]}>
+                <Text style={styles.avatarOverflowText}>+{overflowCount}</Text>
+              </View>
+            )}
+            {memberCount !== undefined && (
+              <Text style={styles.memberCountText}>
+                {memberCount} {memberCount === 1 ? 'member' : 'members'}
+              </Text>
+            )}
+          </View>
+        )}
         <View style={styles.amountContainer}>
           <Text style={styles.amountLabel}>
             {getAmountLabel()}
           </Text>
           <Text style={[styles.amount, { color: amountColor }]}>
-            {formatCurrencyExact(amount)}
+            {formatCurrencyExact(displayAmount)}
           </Text>
         </View>
       </View>
@@ -173,6 +230,39 @@ const styles = StyleSheet.create({
     marginLeft: Theme.spacing.xs,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  avatarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  avatarCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  avatarText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700' as const,
+  },
+  avatarOverflow: {
+    backgroundColor: Theme.colors.lightGrey,
+  },
+  avatarOverflowText: {
+    color: Theme.colors.textSecondary,
+    fontSize: 10,
+    fontWeight: '600' as const,
+  },
+  memberCountText: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily,
+    marginLeft: Theme.spacing.sm,
   },
 });
 

@@ -23,3 +23,35 @@ export function formatCurrencyExact(amount: number): string {
     maximumFractionDigits: 2,
   })}`;
 }
+
+/**
+ * Format amount in abbreviated form for chart labels.
+ * Uses Indian conventions: L for lakhs, K for thousands.
+ *  - >= 10,00,000 (10 lakhs): "₹15L", "₹1.2L"
+ *  - >= 1,000: "₹2.5K", "₹1K"
+ *  - Otherwise: full formatted amount "₹500"
+ * Trailing ".0" is trimmed (e.g., "₹2.0K" becomes "₹2K").
+ */
+export function formatCurrencyAbbreviated(amount: number): string {
+  const abs = Math.abs(amount);
+  const sign = amount < 0 ? '-' : '';
+
+  if (abs >= 1000000) {
+    // 10,00,000+ => lakhs
+    const lakhs = abs / 100000;
+    const formatted = lakhs % 1 === 0
+      ? `${lakhs}`
+      : `${parseFloat(lakhs.toFixed(1))}`;
+    return `${sign}₹${formatted}L`;
+  }
+
+  if (abs >= 1000) {
+    const thousands = abs / 1000;
+    const formatted = thousands % 1 === 0
+      ? `${thousands}`
+      : `${parseFloat(thousands.toFixed(1))}`;
+    return `${sign}₹${formatted}K`;
+  }
+
+  return formatCurrency(amount);
+}

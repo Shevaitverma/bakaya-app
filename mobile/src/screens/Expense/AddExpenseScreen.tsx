@@ -121,7 +121,7 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation, 
 
     fetchProfiles();
     fetchCategories();
-  }, [accessToken]);
+  }, [accessToken, routeProfileId]);
 
   // Clear type-specific fields when switching type
   const handleTypeSwitch = (newType: 'expense' | 'income') => {
@@ -479,7 +479,7 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({ navigation, 
             title={isIncome ? 'Add Income' : 'Add Expense'}
             onPress={handleSubmit}
             loading={loading}
-            style={[styles.addButton, isIncome && styles.addIncomeButtonStyle]}
+            style={StyleSheet.flatten([styles.addButton, isIncome ? styles.addIncomeButtonStyle : undefined])}
           />
         </View>
       </ScrollView>
@@ -638,6 +638,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Theme.spacing.md,
     paddingBottom: Theme.spacing.md,
+    backgroundColor: Theme.colors.primary,
   },
   backButton: {
     width: 40,

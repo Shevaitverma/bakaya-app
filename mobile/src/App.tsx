@@ -9,15 +9,35 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { queryClient } from './lib/queryClient';
+import { asyncStoragePersister } from './lib/persister';
+import { useAppStateRefresh } from './hooks/useAppStateRefresh';
+import { useOnlineManager } from './hooks/useOnlineManager';
 import { AuthProvider } from './context/AuthContext';
 import { RootNavigator } from './navigation/RootNavigator';
 import { Theme } from './constants/theme';
+
+function AppContent() {
+  // Wire up TanStack Query with React Native AppState + network
+  useAppStateRefresh();
+  useOnlineManager();
+
+  return (
+    <SafeAreaProvider>
+      <AuthProvider>
+        <NavigationContainer>
+          <RootNavigator />
+        </NavigationContainer>
+      </AuthProvider>
+    </SafeAreaProvider>
+  );
+}
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    // Show splash screen for configured duration
     const timer = setTimeout(() => {
       setShowSplash(false);
     }, Theme.splashScreen.duration);
@@ -34,13 +54,18 @@ function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <NavigationContainer>
-          <RootNavigator />
-        </NavigationContainer>
-      </AuthProvider>
-    </SafeAreaProvider>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister: asyncStoragePersister,
+        maxAge: 1000 * 60 * 60 * 24, // 24 hours
+        dehydrateOptions: {
+          shouldDehydrateQuery: (query) => query.state.status === 'success',
+        },
+      }}
+    >
+      <AppContent />
+    </PersistQueryClientProvider>
   );
 }
 

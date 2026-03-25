@@ -56,14 +56,21 @@ const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({
 
   // Close when another item opens
   React.useEffect(() => {
+    let animation: Animated.CompositeAnimation | null = null;
+
     if (!isOpen) {
-      Animated.spring(translateX, {
+      animation = Animated.spring(translateX, {
         toValue: 0,
         useNativeDriver: true,
         tension: 50,
         friction: 7,
-      }).start();
+      });
+      animation.start();
     }
+
+    return () => {
+      animation?.stop();
+    };
   }, [isOpen, translateX]);
 
   const panResponder = useRef(
@@ -195,7 +202,7 @@ const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({
               <Text style={styles.expenseTitle} numberOfLines={1}>
                 {item.title}
               </Text>
-              <Text style={styles.expenseAmount}>{formatAmount(item.amount)}</Text>
+              <Text style={[styles.expenseAmount, { color: item.type === 'income' ? Theme.colors.success : Theme.colors.error }]}>{formatAmount(item.amount)}</Text>
             </View>
             <View style={styles.expenseMetaRow}>
               <View style={styles.expenseDateTimeContainer}>
@@ -351,7 +358,6 @@ const styles = StyleSheet.create({
   },
   expenseAmount: {
     fontSize: Theme.typography.fontSize.medium,
-    color: Theme.colors.textPrimary,
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.bold,
     letterSpacing: -0.2,

@@ -2,7 +2,7 @@
  * Profiles Screen - Manage user profiles
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Theme } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { profileService } from '../../services/profileService';
+import { expenseService } from '../../services/expenseService';
+import { formatCurrency } from '../../utils/currency';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import type { Profile } from '../../types/profile';
 import type { MeStackParamList } from '../../navigation/types';
@@ -28,26 +30,55 @@ type ProfilesScreenProps = NativeStackScreenProps<MeStackParamList, 'Profiles'>;
 
 const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { accessToken } = useAuth();
+  const { logout } = useAuth();
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
+  const { accessToken, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [profileToDelete, setProfileToDelete] = useState<{ id: string; name: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [profileTotals, setProfileTotals] = useState<Record<string, { totalSpent: number; balance: number }>>({});
+  const [totalsLoading, setTotalsLoading] = useState(false);
+  const lastFetchTime = useRef<number>(0);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      fetchProfiles();
-    }, [accessToken])
-  );
+  const fetchProfileTotals = useCallback(async (profilesList: Profile[]) => {
+    if (!accessToken || profilesList.length === 0) return;
 
-  const fetchProfiles = async () => {
+    setTotalsLoading(true);
+    const totals: Record<string, { totalSpent: number; balance: number }> = {};
+
+    // Fetch sequentially to avoid rate limits
+    for (const profile of profilesList) {
+      try {
+        const response = await expenseService.getPersonalExpenses(1, 1, accessToken, {
+          profileId: profile._id,
+        });
+        if (response.success && response.data) {
+          totals[profile._id] = {
+            totalSpent: response.data.totalExpenseAmount ?? 0,
+            balance: response.data.balance ?? 0,
+          };
+        }
+      } catch (err) {
+        // Silently skip — leave this profile without totals
+        console.warn(`[ProfilesScreen] Failed to fetch totals for profile ${profile._id}`, err);
+      }
+    }
+
+    setProfileTotals(totals);
+    setTotalsLoading(false);
+  }, [accessToken]);
+
+  const fetchProfiles = useCallback(async () => {
     if (!accessToken) {
       setError('Authentication required');
       setLoading(false);
       return;
     }
+    if (Date.now() - lastFetchTime.current < 30000) return;
 
     try {
       setLoading(true);
@@ -56,6 +87,9 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
 
       if (response.success && response.data) {
         setProfiles(response.data.profiles);
+        lastFetchTime.current = Date.now();
+        // Fetch totals in the background — don't block profile list rendering
+        fetchProfileTotals(response.data.profiles);
       } else {
         throw new Error('Failed to fetch profiles');
       }
@@ -67,7 +101,13 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken, fetchProfileTotals]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchProfiles();
+    }, [fetchProfiles])
+  );
 
   const handleDeleteProfile = (profileId: string) => {
     if (!accessToken) {
@@ -136,14 +176,6 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
   };
 
   const handleProfilePress = (profile: Profile) => {
-    navigation.navigate('ProfileExpenses', {
-      profileId: profile._id,
-      profileName: profile.name,
-      profileColor: profile.color,
-    });
-  };
-
-  const handleEditProfile = (profile: Profile) => {
     navigation.navigate('EditProfile', {
       profileId: profile._id,
       profileName: profile.name,
@@ -154,11 +186,12 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
   const renderProfileItem = ({ item, index }: { item: Profile; index: number }) => {
     const avatarColor = item.color || Theme.colors.primary;
     const firstLetter = item.name ? item.name.charAt(0).toUpperCase() : '?';
-    const isLastItem = index === profiles.length - 1;
+    const isDefault = item.isDefault;
+    const relationship = item.relationship ? formatRelationship(item.relationship) : '';
 
     return (
       <TouchableOpacity
-        style={[styles.profileCard, !isLastItem && styles.profileCardBorder]}
+        style={[styles.profileCard, isDefault && styles.profileCardDefault]}
         onPress={() => handleProfilePress(item)}
         activeOpacity={0.7}>
         <View style={styles.profileCardContent}>
@@ -173,52 +206,56 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
               <Text style={styles.profileName} numberOfLines={1}>
                 {item.name}
               </Text>
-              {item.isDefault && (
+              {isDefault && (
                 <View style={styles.defaultBadge}>
-                  <Text style={styles.defaultBadgeText}>Default</Text>
+                  <Text style={styles.defaultBadgeText}>DEFAULT</Text>
                 </View>
               )}
+              {relationship && !isDefault ? (
+                <View style={styles.relationshipBadge}>
+                  <Text style={styles.relationshipBadgeText}>{relationship.toUpperCase()}</Text>
+                </View>
+              ) : null}
             </View>
-            {item.relationship ? (
-              <Text style={styles.profileRelationship} numberOfLines={1}>
-                {formatRelationship(item.relationship)}
-              </Text>
-            ) : null}
+            <Text style={styles.profileSubtitle} numberOfLines={1}>
+              {isDefault ? 'PRIMARY ACCOUNT' : relationship ? `${relationship.toUpperCase()} GROUP` : 'PERSONAL'}
+            </Text>
           </View>
 
-          {/* Action buttons */}
-          <View style={styles.actionButtons}>
-            {/* Edit button */}
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={() => handleEditProfile(item)}
-              activeOpacity={0.7}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <FontAwesome6
-                name="pen-to-square"
-                size={16}
-                color={Theme.colors.primary}
-                solid
-              />
-            </TouchableOpacity>
-
-            {/* Delete button (not for default profiles) */}
-            {!item.isDefault && (
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => handleDeleteProfile(item._id)}
-                activeOpacity={0.7}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <FontAwesome6
-                  name="trash-can"
-                  size={16}
-                  color={Theme.colors.error}
-                  solid
-                />
-              </TouchableOpacity>
+          {/* Right side - totals */}
+          <View style={styles.profileRight}>
+            <Text style={styles.profileRightLabel}>
+              {isDefault ? 'TOTAL SPENT' : 'BALANCE'}
+            </Text>
+            {totalsLoading && !profileTotals[item._id] ? (
+              <ActivityIndicator size="small" color={Theme.colors.textTertiary} />
+            ) : (
+              <Text
+                style={[
+                  styles.profileRightAmount,
+                  {
+                    color: isDefault
+                      ? Theme.colors.error
+                      : (profileTotals[item._id]?.balance ?? 0) >= 0
+                        ? Theme.colors.success
+                        : Theme.colors.error,
+                  },
+                ]}>
+                {(() => {
+                  if (isDefault) {
+                    return formatCurrency(profileTotals[item._id]?.totalSpent ?? 0);
+                  }
+                  const bal = profileTotals[item._id]?.balance ?? 0;
+                  const sign = bal >= 0 ? '+' : '-';
+                  return `${sign}${formatCurrency(Math.abs(bal))}`;
+                })()}
+              </Text>
             )}
           </View>
         </View>
+
+        {/* Bottom divider */}
+        {index < profiles.length - 1 && <View style={styles.profileDivider} />}
       </TouchableOpacity>
     );
   };
@@ -227,7 +264,7 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
     return (
       <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
         <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
-        <ActivityIndicator size="large" color={Theme.colors.primary} />
+        <ActivityIndicator size="large" color={Theme.colors.textOnPrimary} />
         <Text style={styles.loadingText}>Loading profiles...</Text>
       </View>
     );
@@ -251,8 +288,15 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
     );
   }
 
+  const handleLogout = async () => {
+    setLogoutLoading(true);
+    await logout();
+    setLogoutLoading(false);
+    setShowLogoutDialog(false);
+  };
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
 
       {/* Header */}
@@ -282,7 +326,7 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
           keyExtractor={(item) => item._id}
           contentContainerStyle={[
             styles.listContent,
-            { paddingBottom: insets.bottom + 40 },
+            { paddingBottom: Theme.spacing.xxl },
           ]}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
@@ -299,10 +343,57 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
               </Text>
             </View>
           }
+          ListFooterComponent={
+            <View>
+              {/* Manage Categories */}
+              <TouchableOpacity
+                style={styles.settingsCard}
+                onPress={() => navigation.navigate('Categories')}
+                activeOpacity={0.7}>
+                <View style={styles.settingsRow}>
+                  <View style={styles.settingsLeft}>
+                    <View style={[styles.settingsIcon, { backgroundColor: `${Theme.colors.primary}15` }]}>
+                      <FontAwesome6 name="tags" size={16} color={Theme.colors.primary} solid />
+                    </View>
+                    <Text style={styles.settingsText}>Manage Categories</Text>
+                  </View>
+                  <FontAwesome6 name="chevron-right" size={14} color={Theme.colors.textTertiary} />
+                </View>
+              </TouchableOpacity>
+
+              {/* Account Settings Section */}
+              <Text style={styles.sectionTitle}>Account Settings</Text>
+
+              <View style={styles.accountCard}>
+                {/* Email */}
+                <View style={styles.settingsRow}>
+                  <View style={styles.settingsLeft}>
+                    <View style={[styles.settingsIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                      <FontAwesome6 name="envelope" size={16} color="#3B82F6" solid />
+                    </View>
+                    <View>
+                      <Text style={styles.settingsLabel}>EMAIL ADDRESS</Text>
+                      <Text style={styles.settingsValue}>{user?.email || 'Not set'}</Text>
+                    </View>
+                  </View>
+                </View>
+
+              </View>
+
+              {/* Sign Out */}
+              <TouchableOpacity
+                style={styles.signOutButton}
+                onPress={() => setShowLogoutDialog(true)}
+                activeOpacity={0.7}>
+                <FontAwesome6 name="right-from-bracket" size={16} color={Theme.colors.error} solid />
+                <Text style={styles.signOutText}>Sign Out</Text>
+              </TouchableOpacity>
+            </View>
+          }
         />
       </View>
 
-      {/* Confirmation Dialog */}
+      {/* Delete Profile Dialog */}
       <ConfirmationDialog
         visible={deleteDialogVisible}
         title="Delete Profile"
@@ -316,6 +407,19 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
         loading={deleteLoading}
+        variant="danger"
+      />
+
+      {/* Logout Dialog */}
+      <ConfirmationDialog
+        visible={showLogoutDialog}
+        title="Logout"
+        message="Are you sure you want to logout?"
+        confirmText="Logout"
+        cancelText="Cancel"
+        onConfirm={handleLogout}
+        onCancel={() => setShowLogoutDialog(false)}
+        loading={logoutLoading}
         variant="danger"
       />
     </View>
@@ -379,12 +483,13 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     backgroundColor: Theme.colors.cardBackground,
-    borderRadius: Theme.borderRadius.md,
+    borderRadius: Theme.borderRadius.lg,
     marginBottom: Theme.spacing.sm,
-    ...Theme.shadows.small,
   },
-  profileCardBorder: {
-    // no extra border needed, cards have margin
+  profileCardDefault: {
+    backgroundColor: Theme.colors.cardBackground,
+    borderWidth: 1.5,
+    borderColor: `${Theme.colors.primary}30`,
   },
   profileCardContent: {
     flexDirection: 'row',
@@ -393,9 +498,9 @@ const styles = StyleSheet.create({
     gap: Theme.spacing.md,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: Theme.borderRadius.round,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -407,7 +512,7 @@ const styles = StyleSheet.create({
   },
   profileInfo: {
     flex: 1,
-    gap: Theme.spacing.xs,
+    gap: 3,
   },
   nameRow: {
     flexDirection: 'row',
@@ -418,43 +523,61 @@ const styles = StyleSheet.create({
     fontSize: Theme.typography.fontSize.large,
     color: Theme.colors.textPrimary,
     fontFamily: Theme.typography.fontFamily,
-    fontWeight: Theme.typography.fontWeight.semibold,
-    flexShrink: 1,
+    fontWeight: Theme.typography.fontWeight.bold,
   },
   defaultBadge: {
-    backgroundColor: `${Theme.colors.primary}15`,
+    backgroundColor: Theme.colors.primary,
     paddingHorizontal: Theme.spacing.sm,
     paddingVertical: 2,
     borderRadius: Theme.borderRadius.sm,
   },
   defaultBadgeText: {
+    fontSize: 9,
+    color: Theme.colors.white,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.bold,
+    letterSpacing: 0.5,
+  },
+  relationshipBadge: {
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: Theme.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Theme.borderRadius.sm,
+  },
+  relationshipBadgeText: {
+    fontSize: 9,
+    color: Theme.colors.white,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.bold,
+    letterSpacing: 0.5,
+  },
+  profileSubtitle: {
     fontSize: Theme.typography.fontSize.xs,
-    color: Theme.colors.primary,
+    color: Theme.colors.textTertiary,
     fontFamily: Theme.typography.fontFamily,
-    fontWeight: Theme.typography.fontWeight.semibold,
+    fontWeight: Theme.typography.fontWeight.medium,
+    letterSpacing: 0.5,
   },
-  profileRelationship: {
-    fontSize: Theme.typography.fontSize.medium,
-    color: Theme.colors.textSecondary,
+  profileRight: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  profileRightLabel: {
+    fontSize: 9,
+    color: Theme.colors.textTertiary,
     fontFamily: Theme.typography.fontFamily,
-    fontWeight: Theme.typography.fontWeight.regular,
+    fontWeight: Theme.typography.fontWeight.medium,
+    letterSpacing: 0.3,
   },
-  actionButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Theme.spacing.xs,
+  profileRightAmount: {
+    fontSize: Theme.typography.fontSize.large,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.bold,
   },
-  editButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  deleteButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+  profileDivider: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
+    marginHorizontal: Theme.spacing.md,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -498,6 +621,83 @@ const styles = StyleSheet.create({
   retryButtonText: {
     fontSize: Theme.typography.fontSize.medium,
     color: Theme.colors.primary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.semibold,
+  },
+  settingsCard: {
+    backgroundColor: Theme.colors.cardBackground,
+    borderRadius: Theme.borderRadius.md,
+    marginTop: Theme.spacing.lg,
+    ...Theme.shadows.small,
+  },
+  accountCard: {
+    backgroundColor: Theme.colors.cardBackground,
+    borderRadius: Theme.borderRadius.md,
+    ...Theme.shadows.small,
+  },
+  sectionTitle: {
+    fontSize: Theme.typography.fontSize.large,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.bold,
+    marginTop: Theme.spacing.xl,
+    marginBottom: Theme.spacing.md,
+  },
+  settingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Theme.spacing.md,
+  },
+  settingsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Theme.spacing.md,
+    flex: 1,
+  },
+  settingsIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: Theme.borderRadius.round,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settingsText: {
+    fontSize: Theme.typography.fontSize.medium,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.semibold,
+  },
+  settingsLabel: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.medium,
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  settingsValue: {
+    fontSize: Theme.typography.fontSize.medium,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.regular,
+  },
+  settingsDivider: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
+    marginHorizontal: Theme.spacing.md,
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Theme.spacing.sm,
+    marginTop: Theme.spacing.xl,
+    marginBottom: Theme.spacing.xxl,
+    paddingVertical: Theme.spacing.sm,
+  },
+  signOutText: {
+    fontSize: Theme.typography.fontSize.medium,
+    color: Theme.colors.error,
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.semibold,
   },

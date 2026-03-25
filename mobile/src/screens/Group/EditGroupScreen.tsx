@@ -1,8 +1,8 @@
 /**
- * Create Group Screen - Create a new group for splitting expenses
+ * Edit Group Screen - Edit an existing group's name and description
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,9 +25,10 @@ import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import type { HomeStackParamList } from '../../navigation/types';
 
-type CreateGroupScreenProps = NativeStackScreenProps<HomeStackParamList, 'CreateGroup'>;
+type EditGroupScreenProps = NativeStackScreenProps<HomeStackParamList, 'EditGroup'>;
 
-const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({ navigation }) => {
+const EditGroupScreen: React.FC<EditGroupScreenProps> = ({ navigation, route }) => {
+  const { groupId } = route.params;
   const insets = useSafeAreaInsets();
   const { accessToken } = useAuth();
 
@@ -34,6 +36,33 @@ const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({ navigation }) => 
   const [description, setDescription] = useState('');
   const [nameError, setNameError] = useState<string | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchGroup = async () => {
+      if (!accessToken) return;
+
+      try {
+        const response = await groupService.getGroup(groupId, accessToken);
+        if (response.success && response.data) {
+          setName(response.data.name);
+          setDescription(response.data.description || '');
+        } else {
+          throw new Error('Failed to load group');
+        }
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : 'Failed to load group details';
+        Alert.alert('Error', errorMessage, [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGroup();
+  }, [accessToken, groupId, navigation]);
 
   const validate = (): boolean => {
     if (!name.trim()) {
@@ -55,28 +84,55 @@ const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({ navigation }) => 
     try {
       setSubmitting(true);
 
-      const data: { name: string; description?: string } = {
+      const data: { name?: string; description?: string } = {
         name: name.trim(),
       };
       if (description.trim()) {
         data.description = description.trim();
       }
 
-      const response = await groupService.createGroup(data, accessToken);
+      const response = await groupService.updateGroup(groupId, data, accessToken);
 
       if (response.success && response.data) {
         navigation.goBack();
       } else {
-        throw new Error('Failed to create group');
+        throw new Error('Failed to update group');
       }
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : 'An error occurred while creating the group';
+        err instanceof Error ? err.message : 'An error occurred while updating the group';
       Alert.alert('Error', errorMessage);
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
+        <View style={[styles.header, { paddingTop: insets.top + Theme.spacing.md }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}>
+            <FontAwesome6
+              name="arrow-left"
+              size={20}
+              color={Theme.colors.textOnPrimary}
+              solid
+            />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Edit Group</Text>
+          <View style={styles.backButtonPlaceholder} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Theme.colors.textOnPrimary} />
+          <Text style={styles.loadingText}>Loading group details...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -95,7 +151,7 @@ const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({ navigation }) => 
             solid
           />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Group</Text>
+        <Text style={styles.headerTitle}>Edit Group</Text>
         <View style={styles.backButtonPlaceholder} />
       </View>
 
@@ -123,7 +179,7 @@ const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({ navigation }) => 
               />
             </View>
             <Text style={styles.previewName}>
-              {name.trim() || 'New Group'}
+              {name.trim() || 'Group Name'}
             </Text>
           </View>
 
@@ -159,7 +215,7 @@ const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({ navigation }) => 
           {/* Submit Button */}
           <View style={styles.submitContainer}>
             <Button
-              title="Create Group"
+              title="Save Changes"
               onPress={handleSubmit}
               loading={submitting}
               disabled={!name.trim()}
@@ -210,6 +266,18 @@ const styles = StyleSheet.create({
   formContent: {
     padding: Theme.spacing.lg,
   },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: Theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Theme.spacing.md,
+  },
+  loadingText: {
+    fontSize: Theme.typography.fontSize.medium,
+    color: Theme.colors.textOnPrimary,
+    fontFamily: Theme.typography.fontFamily,
+  },
   previewSection: {
     alignItems: 'center',
     marginBottom: Theme.spacing.lg,
@@ -239,4 +307,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CreateGroupScreen;
+export default EditGroupScreen;

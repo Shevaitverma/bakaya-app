@@ -20,13 +20,13 @@ interface BalanceCardProps {
 }
 
 const getBalanceColor = (balance: number): string => {
-  if (balance > 0) return '#10B981';
+  if (balance > 0) return Theme.colors.success;
   if (balance < 0) return Theme.colors.error;
   return Theme.colors.textSecondary;
 };
 
 const getProgressColor = (percentage: number): string => {
-  if (percentage <= 50) return '#10B981';
+  if (percentage <= 50) return Theme.colors.success;
   if (percentage <= 75) return Theme.colors.warning;
   return Theme.colors.error;
 };
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   incomeValue: {
-    color: '#10B981',
+    color: Theme.colors.success,
   },
   expenseValue: {
     color: Theme.colors.error,

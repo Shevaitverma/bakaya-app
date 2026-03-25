@@ -1,6 +1,6 @@
 /**
- * Add Group Expense Screen
- * Form to create a new expense in a group with equal split
+ * Edit Group Expense Screen
+ * Form to edit an existing expense in a group
  */
 
 import React, { useState, useEffect } from 'react';
@@ -16,6 +16,7 @@ import {
   Modal,
   StatusBar,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
@@ -30,13 +31,14 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { HomeStackParamList } from '../../navigation/types';
 import type { Category } from '../../types/category';
 
-type AddGroupExpenseScreenProps = NativeStackScreenProps<HomeStackParamList, 'AddGroupExpense'>;
+type EditGroupExpenseScreenProps = NativeStackScreenProps<HomeStackParamList, 'EditGroupExpense'>;
 
-const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigation, route }) => {
-  const { groupId, members } = route.params;
+const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigation, route }) => {
+  const { groupId, expenseId, members } = route.params;
   const insets = useSafeAreaInsets();
   const { accessToken, user } = useAuth();
 
+  const [fetchLoading, setFetchLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
@@ -71,23 +73,64 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
     split?: string;
   }>({});
 
-  // Fetch categories on mount
+  // Fetch expense data and categories on mount
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchData = async () => {
       if (!accessToken) return;
+
       try {
-        const response = await categoryService.getCategories(accessToken);
-        if (response.success && response.data?.categories) {
-          setCategories(response.data.categories.filter((c) => c.isActive));
+        const [expenseRes, catRes] = await Promise.all([
+          groupService.getGroupExpense(groupId, expenseId, accessToken),
+          categoryService.getCategories(accessToken),
+        ]);
+
+        if (catRes.success && catRes.data?.categories) {
+          setCategories(catRes.data.categories.filter((c) => c.isActive));
+        }
+
+        if (expenseRes.success && expenseRes.data) {
+          const expense = expenseRes.data;
+          setTitle(expense.title);
+          setAmount(String(expense.amount));
+          setCategory(expense.category || '');
+          setNotes(expense.notes || '');
+          setPaidBy(expense.paidBy._id);
+
+          // Populate split members
+          if (expense.splitAmong && expense.splitAmong.length > 0) {
+            const memberIds = new Set(expense.splitAmong.map((s) => s.userId));
+            setSplitMembers(memberIds);
+
+            // Check if it's equal split
+            const amounts = expense.splitAmong.map((s) => s.amount);
+            const allEqual = amounts.every((a) => Math.abs(a - (amounts[0] ?? 0)) < 0.02);
+
+            if (allEqual) {
+              setSplitType('equal');
+            } else {
+              // Default to exact mode with pre-populated amounts
+              setSplitType('exact');
+              const exactMap: Record<string, string> = {};
+              expense.splitAmong.forEach((s) => {
+                exactMap[s.userId] = String(s.amount);
+              });
+              setExactAmounts(exactMap);
+            }
+          }
         }
       } catch (err) {
-        console.warn('Failed to load categories:', err);
-        setCategories([]);
+        const errorMessage =
+          err instanceof Error ? err.message : 'Failed to load expense';
+        Alert.alert('Error', errorMessage, [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      } finally {
+        setFetchLoading(false);
       }
     };
 
-    fetchCategories();
-  }, [accessToken]);
+    fetchData();
+  }, [accessToken, groupId, expenseId, navigation]);
 
   const getPaidByName = (): string => {
     if (paidBy === currentUserId) return 'You';
@@ -136,7 +179,7 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleAddExpense = async () => {
+  const handleUpdateExpense = async () => {
     if (!validateForm()) return;
 
     if (!accessToken) {
@@ -179,32 +222,32 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
 
     try {
       setLoading(true);
-      const response = await groupService.createGroupExpense(
+      const response = await groupService.updateGroupExpense(
         groupId,
+        expenseId,
         {
           title: title.trim(),
           amount: amountNum,
           category: category.trim(),
           notes: notes.trim() || undefined,
-          paidBy,
           splitAmong,
         },
         accessToken
       );
 
       if (response.success) {
-        Alert.alert('Success', 'Group expense added successfully', [
+        Alert.alert('Success', 'Group expense updated successfully', [
           {
             text: 'OK',
             onPress: () => navigation.goBack(),
           },
         ]);
       } else {
-        throw new Error('Failed to add group expense');
+        throw new Error('Failed to update group expense');
       }
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : 'An error occurred while adding the expense';
+        err instanceof Error ? err.message : 'An error occurred while updating the expense';
       Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
@@ -310,6 +353,33 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
 
   const selectedCat = categories.find((c) => c.name === category);
 
+  if (fetchLoading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
+        <View style={[styles.header, { paddingTop: insets.top + Theme.spacing.md }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}>
+            <FontAwesome6
+              name="arrow-left"
+              size={20}
+              color={Theme.colors.textOnPrimary}
+              solid
+            />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Edit expense</Text>
+          <View style={styles.backButtonPlaceholder} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Theme.colors.textOnPrimary} />
+          <Text style={styles.loadingText}>Loading expense...</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -330,7 +400,7 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
             solid
           />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add group expense</Text>
+        <Text style={styles.headerTitle}>Edit expense</Text>
         <View style={styles.backButtonPlaceholder} />
       </View>
 
@@ -434,48 +504,7 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
 
           {/* Split Between */}
           <View style={styles.fieldContainer}>
-            <View style={styles.splitLabelRow}>
-              <Text style={styles.fieldLabel}>Split between</Text>
-              <View style={styles.selectAllRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.selectAllButton,
-                    splitMembers.size === members.length && styles.selectAllButtonActive,
-                  ]}
-                  onPress={() => {
-                    setSplitMembers(new Set(members.map((m) => m.userId)));
-                    if (errors.split) setErrors({ ...errors, split: undefined });
-                  }}
-                  activeOpacity={0.7}>
-                  <Text
-                    style={[
-                      styles.selectAllButtonText,
-                      splitMembers.size === members.length && styles.selectAllButtonTextActive,
-                    ]}>
-                    Select All
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.selectAllButton,
-                    splitMembers.size === 0 && styles.selectAllButtonActive,
-                  ]}
-                  onPress={() => {
-                    setSplitMembers(new Set());
-                    setExactAmounts({});
-                    setPercentages({});
-                  }}
-                  activeOpacity={0.7}>
-                  <Text
-                    style={[
-                      styles.selectAllButtonText,
-                      splitMembers.size === 0 && styles.selectAllButtonTextActive,
-                    ]}>
-                    Deselect All
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            <Text style={styles.fieldLabel}>Split between</Text>
 
             {/* Split type tabs */}
             <View style={styles.splitTypeTabs}>
@@ -518,7 +547,6 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
               const diff = Math.round((total - allocated) * 100) / 100;
               const isMatch = Math.abs(diff) <= 0.01;
               const isOver = diff < -0.01;
-              const progressRatio = total > 0 ? Math.min(allocated / total, 1.5) : 0;
               return (
                 <View
                   style={[
@@ -539,36 +567,10 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
                         : styles.allocationTextWarning,
                     ]}>
                     {isMatch
-                      ? `Remaining: ${formatCurrencyExact(0)}`
+                      ? `${formatCurrencyExact(allocated)} of ${formatCurrencyExact(total)} allocated`
                       : isOver
-                      ? `Over by: ${formatCurrencyExact(Math.abs(diff))}`
-                      : `Remaining: ${formatCurrencyExact(diff)}`}
-                  </Text>
-                  <View style={styles.allocationBarTrack}>
-                    <View
-                      style={[
-                        styles.allocationBarFill,
-                        {
-                          width: `${Math.min(progressRatio * 100, 100)}%`,
-                          backgroundColor: isMatch
-                            ? '#15803d'
-                            : isOver
-                            ? '#dc2626'
-                            : '#15803d',
-                        },
-                      ]}
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.allocationSubtext,
-                      isMatch
-                        ? styles.allocationTextOk
-                        : isOver
-                        ? styles.allocationTextError
-                        : styles.allocationTextWarning,
-                    ]}>
-                    {formatCurrencyExact(allocated)} of {formatCurrencyExact(total)} allocated
+                      ? `${formatCurrencyExact(Math.abs(diff))} over`
+                      : `${formatCurrencyExact(diff)} remaining`}
                   </Text>
                 </View>
               );
@@ -580,7 +582,6 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
               const diff = Math.round((100 - pctTotal) * 100) / 100;
               const isMatch = Math.abs(diff) <= 0.01;
               const isOver = diff < -0.01;
-              const progressRatio = Math.min(pctTotal / 100, 1.5);
               return (
                 <View
                   style={[
@@ -600,36 +601,10 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
                         ? styles.allocationTextError
                         : styles.allocationTextWarning,
                     ]}>
-                    {pctTotal.toFixed(1)}% allocated
-                  </Text>
-                  <View style={styles.allocationBarTrack}>
-                    <View
-                      style={[
-                        styles.allocationBarFill,
-                        {
-                          width: `${Math.min(progressRatio * 100, 100)}%`,
-                          backgroundColor: isMatch
-                            ? '#15803d'
-                            : isOver
-                            ? '#dc2626'
-                            : '#b45309',
-                        },
-                      ]}
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.allocationSubtext,
-                      isMatch
-                        ? styles.allocationTextOk
-                        : isOver
-                        ? styles.allocationTextError
-                        : styles.allocationTextWarning,
-                    ]}>
                     {isMatch
-                      ? '100% of 100% allocated'
+                      ? `${pctTotal.toFixed(1)}% of 100% allocated`
                       : isOver
-                      ? `${Math.abs(diff).toFixed(1)}% over budget`
+                      ? `${Math.abs(diff).toFixed(1)}% over`
                       : `${diff.toFixed(1)}% remaining`}
                   </Text>
                 </View>
@@ -740,10 +715,10 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
             style={styles.notesInput}
           />
 
-          {/* Add Button */}
+          {/* Update Button */}
           <Button
-            title="Add Group Expense"
-            onPress={handleAddExpense}
+            title="Update Expense"
+            onPress={handleUpdateExpense}
             loading={loading}
             style={styles.addButton}
           />
@@ -925,6 +900,18 @@ const styles = StyleSheet.create({
     fontWeight: Theme.typography.fontWeight.bold,
     letterSpacing: -0.5,
   },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: Theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Theme.spacing.md,
+  },
+  loadingText: {
+    fontSize: Theme.typography.fontSize.medium,
+    color: Theme.colors.textOnPrimary,
+    fontFamily: Theme.typography.fontFamily,
+  },
   scrollView: {
     flex: 1,
     backgroundColor: Theme.colors.surface,
@@ -1046,39 +1033,6 @@ const styles = StyleSheet.create({
     color: Theme.colors.white,
   },
 
-  // Select All / Deselect All
-  splitLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Theme.spacing.xs,
-  },
-  selectAllRow: {
-    flexDirection: 'row',
-    gap: Theme.spacing.xs,
-  },
-  selectAllButton: {
-    paddingHorizontal: Theme.spacing.sm + 2,
-    paddingVertical: Theme.spacing.xs,
-    borderRadius: Theme.borderRadius.round,
-    backgroundColor: Theme.colors.lightGrey,
-    borderWidth: 1,
-    borderColor: '#D0D0D0',
-  },
-  selectAllButtonActive: {
-    backgroundColor: Theme.colors.primary + '15',
-    borderColor: Theme.colors.primary + '40',
-  },
-  selectAllButtonText: {
-    fontSize: Theme.typography.fontSize.xs,
-    fontFamily: Theme.typography.fontFamily,
-    fontWeight: Theme.typography.fontWeight.semibold,
-    color: Theme.colors.textSecondary,
-  },
-  selectAllButtonTextActive: {
-    color: Theme.colors.primary,
-  },
-
   // Allocation indicator
   allocationIndicator: {
     paddingHorizontal: Theme.spacing.md,
@@ -1086,7 +1040,6 @@ const styles = StyleSheet.create({
     borderRadius: Theme.borderRadius.md,
     marginBottom: Theme.spacing.sm,
     alignItems: 'center',
-    gap: 6,
   },
   allocationOk: {
     backgroundColor: '#f0fdf4',
@@ -1110,22 +1063,6 @@ const styles = StyleSheet.create({
   },
   allocationTextError: {
     color: '#dc2626',
-  },
-  allocationBarTrack: {
-    width: '100%',
-    height: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  allocationBarFill: {
-    height: 6,
-    borderRadius: 3,
-  },
-  allocationSubtext: {
-    fontSize: Theme.typography.fontSize.xs,
-    fontFamily: Theme.typography.fontFamily,
-    fontWeight: Theme.typography.fontWeight.medium,
   },
 
   // Inline split inputs
@@ -1341,4 +1278,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AddGroupExpenseScreen;
+export default EditGroupExpenseScreen;

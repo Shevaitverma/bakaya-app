@@ -40,6 +40,10 @@ export const API_CONFIG = {
       SINGLE_EXPENSE: (id: string) => `/personal-expenses/${id}`,
     },
     ANALYTICS: {
+      SUMMARY: '/analytics/summary',
+      BY_PROFILE: '/analytics/by-profile',
+      BY_CATEGORY: '/analytics/by-category',
+      TRENDS: '/analytics/trends',
       BALANCE: '/analytics/balance',
     },
     GROUPS: {

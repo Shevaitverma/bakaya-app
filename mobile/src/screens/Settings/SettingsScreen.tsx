@@ -38,7 +38,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
 
       {/* Header */}
@@ -135,6 +135,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Theme.spacing.md,
     paddingBottom: Theme.spacing.md,
+    backgroundColor: Theme.colors.primary,
   },
   backButton: {
     width: 40,

@@ -3,4 +3,7 @@ export interface GroupCardProps {
   amount: number;
   imageUri?: string;
   onPress?: () => void;
+  memberCount?: number;
+  memberNames?: string[];
+  totalExpenses?: number;
 }
