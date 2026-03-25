@@ -315,7 +315,7 @@
 
   .input {
     min-height: 44px;
-    font-size: 15px;
+    font-size: 16px;
     padding: var(--spacing-md);
   }
 
@@ -325,7 +325,7 @@
 
   .categoryTrigger {
     min-height: 44px;
-    font-size: 15px;
+    font-size: 16px;
   }
 
   .categoryItem {
