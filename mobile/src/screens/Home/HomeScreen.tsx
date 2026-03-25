@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -81,6 +81,8 @@ const HomeScreen = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null); // null = "All"
+  const selectedProfileIdRef = useRef<string | null>(null);
 
   // Loading states (independent per section)
   const [profilesLoading, setProfilesLoading] = useState(true);
@@ -113,7 +115,9 @@ const HomeScreen = () => {
     const fetchExpenses = async () => {
       try {
         setExpensesLoading(true);
-        const response: PersonalExpensesResponse = await expenseService.getPersonalExpenses(1, 5, accessToken);
+        const profileFilter = selectedProfileIdRef.current;
+        const filters = profileFilter ? { profileId: profileFilter } : undefined;
+        const response: PersonalExpensesResponse = await expenseService.getPersonalExpenses(1, 5, accessToken, filters);
         if (response.success && response.data) {
           setRecentExpenses(response.data.expenses);
         }
@@ -177,12 +181,26 @@ const HomeScreen = () => {
     navigation.navigate('AddExpense');
   };
 
-  const handleProfilePress = (profile: Profile) => {
-    navigation.navigate('ProfileExpenses', {
-      profileId: profile._id,
-      profileName: profile.name,
-      profileColor: profile.color,
-    });
+  const fetchExpensesForProfile = useCallback(async (profileId: string | null) => {
+    if (!accessToken) return;
+    try {
+      setExpensesLoading(true);
+      const filters = profileId ? { profileId } : undefined;
+      const response: PersonalExpensesResponse = await expenseService.getPersonalExpenses(1, 5, accessToken, filters);
+      if (response.success && response.data) {
+        setRecentExpenses(response.data.expenses);
+      }
+    } catch (err: any) {
+      console.error('Error fetching expenses:', err);
+    } finally {
+      setExpensesLoading(false);
+    }
+  }, [accessToken]);
+
+  const handleProfilePress = (profileId: string | null) => {
+    setSelectedProfileId(profileId);
+    selectedProfileIdRef.current = profileId;
+    fetchExpensesForProfile(profileId);
   };
 
   const handleAddProfile = () => {
@@ -226,17 +244,41 @@ const HomeScreen = () => {
 
   // --- Section Renderers ---
 
+  const renderAllChip = () => {
+    const isSelected = selectedProfileId === null;
+    return (
+      <TouchableOpacity
+        key="all-profiles"
+        style={[
+          styles.profileChip,
+          isSelected && styles.profileChipSelected,
+        ]}
+        onPress={() => handleProfilePress(null)}
+        activeOpacity={0.7}
+      >
+        <FontAwesome6 name="layer-group" size={10} color={isSelected ? Theme.colors.textOnPrimary : Theme.colors.primary} solid />
+        <Text style={[styles.profileChipText, isSelected && styles.profileChipTextSelected]} numberOfLines={1}>
+          All
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
   const renderProfileChip = (profile: Profile, index: number) => {
     const color = getProfileColor(profile, index);
+    const isSelected = selectedProfileId === profile._id;
     return (
       <TouchableOpacity
         key={profile._id}
-        style={styles.profileChip}
-        onPress={() => handleProfilePress(profile)}
+        style={[
+          styles.profileChip,
+          isSelected && { backgroundColor: color, borderColor: color },
+        ]}
+        onPress={() => handleProfilePress(profile._id)}
         activeOpacity={0.7}
       >
-        <View style={[styles.profileDot, { backgroundColor: color }]} />
-        <Text style={styles.profileChipText} numberOfLines={1}>
+        <View style={[styles.profileDot, { backgroundColor: isSelected ? Theme.colors.white : color }]} />
+        <Text style={[styles.profileChipText, isSelected && { color: Theme.colors.white }]} numberOfLines={1}>
           {profile.name}
         </Text>
       </TouchableOpacity>
@@ -419,6 +461,7 @@ const HomeScreen = () => {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.profileChipsContainer}
               >
+                {renderAllChip()}
                 {profiles.map((profile, index) => renderProfileChip(profile, index))}
                 {renderAddProfileChip()}
               </ScrollView>
@@ -672,6 +715,13 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: Theme.colors.primary,
     backgroundColor: 'rgba(216, 27, 96, 0.05)',
+  },
+  profileChipSelected: {
+    backgroundColor: Theme.colors.primary,
+    borderColor: Theme.colors.primary,
+  },
+  profileChipTextSelected: {
+    color: Theme.colors.textOnPrimary,
   },
   profileDot: {
     width: 10,

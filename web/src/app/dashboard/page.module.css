@@ -133,10 +133,11 @@
   border-color: rgba(0, 0, 0, 0.12);
 }
 
-.profileChipActive {
-  background: rgba(216, 27, 96, 0.08);
+.profileChipActive,
+.profileChipActive:hover {
+  background: var(--color-primary);
   border-color: var(--color-primary);
-  color: var(--color-primary);
+  color: var(--color-text-on-primary);
   font-weight: var(--font-weight-semibold);
 }
 

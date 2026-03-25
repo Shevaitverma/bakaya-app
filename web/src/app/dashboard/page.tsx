@@ -37,6 +37,8 @@ export default function DashboardPage() {
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [expensesLoading, setExpensesLoading] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("bakaya_user");
@@ -78,6 +80,21 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, []);
 
+  const handleProfileSelect = async (profileId: string | null) => {
+    setSelectedProfileId(profileId);
+    setExpensesLoading(true);
+    try {
+      const params: { limit: number; profileId?: string } = { limit: 5 };
+      if (profileId) params.profileId = profileId;
+      const data = await expensesApi.list(params);
+      setRecentExpenses(data.expenses);
+    } catch {
+      // keep existing expenses on error
+    } finally {
+      setExpensesLoading(false);
+    }
+  };
+
   const defaultProfile = profiles.find((p) => p.isDefault);
 
   return (
@@ -103,13 +120,23 @@ export default function DashboardPage() {
           </Link>
         </div>
         <div className={styles.profileChips}>
+          <button
+            type="button"
+            className={`${styles.profileChip} ${
+              selectedProfileId === null ? styles.profileChipActive : ""
+            }`}
+            onClick={() => handleProfileSelect(null)}
+          >
+            All
+          </button>
           {profiles.map((profile) => (
-            <Link
+            <button
               key={profile._id}
-              href={`/dashboard/profiles/${profile._id}`}
+              type="button"
               className={`${styles.profileChip} ${
-                profile.isDefault ? styles.profileChipActive : ""
+                selectedProfileId === profile._id ? styles.profileChipActive : ""
               }`}
+              onClick={() => handleProfileSelect(profile._id)}
             >
               <span
                 className={styles.profileChipDot}
@@ -117,7 +144,7 @@ export default function DashboardPage() {
               />
               {profile.name}
               {profile.isDefault ? " (Self)" : ""}
-            </Link>
+            </button>
           ))}
           <Link href="/dashboard/profiles/new" className={styles.addProfileChip}>
             + Add
@@ -134,7 +161,7 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {isLoading ? (
+        {isLoading || expensesLoading ? (
           <p className={styles.loadingText}>Loading...</p>
         ) : recentExpenses.length === 0 ? (
           <div className={styles.emptyState}>
