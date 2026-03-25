@@ -10,23 +10,31 @@ import { createDefaultProfile } from "@/services/profile.service";
 import { z } from "zod";
 import { createLocalJWKSet, jwtVerify, type JSONWebKeySet } from "jose";
 
-// Firebase/Google JWKS - use curl fallback due to Bun fetch issues on Windows
+// Firebase/Google JWKS - fetched manually and cached for 1 hour
 const GOOGLE_JWKS_URL = "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
 let cachedJWKS: ReturnType<typeof createLocalJWKSet> | null = null;
 let jwksCachedAt = 0;
 const JWKS_CACHE_DURATION = 3600_000; // 1 hour
 
-async function fetchJWKSWithCurl(): Promise<JSONWebKeySet> {
-  const proc = Bun.spawn(["curl", "-s", "--max-time", "10", GOOGLE_JWKS_URL], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const text = await new Response(proc.stdout).text();
-  const exitCode = await proc.exited;
-  if (exitCode !== 0) {
-    throw new Error(`curl exited with code ${exitCode}`);
+async function fetchJWKSData(): Promise<JSONWebKeySet> {
+  // Try curl first (faster on Windows where Bun fetch is slow)
+  try {
+    const proc = Bun.spawn(["curl", "-s", "--max-time", "10", GOOGLE_JWKS_URL], {
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const text = await new Response(proc.stdout).text();
+    const exitCode = await proc.exited;
+    if (exitCode === 0 && text) {
+      return JSON.parse(text) as JSONWebKeySet;
+    }
+  } catch {
+    // curl not available, fall through to fetch
   }
-  return JSON.parse(text) as JSONWebKeySet;
+
+  // Fallback to Bun fetch (works fine on Linux/production)
+  const res = await fetch(GOOGLE_JWKS_URL);
+  return await res.json() as JSONWebKeySet;
 }
 
 async function getFirebaseJWKS() {
@@ -35,10 +43,10 @@ async function getFirebaseJWKS() {
     return cachedJWKS;
   }
 
-  const jwks = await fetchJWKSWithCurl();
+  const jwks = await fetchJWKSData();
   cachedJWKS = createLocalJWKSet(jwks);
   jwksCachedAt = now;
-  logger.info("Firebase JWKS fetched and cached via curl");
+  logger.info("Firebase JWKS fetched and cached");
   return cachedJWKS;
 }
 
