@@ -71,50 +71,64 @@ async function ensureDnsResolution(): Promise<void> {
   logger.error("All DNS providers failed to resolve MongoDB host. Connection will likely fail.");
 }
 
-export async function connectDatabase(): Promise<typeof mongoose> {
+export async function connectDatabase(
+  maxRetries = 5,
+  retryDelayMs = 5000
+): Promise<typeof mongoose> {
   if (isConnected) {
     logger.debug("Using existing database connection");
     return mongoose;
   }
 
-  try {
-    // Ensure DNS can resolve the MongoDB host before attempting connection
-    await ensureDnsResolution();
+  // Ensure DNS can resolve the MongoDB host before attempting connection
+  await ensureDnsResolution();
 
-    mongoose.set("strictQuery", true);
+  mongoose.set("strictQuery", true);
 
-    const connection = await mongoose.connect(env.MONGODB_URI, {
-      dbName: env.MONGODB_DB_NAME,
-      maxPoolSize: 10,
-      minPoolSize: 2,
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
-      family: 4,
-    });
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const connection = await mongoose.connect(env.MONGODB_URI, {
+        dbName: env.MONGODB_DB_NAME,
+        maxPoolSize: 10,
+        minPoolSize: 2,
+        serverSelectionTimeoutMS: 15000,
+        socketTimeoutMS: 45000,
+        family: 4,
+      });
 
-    isConnected = true;
-    logger.info(`✅ MongoDB connected: ${connection.connection.host}`);
-
-    mongoose.connection.on("error", (err) => {
-      logger.error("MongoDB connection error", { err });
-      isConnected = false;
-    });
-
-    mongoose.connection.on("disconnected", () => {
-      logger.warn("MongoDB disconnected");
-      isConnected = false;
-    });
-
-    mongoose.connection.on("reconnected", () => {
-      logger.info("MongoDB reconnected");
       isConnected = true;
-    });
+      logger.info(`MongoDB connected: ${connection.connection.host}`);
 
-    return connection;
-  } catch (error) {
-    logger.error("Failed to connect to MongoDB", { error });
-    throw error;
+      mongoose.connection.on("error", (err) => {
+        logger.error("MongoDB connection error", { err });
+        isConnected = false;
+      });
+
+      mongoose.connection.on("disconnected", () => {
+        logger.warn("MongoDB disconnected");
+        isConnected = false;
+      });
+
+      mongoose.connection.on("reconnected", () => {
+        logger.info("MongoDB reconnected");
+        isConnected = true;
+      });
+
+      return connection;
+    } catch (error) {
+      logger.error(`MongoDB connection attempt ${attempt}/${maxRetries} failed`, { error });
+
+      if (attempt === maxRetries) {
+        throw error;
+      }
+
+      logger.info(`Retrying in ${retryDelayMs / 1000}s...`);
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+    }
   }
+
+  // Unreachable, but TypeScript needs it
+  throw new Error("Failed to connect to MongoDB after all retries");
 }
 
 export async function disconnectDatabase(): Promise<void> {
