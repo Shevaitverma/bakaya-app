@@ -184,6 +184,7 @@ export default function CategoriesPage() {
         </button>
       </div>
 
+      <div className={styles.contentSheet}>
       {isLoading ? (
         <p className={styles.loadingText}>Loading categories...</p>
       ) : activeCategories.length === 0 && archivedCategories.length === 0 ? (
@@ -297,6 +298,7 @@ export default function CategoriesPage() {
           )}
         </>
       )}
+      </div>
 
       {/* Add / Edit Form Dialog — rendered via portal to avoid transform stacking context issues */}
       {showForm && typeof document !== "undefined" && createPortal(

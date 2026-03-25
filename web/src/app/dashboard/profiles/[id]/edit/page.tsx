@@ -87,7 +87,9 @@ export default function EditProfilePage() {
         <div className={styles.pageHeader}>
           <h1 className={styles.pageTitle}>Edit Profile</h1>
         </div>
-        <p className={styles.loadingText}>Loading profile...</p>
+        <div className={styles.contentSheet}>
+          <p className={styles.loadingText}>Loading profile...</p>
+        </div>
       </div>
     );
   }
@@ -98,24 +100,26 @@ export default function EditProfilePage() {
         <div className={styles.pageHeader}>
           <h1 className={styles.pageTitle}>Edit Profile</h1>
         </div>
-        <div className={styles.formError} style={{ textAlign: "center" }}>
-          {fetchError}
+        <div className={styles.contentSheet}>
+          <div className={styles.formError} style={{ textAlign: "center" }}>
+            {fetchError}
+          </div>
+          <button
+            onClick={() => routerRef.current.push("/dashboard/profiles")}
+            style={{
+              display: "block",
+              marginTop: "1rem",
+              padding: "0.625rem 1.25rem",
+              borderRadius: "var(--radius-md)",
+              border: "1px solid var(--color-border, #ddd)",
+              background: "transparent",
+              cursor: "pointer",
+              fontSize: "0.875rem",
+            }}
+          >
+            Back to Profiles
+          </button>
         </div>
-        <button
-          onClick={() => routerRef.current.push("/dashboard/profiles")}
-          style={{
-            display: "block",
-            marginTop: "1rem",
-            padding: "0.625rem 1.25rem",
-            borderRadius: "var(--radius-md)",
-            border: "1px solid var(--color-border, #ddd)",
-            background: "transparent",
-            cursor: "pointer",
-            fontSize: "0.875rem",
-          }}
-        >
-          Back to Profiles
-        </button>
       </div>
     );
   }
@@ -126,13 +130,14 @@ export default function EditProfilePage() {
         <h1 className={styles.pageTitle}>
           Edit Profile
           {isDefault && (
-            <span className={styles.defaultBadge} style={{ marginLeft: "0.5rem" }}>
+            <span className={styles.defaultBadge} style={{ marginLeft: "0.5rem", background: "rgba(255,255,255,0.2)", color: "#fff" }}>
               Default
             </span>
           )}
         </h1>
       </div>
 
+      <div className={styles.contentSheet}>
       <form onSubmit={handleSubmit} className={styles.profileForm}>
         {error && (
           <div className={styles.formError}>
@@ -227,6 +232,7 @@ export default function EditProfilePage() {
           </button>
         </div>
       </form>
+      </div>
     </div>
   );
 }

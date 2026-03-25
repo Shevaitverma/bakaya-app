@@ -51,6 +51,7 @@ export default function NewProfilePage() {
         <h1 className={styles.pageTitle}>New Profile</h1>
       </div>
 
+      <div className={styles.contentSheet}>
       <form onSubmit={handleSubmit} className={styles.profileForm}>
         {error && (
           <div className={styles.formError}>
@@ -145,6 +146,7 @@ export default function NewProfilePage() {
           </button>
         </div>
       </form>
+      </div>
     </div>
   );
 }

@@ -6,8 +6,10 @@
 
 /* --- Page Shell --- */
 .page {
-  min-height: 100vh;
-  background: var(--color-surface);
+  min-height: 100dvh;
+  background: #D81B60;
+  display: flex;
+  flex-direction: column;
 }
 
 /* --- Header --- */
@@ -15,9 +17,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-md) var(--spacing-lg);
-  background: linear-gradient(135deg, #D81B60, #E91E63);
-  border-radius: 0 0 24px 24px;
+  padding: 32px 32px 60px;
+  background: #D81B60;
 }
 
 .backBtn {
@@ -51,9 +52,14 @@
 
 /* --- Form Container --- */
 .formContainer {
-  max-width: 600px;
-  margin-inline: auto;
-  padding: var(--spacing-lg);
+  flex: 1;
+  padding: 28px 32px 60px;
+  background: #F5F5F5;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  margin-top: -28px;
+  position: relative;
+  z-index: 1;
 }
 
 .form {
@@ -453,8 +459,8 @@
   overflow-y: auto;
   background: #FFFFFF;
   border: none;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   z-index: 100;
   padding: var(--spacing-sm);
   animation: slideUp 200ms ease both;
@@ -591,10 +597,7 @@
 /* --- Mobile Responsive --- */
 @media (max-width: 768px) {
   .header {
-    padding-top: var(--spacing-sm);
-    padding-left: 16px;
-    padding-right: 16px;
-    border-radius: 0 0 20px 20px;
+    padding: 24px 20px 52px;
   }
 
   .headerTitle {
@@ -608,7 +611,7 @@
 
   /* Form container */
   .formContainer {
-    padding: 16px;
+    padding: 24px 20px 100px;
   }
 
   /* All inputs: full width, comfortable touch targets */

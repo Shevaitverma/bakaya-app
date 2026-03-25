@@ -201,7 +201,7 @@
   min-height: 100dvh;
   padding: 0;
   min-width: 0;
-  background: #F9F9FF;
+  background: #F5F5F5;
 }
 
 @keyframes fadeIn {

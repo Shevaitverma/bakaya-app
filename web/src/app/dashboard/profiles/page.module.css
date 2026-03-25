@@ -1,38 +1,54 @@
+/* --- Page: full pink background --- */
 .page {
-  padding: var(--spacing-lg);
-  max-width: var(--max-width);
-  margin-inline: auto;
+  background: #D81B60;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
   animation: fadeIn 400ms ease both;
 }
 
+/* --- Pink Header --- */
 .pageHeader {
+  width: 100%;
+  padding: 32px 32px 60px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-xl);
 }
 
 .pageTitle {
-  font-size: var(--font-size-display);
-  font-weight: var(--font-weight-bold);
-  color: #1A1A2E;
+  font-size: 32px;
+  font-weight: 800;
+  color: #FFFFFF;
+  letter-spacing: -0.5px;
+  margin: 0;
+}
+
+/* --- Content Sheet --- */
+.contentSheet {
+  flex: 1;
+  background: #F5F5F5;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  margin-top: -28px;
+  padding: 28px 32px 100px;
 }
 
 .createBtn {
   padding: 0.5rem 1.25rem;
-  background: linear-gradient(135deg, var(--color-gradient-start, #D81B60), var(--color-gradient-end, #E91E63));
+  background: rgba(255, 255, 255, 0.2);
   color: #fff;
   border-radius: 9999px;
   font-size: 0.875rem;
   font-weight: 600;
   text-decoration: none;
   transition: transform 200ms ease, box-shadow 200ms ease;
-  box-shadow: 0 2px 8px rgba(216, 27, 96, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
 .createBtn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(216, 27, 96, 0.35);
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .loadingText {
@@ -76,118 +92,140 @@
   box-shadow: 0 4px 12px rgba(216, 27, 96, 0.35);
 }
 
-.profilesGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--spacing-md);
+/* --- Profile Cards List --- */
+.profilesList {
+  background: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
 }
 
 .profileCard {
   display: flex;
   align-items: center;
-  padding: 16px;
-  background: #FFFFFF;
-  border: none;
-  border-radius: 12px;
-  box-shadow: var(--shadow-sm);
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  text-decoration: none;
+  color: inherit;
+  padding: 14px 16px;
+  gap: 14px;
+  cursor: pointer;
+  transition: background 150ms ease;
   animation: fadeSlideUp 400ms ease both;
 }
 
 .profileCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.02);
 }
 
-.profileLink {
-  display: flex;
-  align-items: center;
-  gap: 0.875rem;
-  flex: 1;
-  text-decoration: none;
-  color: inherit;
+.profileCardDefault {
+  border: 1.5px solid rgba(216, 27, 96, 0.2);
+  border-radius: 12px;
+}
+
+.profileDivider {
+  height: 1px;
+  background: #F0F0F0;
+  margin: 0 16px;
 }
 
 .profileAvatar {
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   font-weight: 700;
-  font-size: 18px;
+  font-size: 20px;
   flex-shrink: 0;
 }
 
 .profileInfo {
+  flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .profileName {
-  font-weight: 600;
-  font-size: 15px;
+  font-weight: 700;
+  font-size: 17px;
   color: #1A1A2E;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .defaultBadge {
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 9px;
+  font-weight: 700;
   padding: 2px 8px;
-  border-radius: 9999px;
-  background: rgba(233, 30, 99, 0.1);
-  color: #E91E63;
+  border-radius: 4px;
+  background: #D81B60;
+  color: #FFFFFF;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.profileRelation {
-  font-size: 13px;
+.relationshipBadge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #3B82F6;
+  color: #FFFFFF;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.profileSubtitle {
+  font-size: 11px;
   color: #9CA3AF;
-  text-transform: capitalize;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
 }
 
-.editBtn {
-  background: none;
-  border: none;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  width: 32px;
-  height: 32px;
+/* Right side — totals */
+.profileRight {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.875rem;
-  border-radius: 50%;
-  text-decoration: none;
-  transition: color 200ms ease, background 200ms ease;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
-.editBtn:hover {
-  color: var(--color-primary);
-  background: rgba(0, 0, 0, 0.04);
+.profileRightLabel {
+  font-size: 9px;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
-.deleteBtn {
-  background: none;
-  border: none;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.875rem;
-  border-radius: 50%;
-  transition: color 200ms ease, background 200ms ease;
+.profileRightAmount {
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
-.deleteBtn:hover {
-  color: var(--color-error, #ef4444);
-  background: rgba(0, 0, 0, 0.04);
+.amountRed {
+  color: #EF4444;
+}
+
+.amountGreen {
+  color: #22C55E;
 }
 
 /* Dialog */
@@ -204,7 +242,7 @@
 
 .dialog {
   background: #FFFFFF;
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 1.5rem;
   width: 90%;
   max-width: 400px;
@@ -392,10 +430,10 @@
 .totalCard {
   padding: 14px 1.5rem;
   background: #FFFFFF;
-  border: none;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-top: 2px solid var(--color-primary, #E91E63);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   margin-bottom: 1.5rem;
 }
 
@@ -453,80 +491,126 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Account Section */
-.accountSection {
-  margin-top: var(--spacing-xl);
-  padding-top: var(--spacing-lg);
-  border-top: 1px solid #F0F3FF;
-}
-
-.accountTitle {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: #1A1A2E;
-  margin-bottom: var(--spacing-md);
-}
-
-.accountCard {
+/* --- Manage Categories Card --- */
+.manageCategoriesCard {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
   background: #FFFFFF;
   border-radius: 12px;
-  padding: var(--spacing-md) var(--spacing-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  text-decoration: none;
+  color: #1A1A2E;
+  transition: background 150ms ease;
+  margin-top: 20px;
 }
 
-.accountInfo {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
+.manageCategoriesCard:hover {
+  background: #FAFAFA;
 }
 
-.accountAvatar {
-  width: 44px;
-  height: 44px;
+.manageCategoriesIcon {
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-gradient-start, #D81B60), var(--color-gradient-end, #E91E63));
-  color: white;
+  background: rgba(216, 27, 96, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-base);
+  flex-shrink: 0;
+  font-size: 16px;
 }
 
-.accountName {
+.manageCategoriesText {
+  flex: 1;
+  font-size: 15px;
   font-weight: 600;
   color: #1A1A2E;
+}
+
+.manageCategoriesChevron {
+  color: #9CA3AF;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* --- Account Settings Section --- */
+.accountSection {
+  margin-top: 28px;
+}
+
+.accountTitle {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1A1A2E;
+  margin-bottom: 12px;
+}
+
+.accountCard {
+  background: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.accountRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+}
+
+.accountIconCircle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   font-size: 15px;
 }
 
-.accountEmail {
+.accountLabel {
+  font-size: 11px;
   color: #9CA3AF;
-  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+  margin-bottom: 2px;
 }
 
-.logoutBtn {
-  padding: 0.5rem 1.25rem;
-  height: 44px;
-  border: 1px solid #ef4444;
-  color: #ef4444;
-  background: transparent;
-  border-radius: 8px;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
+.accountValue {
+  font-size: 15px;
+  color: #1A1A2E;
+  word-break: break-all;
+}
+
+/* --- Sign Out --- */
+.signOutBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 28px;
+  margin-bottom: 80px;
+  padding: 8px 0;
+  background: none;
+  border: none;
   cursor: pointer;
-  transition: background 200ms ease, color 200ms ease;
+  color: #EF4444;
+  font-size: 15px;
+  font-weight: 600;
+  transition: opacity 150ms ease;
 }
 
-.logoutBtn:hover {
-  background: #ef4444;
-  color: white;
+.signOutBtn:hover {
+  opacity: 0.8;
 }
 
-.logoutBtn:active {
-  transform: scale(0.96);
+.signOutIcon {
+  font-size: 16px;
 }
 
 @keyframes fadeIn {
@@ -553,18 +637,16 @@
 
 /* --- Mobile Responsive --- */
 @media (max-width: 768px) {
-  .page {
-    padding: 16px 16px var(--spacing-lg);
-  }
-
   .pageHeader {
-    flex-wrap: wrap;
-    gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-md);
+    padding: 24px 20px 52px;
   }
 
   .pageTitle {
     font-size: 24px;
+  }
+
+  .contentSheet {
+    padding: 24px 20px 100px;
   }
 
   .createBtn {
@@ -574,38 +656,25 @@
     align-items: center;
     justify-content: center;
     font-size: 0.875rem;
-    width: 100%;
-  }
-
-  .profilesGrid {
-    grid-template-columns: 1fr;
-    gap: var(--spacing-sm);
   }
 
   .profileCard {
-    padding: 14px 16px;
+    padding: 12px 14px;
+    gap: 12px;
   }
 
   .profileAvatar {
-    width: 44px;
-    height: 44px;
-    font-size: 16px;
+    width: 46px;
+    height: 46px;
+    font-size: 18px;
   }
 
   .profileName {
-    font-size: 14px;
+    font-size: 15px;
   }
 
-  .profileRelation {
-    font-size: 12px;
-  }
-
-  .editBtn,
-  .deleteBtn {
-    min-width: 36px;
-    min-height: 36px;
-    width: 36px;
-    height: 36px;
+  .profileRightAmount {
+    font-size: 15px;
   }
 
   .emptyAction {
@@ -700,46 +769,10 @@
 
   /* Account Section Mobile */
   .accountSection {
-    margin-top: var(--spacing-lg);
-    padding-top: var(--spacing-md);
-    margin-bottom: 80px; /* clear bottom nav */
+    margin-top: 20px;
   }
 
-  .accountCard {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--spacing-md);
-    padding: var(--spacing-md);
-  }
-
-  .accountInfo {
-    gap: var(--spacing-sm);
-  }
-
-  .accountAvatar {
-    width: 40px;
-    height: 40px;
-    flex-shrink: 0;
-  }
-
-  .accountName {
-    font-size: 15px;
-  }
-
-  .accountEmail {
-    font-size: 13px;
-    word-break: break-all;
-  }
-
-  .logoutBtn {
-    width: 100%;
-    min-height: 44px;
-    height: 44px;
-    text-align: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.9375rem;
-    border-radius: 8px;
+  .signOutBtn {
+    margin-bottom: 100px; /* clear bottom nav */
   }
 }

@@ -1,461 +1,270 @@
 /* ============================================
-   Dashboard Home Page Styles
-   Stitch Reference Redesign — 2-column layout
+   Dashboard Home — Clean design matching mobile
    ============================================ */
 
-/* --- Keyframes --- */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
 @keyframes fadeSlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* --- Page Shell --- */
+/* --- Page: full pink background --- */
 .page {
-  padding: var(--spacing-md) var(--spacing-lg);
-  max-width: var(--max-width);
-  margin-inline: auto;
-  background: #F9F9FF;
+  background: #D81B60;
   min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
-/* =============================================
-   TOP BAR — Breadcrumb + Search + Notification
-   ============================================= */
-.topBar {
+/* --- Pink Header --- */
+.header {
+  width: 100%;
+  padding: 32px 32px 60px;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--spacing-lg);
+  align-items: flex-start;
 }
 
-.breadcrumb {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  font-size: 14px;
-  color: var(--color-text-secondary);
+.headerLeft { flex: 1; }
+
+.greeting {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 400;
+  margin: 0 0 6px;
 }
 
-.breadcrumbName {
-  color: var(--color-text-secondary);
-  font-weight: var(--font-weight-regular);
+.title {
+  font-size: 32px;
+  color: #FFFFFF;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin: 0;
 }
 
-.breadcrumbSep {
-  color: var(--color-text-tertiary);
-  margin: 0 2px;
-}
-
-.breadcrumbPage {
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-}
-
-.topBarRight {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.searchInput {
-  height: 38px;
-  padding: 0 14px 0 36px;
-  background: var(--color-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-round);
-  font-size: 13px;
-  color: var(--color-text-primary);
-  width: 220px;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: 12px center;
-  background-size: 14px;
-}
-
-.searchInput::placeholder {
-  color: var(--color-text-tertiary);
-}
-
-.searchInput:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(233, 30, 99, 0.08);
-}
-
-.notificationBtn {
+.avatarCircle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: var(--color-card);
-  border: 1px solid var(--color-border);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-  position: relative;
-  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  margin-top: 4px;
 }
 
-.notificationBtn:hover {
-  background: var(--color-light-grey);
+.avatarText {
+  font-size: 20px;
+  color: #FFFFFF;
+  font-weight: 700;
 }
 
-.notificationBtn svg {
-  width: 18px;
-  height: 18px;
+/* --- Content Sheet --- */
+.contentSheet {
+  width: 100%;
+  flex: 1;
+  background: #F5F5F5;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  margin-top: -28px;
+  padding: 28px 32px 100px;
+  min-height: 0;
 }
 
-.notificationDot {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  border: 1.5px solid var(--color-card);
-}
-
-.financeLabel {
-  font-size: 11px;
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  color: var(--color-text-tertiary);
-  margin-bottom: var(--spacing-xs);
-}
-
-/* =============================================
-   BALANCE HERO CARD
-   ============================================= */
-.balanceHero {
-  background: var(--color-card);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+/* --- Balance Card --- */
+.balanceCard {
+  background: #FFFFFF;
   border-radius: 16px;
-  padding: var(--spacing-lg) var(--spacing-xl);
-  box-shadow: var(--shadow-sm);
-  margin-bottom: var(--spacing-lg);
-  transition: box-shadow var(--transition-fast);
+  padding: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  margin-bottom: 8px;
 }
 
-.balanceHero:hover {
-  box-shadow: var(--shadow-md);
+.balanceCardTopRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
 }
 
-.balanceColumns {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0;
-  margin-bottom: var(--spacing-lg);
+.monthChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 9999px;
+  border: 1px solid #F48FB1;
+  background: rgba(216, 27, 96, 0.04);
+  font-size: 13px;
+  font-weight: 600;
+  color: #D81B60;
 }
 
-.balanceCol {
+.monthChipIcon { font-size: 13px; }
+
+.incomeButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 16px;
+  border-radius: 9999px;
+  border: 1px solid #D81B60;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: #D81B60;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 150ms ease;
+}
+
+.incomeButton:hover { background: rgba(216, 27, 96, 0.05); }
+
+/* Balance summary row */
+.balanceSummaryRow {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 20px;
+  gap: 8px;
+}
+
+.balanceSummaryItem {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 0 var(--spacing-lg);
-}
-
-.balanceCol:first-child {
-  padding-left: 0;
-}
-
-.balanceCol:last-child {
-  padding-right: 0;
-}
-
-.balanceCol:not(:last-child) {
-  border-right: 1px solid var(--color-border);
-}
-
-.balanceLabel {
-  font-size: 11px;
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--color-text-tertiary);
-}
-
-.balanceValue {
-  font-size: 32px;
-  font-weight: var(--font-weight-bold);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.5px;
-  line-height: 1.15;
-}
-
-.balanceValueIncome {
-  color: #10B981;
-}
-
-.balanceValueExpense {
-  color: #E91E63;
-}
-
-.balanceValueNet {
-  color: #10B981;
-}
-
-.balanceValueNetNegative {
-  color: #EF4444;
-}
-
-/* Progress bar below balance */
-.budgetProgress {
-  margin-top: 0;
-}
-
-.budgetProgressHeader {
-  display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
+  gap: 4px;
 }
 
-.budgetProgressLabel {
-  font-size: 13px;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
+.balanceSummaryValue {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  font-variant-numeric: tabular-nums;
 }
 
-.budgetProgressPercent {
-  font-size: 13px;
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-secondary);
+.balanceSummaryValueGreen { color: #10B981; }
+.balanceSummaryValueRed { color: #EF4444; }
+
+.balanceSummaryLabel {
+  font-size: 11px;
+  color: #9CA3AF;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
 }
 
-.budgetTrack {
-  width: 100%;
-  height: 8px;
-  background: #F3F4F6;
-  border-radius: var(--radius-round);
+/* Progress bar */
+.progressBarBackground {
+  height: 6px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 9999px;
   overflow: hidden;
+  margin-bottom: 12px;
 }
 
-.budgetFill {
+.progressBarFill {
   height: 100%;
-  border-radius: var(--radius-round);
-  background: #10B981;
+  border-radius: 9999px;
   transition: width 600ms ease;
 }
 
-.budgetFillWarning {
-  background: var(--color-warning);
+/* Balance bottom row */
+.balanceBottomRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.budgetFillDanger {
-  background: var(--color-error);
-}
-
-.dailyRate {
-  margin-top: 8px;
+.balanceBottomLeft {
   font-size: 12px;
-  color: var(--color-text-tertiary);
+  color: #6B7280;
+  font-weight: 400;
+  flex: 1;
 }
 
-/* =============================================
-   CTA BUTTONS ROW
-   ============================================= */
-.ctaRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  margin-bottom: var(--spacing-xl);
+.balanceBottomRight {
+  font-size: 12px;
+  color: #10B981;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
-.addExpenseCta,
-.addIncomeCta {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  height: 56px;
-  padding: 0 var(--spacing-lg);
-  font-size: 16px;
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-on-primary);
-  border: none;
-  border-radius: var(--radius-round);
-  cursor: pointer;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.addExpenseCta {
-  background: linear-gradient(135deg, #D81B60, #E91E63);
-  box-shadow: 0 4px 14px rgba(216, 27, 96, 0.35);
-}
-
-.addExpenseCta:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(216, 27, 96, 0.45);
-}
-
-.addIncomeCta {
-  background: linear-gradient(135deg, #10B981, #059669);
-  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
-}
-
-.addIncomeCta:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(5, 150, 105, 0.45);
-}
-
-.addExpenseCta:active,
-.addIncomeCta:active {
-  transform: scale(0.98);
-}
-
-.ctaIconCircle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
-  font-size: 18px;
-  font-weight: var(--font-weight-bold);
-  line-height: 1;
-}
-
-/* =============================================
-   TWO-COLUMN LAYOUT
-   ============================================= */
-.twoColumnLayout {
-  display: grid;
-  grid-template-columns: 3fr 2fr;
-  gap: 24px;
-  align-items: start;
-}
-
-.leftColumn,
-.rightColumn {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-}
-
-/* =============================================
-   SECTION HEADERS
-   ============================================= */
+/* --- Sections --- */
 .section {
-  /* no extra margin needed inside columns */
+  margin-top: 28px;
 }
 
 .sectionHeader {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--spacing-md);
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 .sectionTitle {
-  font-size: 16px;
-  font-weight: var(--font-weight-bold);
-  color: #1A1A2E;
-  letter-spacing: -0.2px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.3px;
 }
 
 .sectionLink {
-  font-size: 13px;
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  color: #D81B60;
   text-decoration: none;
-  transition: color var(--transition-fast);
-}
-
-.sectionLink:hover {
-  color: var(--color-primary-dark);
-  text-decoration: underline;
-}
-
-.sectionAddBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: rgba(233, 30, 99, 0.08);
-  color: var(--color-primary);
-  font-size: 18px;
-  font-weight: var(--font-weight-bold);
   cursor: pointer;
-  text-decoration: none;
-  transition: background var(--transition-fast);
-  line-height: 1;
 }
 
-.sectionAddBtn:hover {
-  background: rgba(233, 30, 99, 0.15);
-}
+.sectionLink:hover { text-decoration: underline; }
 
-/* =============================================
-   PROFILE CHIPS
-   ============================================= */
+/* --- Profile Chips --- */
 .profileChips {
   display: flex;
-  gap: var(--spacing-sm);
-  overflow-x: auto;
-  padding-bottom: var(--spacing-xs);
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.profileChips::-webkit-scrollbar {
-  display: none;
-}
+.profileChips::-webkit-scrollbar { display: none; }
 
 .profileChip {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 0 var(--spacing-md);
-  height: 36px;
-  background: var(--color-card);
-  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  padding: 8px 18px;
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 9999px;
   font-size: 14px;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-primary);
+  font-weight: 500;
+  color: #111827;
   white-space: nowrap;
-  flex-shrink: 0;
   cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
-  text-decoration: none;
+  transition: all 150ms ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-.profileChip:hover {
-  background: var(--color-light-grey);
-  border-color: rgba(0, 0, 0, 0.12);
-}
+.profileChip:hover { background: #F0F0F0; }
 
 .profileChipActive,
 .profileChipActive:hover {
-  background: rgba(216, 27, 96, 0.08);
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  font-weight: var(--font-weight-semibold);
+  background: #D81B60;
+  border-color: #D81B60;
+  color: #FFFFFF;
 }
 
-.profileChipDot {
-  width: 8px;
-  height: 8px;
+.profileChipIcon {
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+}
+
+.profileDot {
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -463,98 +272,63 @@
 .addProfileChip {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: none;
-  border: 1.5px dashed rgba(0, 0, 0, 0.15);
-  border-radius: 50%;
-  font-size: 18px;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-tertiary);
+  gap: 6px;
+  padding: 8px 18px;
+  background: rgba(216, 27, 96, 0.04);
+  border: 1px dashed #D81B60;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #D81B60;
+  white-space: nowrap;
   cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
   text-decoration: none;
-  flex-shrink: 0;
+  transition: background 150ms ease;
 }
 
-.addProfileChip:hover {
-  background: var(--color-light-grey);
-  color: var(--color-text-primary);
-}
+.addProfileChip:hover { background: rgba(216, 27, 96, 0.1); }
 
-/* =============================================
-   RECENT TRANSACTIONS — compact list in a card
-   ============================================= */
-.loadingText {
-  text-align: center;
-  padding: var(--spacing-xl);
-  font-size: var(--font-size-md);
-  color: var(--color-text-tertiary);
-}
-
-.emptyState {
-  text-align: center;
-  padding: var(--spacing-xl) var(--spacing-md);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-md);
-  background: var(--color-card);
-  border-radius: 12px;
-  box-shadow: var(--shadow-sm);
-}
-
+/* --- Transactions --- */
 .transactionsCard {
-  background: var(--color-card);
-  border-radius: 14px;
-  box-shadow: var(--shadow-sm);
+  background: #FFFFFF;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   overflow: hidden;
-}
-
-.expensesTable {
-  display: flex;
-  flex-direction: column;
 }
 
 .expenseRow {
   display: flex;
   align-items: center;
-  padding: 14px 18px;
+  padding: 16px 20px;
   gap: 14px;
-  transition: background var(--transition-fast);
   animation: fadeSlideUp 400ms ease both;
-  min-width: 0;
-  overflow: hidden;
 }
 
 .expenseRow:not(:last-child) {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid #F3F4F6;
 }
 
-.expenseRow:hover {
-  background: rgba(0, 0, 0, 0.015);
-}
-
-/* Category emoji circle */
-.categoryCircle {
+.expenseIconWrapper {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   flex-shrink: 0;
 }
 
-.expenseInfo {
+.expenseDetails {
   flex: 1;
   min-width: 0;
 }
 
 .expenseTitle {
-  font-size: 14px;
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -562,666 +336,122 @@
   line-height: 1.3;
 }
 
-.expenseMeta {
-  display: flex;
-  align-items: center;
-  gap: 5px;
+.expenseCategory {
   font-size: 11px;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-tertiary);
-  text-transform: uppercase;
+  color: #9CA3AF;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
   letter-spacing: 0.3px;
 }
 
-.metaDot {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: var(--color-text-tertiary);
-  flex-shrink: 0;
-}
-
-.expenseProfile {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: var(--color-text-tertiary);
-  text-transform: uppercase;
-}
-
-.expenseProfileDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.expenseRight {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  flex-shrink: 0;
-}
-
 .expenseAmount {
-  font-size: 15px;
-  font-weight: var(--font-weight-bold);
-  color: #1A1A2E;
+  font-size: 16px;
+  font-weight: 700;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.3px;
-}
-
-.incomeAmount {
-  font-size: 15px;
-  font-weight: var(--font-weight-bold);
-  color: #10B981;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.3px;
-}
-
-.expenseNote {
-  font-size: 11px;
-  color: var(--color-text-tertiary);
-  white-space: nowrap;
-}
-
-.incomeNote {
-  font-size: 11px;
-  color: #10B981;
-  font-weight: var(--font-weight-medium);
-  white-space: nowrap;
-}
-
-.expenseDate {
-  font-size: 11px;
-  color: var(--color-text-tertiary);
-  white-space: nowrap;
-}
-
-.viewAllLink {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px;
-  font-size: 13px;
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-primary);
-  text-decoration: none;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-  transition: background var(--transition-fast);
-}
-
-.viewAllLink:hover {
-  background: rgba(233, 30, 99, 0.03);
-}
-
-/* Filter icon button next to section title */
-.filterBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--color-text-tertiary);
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.filterBtn:hover {
-  background: var(--color-light-grey);
-  color: var(--color-text-secondary);
-}
-
-.filterBtn svg {
-  width: 16px;
-  height: 16px;
-}
-
-.sectionHeaderLeft {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* =============================================
-   GROUP CARDS — stacked vertically, richer design
-   ============================================= */
-.groupsStack {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.groupCard {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 16px 18px;
-  background: var(--color-card);
-  border-radius: 14px;
-  box-shadow: var(--shadow-sm);
-  cursor: pointer;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-  text-decoration: none;
-  color: inherit;
-}
-
-.groupCard:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.groupIconCircle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  font-size: 1.2rem;
   flex-shrink: 0;
-  color: var(--color-text-on-primary);
 }
 
-.groupIconPurple {
-  background: linear-gradient(135deg, #7C3AED, #A78BFA);
+.expenseAmountRed { color: #111827; }
+.expenseAmountGreen { color: #10B981; }
+
+.transactionsList {
 }
 
-.groupIconBlue {
-  background: linear-gradient(135deg, #3B82F6, #60A5FA);
-}
-
-.groupIconGreen {
-  background: linear-gradient(135deg, #059669, #10B981);
-}
-
-.groupIconPink {
-  background: linear-gradient(135deg, #D81B60, #E91E63);
-}
-
-.groupIconOrange {
-  background: linear-gradient(135deg, #EA580C, #F59E0B);
-}
-
-.groupCardBody {
-  flex: 1;
-  min-width: 0;
-}
-
-.groupName {
-  font-size: 15px;
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-bottom: 2px;
-}
-
-.groupDescription {
-  font-size: 12px;
-  color: var(--color-text-tertiary);
-  margin-bottom: 10px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.groupFooter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.memberAvatars {
-  display: flex;
-  align-items: center;
-}
-
-.memberAvatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--color-light-grey);
-  border: 2px solid var(--color-card);
-  font-size: 10px;
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-secondary);
-  margin-left: -6px;
-}
-
-.memberAvatar:first-child {
-  margin-left: 0;
-}
-
-.memberCount {
-  font-size: 11px;
-  color: var(--color-text-tertiary);
-  margin-left: 6px;
-  font-weight: var(--font-weight-medium);
-}
-
-.groupBadge {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 10px;
-  border-radius: var(--radius-round);
-  font-size: 10px;
-  font-weight: var(--font-weight-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.badgeActive {
-  background: rgba(16, 185, 129, 0.1);
-  color: #059669;
-}
-
-.badgeOwed {
-  background: rgba(16, 185, 129, 0.1);
-  color: #059669;
-}
-
-.badgeOwe {
-  background: rgba(239, 68, 68, 0.1);
-  color: #EF4444;
-}
-
-.badgeSettle {
-  background: rgba(233, 30, 99, 0.1);
-  color: var(--color-primary);
-}
-
-.newGroupCard {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 18px;
-  background: none;
-  border: 1.5px dashed rgba(0, 0, 0, 0.1);
-  border-radius: 14px;
-  cursor: pointer;
-  text-decoration: none;
-  color: var(--color-text-tertiary);
-  font-size: 13px;
-  font-weight: var(--font-weight-semibold);
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.newGroupCard:hover {
-  background: rgba(0, 0, 0, 0.02);
-  color: var(--color-text-secondary);
-}
-
-.newGroupIcon {
-  font-size: 18px;
-  font-weight: var(--font-weight-bold);
-}
-
-/* =============================================
-   SPENDING TRENDS MINI CARD
-   ============================================= */
-.spendingTrends {
-  background: #1E293B;
-  border-radius: 14px;
-  padding: 20px;
-  color: #F8FAFC;
-}
-
-.spendingTrendsTitle {
+.viewAllTransactions {
+  display: block;
+  text-align: center;
+  padding: 16px;
   font-size: 14px;
-  font-weight: var(--font-weight-bold);
-  color: #F8FAFC;
-  margin-bottom: 14px;
+  font-weight: 600;
+  color: #D81B60;
+  text-decoration: none;
+  border-top: 1px solid #F3F4F6;
 }
 
-.miniChart {
+.viewAllTransactions:hover {
+  background: rgba(216, 27, 96, 0.03);
+}
+
+/* --- Loading & Empty --- */
+.loadingContainer {
   display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 56px;
-  margin-bottom: 14px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px;
+  color: #9CA3AF;
+  font-size: 14px;
 }
 
-.miniBar {
-  flex: 1;
-  border-radius: 4px 4px 0 0;
-  background: #E91E63;
-  min-height: 6px;
-  transition: height 400ms ease;
-  opacity: 0.85;
+.emptyState {
+  text-align: center;
+  padding: 40px 24px;
+  color: #9CA3AF;
+  font-size: 14px;
+  background: #FFFFFF;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
-.miniBar:nth-child(odd) {
+.emptyStateIcon {
+  font-size: 32px;
+  margin-bottom: 8px;
   opacity: 0.5;
 }
 
-.spendingInsight {
-  font-size: 12px;
-  color: #94A3B8;
-  line-height: 1.5;
+/* --- FAB --- */
+.fab {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #D81B60;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 300;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(216, 27, 96, 0.4);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+  text-decoration: none;
+  z-index: 50;
+  line-height: 1;
+  border: none;
 }
 
-.spendingHighlight {
-  color: #10B981;
-  font-weight: var(--font-weight-semibold);
+.fab:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 20px rgba(216, 27, 96, 0.5);
 }
 
-/* =============================================
-   RESPONSIVE — tablet: collapse two-column to one
-   ============================================= */
-@media (max-width: 1100px) {
-  .twoColumnLayout {
-    grid-template-columns: 1fr;
-    gap: var(--spacing-lg);
-  }
+.fab:active { transform: scale(0.95); }
 
-  .balanceValue {
-    font-size: 28px;
-  }
-}
+/* --- Responsive --- */
 
-/* =============================================
-   RESPONSIVE — mobile single column
-   ============================================= */
+/* Mobile with bottom nav */
 @media (max-width: 768px) {
-  .page {
-    padding: 12px 10px 16px;
-    max-width: 100%;
-  }
-
-  /* --- Top Bar --- */
-  .topBar {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-    margin-bottom: var(--spacing-md);
-  }
-
-  .topBarRight {
-    width: 100%;
-  }
-
-  .searchInput {
-    flex: 1;
-    width: auto;
-    min-width: 0;
-  }
-
-  .financeLabel {
-    font-size: 10px;
-  }
-
-  .breadcrumb {
-    font-size: 13px;
-  }
-
-  /* --- Balance Hero Card --- */
-  .balanceHero {
-    padding: var(--spacing-md);
-  }
-
-  .balanceColumns {
-    grid-template-columns: 1fr;
-    gap: var(--spacing-md);
-  }
-
-  .balanceCol {
-    padding: 0;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .balanceCol:not(:last-child) {
-    border-right: none;
-    border-bottom: 1px solid var(--color-border);
-    padding-bottom: var(--spacing-md);
-  }
-
-  .balanceValue {
-    font-size: 24px;
-  }
-
-  .balanceLabel {
-    font-size: 10px;
-  }
-
-  .budgetProgressLabel,
-  .budgetProgressPercent {
-    font-size: 12px;
-  }
-
-  .dailyRate {
-    font-size: 11px;
-  }
-
-  /* --- CTA Buttons: stack vertically, full width --- */
-  .ctaRow {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    margin-bottom: var(--spacing-lg);
-  }
-
-  .addExpenseCta,
-  .addIncomeCta {
-    height: 48px;
-    font-size: 14px;
-    width: 100%;
-  }
-
-  /* --- Two Column Layout: single column on mobile --- */
-  .twoColumnLayout {
-    grid-template-columns: 1fr;
-    gap: var(--spacing-lg);
-  }
-
-  .transactionsCard {
-    overflow: hidden;
-  }
-
-  .categoryCircle {
-    width: 32px;
-    height: 32px;
-    font-size: 0.9rem;
-  }
-
-  .expenseRow {
-    padding: 8px 8px;
-    gap: 6px;
-  }
-
-  .expenseTitle {
-    font-size: 13px;
-  }
-
-  .expenseMeta {
-    font-size: 9px;
-  }
-
-  .expenseInfo {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-  }
-
-  .expenseRight {
-    flex-shrink: 0;
-    max-width: 90px;
-    align-items: flex-end;
-    overflow: hidden;
-  }
-
-  .expenseAmount,
-  .incomeAmount {
-    font-size: 12px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .expenseNote,
-  .incomeNote {
-    display: none;
-  }
-
-  .expenseProfile {
-    display: none;
-  }
-
-  .sectionHeader {
-    min-width: 0;
-  }
-
-  .sectionTitle {
-    font-size: 15px;
-  }
-
-  .sectionLink {
-    font-size: 11px;
-    white-space: nowrap;
-  }
-
-  .sectionHeaderLeft {
-    min-width: 0;
-  }
-
-  /* --- Profile Chips: horizontal scroll, no wrap, hide scrollbar --- */
-  .profileChips {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding-bottom: var(--spacing-xs);
-  }
-
-  .profileChips::-webkit-scrollbar {
-    display: none;
-  }
-
-  .profileChip {
-    flex-shrink: 0;
-  }
-
-  /* (old duplicate overrides cleaned up — all mobile transaction styles are in the block above) */
-
-  .viewAllLink {
-    padding: 12px;
-    font-size: 12px;
-  }
-
-  /* --- Groups Section --- */
-  .groupCard {
-    padding: 10px;
-    gap: 8px;
-    overflow: hidden;
-  }
-
-  .groupIconCircle {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    flex-shrink: 0;
-  }
-
-  .groupCardBody {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-  }
-
-  .groupName {
-    font-size: 13px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .groupDescription {
-    font-size: 10px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .groupFooter {
-    font-size: 10px;
-  }
-
-  .groupBadge {
-    font-size: 8px;
-    padding: 1px 6px;
-  }
-
-  .groupFooter {
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-
-  .newGroupCard {
-    padding: 10px;
-    font-size: 11px;
-  }
-
-  /* --- Spending Trends --- */
-  .spendingTrends {
-    padding: 12px;
-    border-radius: 10px;
-  }
-
-  .spendingTrendsTitle {
-    font-size: 12px;
-  }
-
-  .miniChart {
-    height: 40px;
-    overflow: hidden;
-  }
-
-  .spendingInsight {
-    font-size: 11px;
-  }
+  .header { padding: 24px 20px 52px; }
+  .contentSheet { padding: 24px 20px 140px; }
+  .title { font-size: 28px; }
+  .fab { bottom: 80px; right: 20px; }
 }
 
-/* Extra small screens (< 380px) — tighter spacing */
+/* Small phones */
 @media (max-width: 380px) {
-  .page {
-    padding: var(--spacing-xs) 12px var(--spacing-md);
-  }
-
-  .balanceValue {
-    font-size: 20px;
-  }
-
-  .expenseAmount,
-  .incomeAmount {
-    font-size: 13px;
-  }
-
-  .expenseRight {
-    max-width: 90px;
-  }
-
-  .expenseNote,
-  .incomeNote {
-    display: none;
-  }
-
-  .categoryCircle {
-    width: 32px;
-    height: 32px;
-    font-size: 0.9rem;
-  }
+  .header { padding: 20px 16px 44px; }
+  .contentSheet { padding: 20px 16px 140px; }
+  .balanceSummaryValue { font-size: 17px; }
+  .expenseIconWrapper { width: 38px; height: 38px; font-size: 1rem; }
+  .expenseTitle { font-size: 14px; }
+  .expenseCategory { font-size: 12px; }
+  .expenseAmount { font-size: 14px; }
 }

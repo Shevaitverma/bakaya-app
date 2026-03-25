@@ -207,7 +207,7 @@ export default function EditExpensePage() {
 
   if (isFetching) {
     return (
-      <div className={styles.page}>
+      <div className={`${styles.page} ${isIncome ? styles.pageIncome : ""}`}>
         <header className={styles.header}>
           <button
             className={styles.backBtn}
@@ -230,7 +230,7 @@ export default function EditExpensePage() {
 
   if (fetchError) {
     return (
-      <div className={styles.page}>
+      <div className={`${styles.page} ${isIncome ? styles.pageIncome : ""}`}>
         <header className={styles.header}>
           <button
             className={styles.backBtn}
@@ -274,7 +274,7 @@ export default function EditExpensePage() {
   }
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} ${isIncome ? styles.pageIncome : ""}`}>
       {/* ---------- Header ---------- */}
       <header className={`${styles.header} ${isIncome ? styles.headerIncome : ""}`}>
         <button

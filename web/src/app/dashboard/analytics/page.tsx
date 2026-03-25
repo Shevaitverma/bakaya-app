@@ -13,8 +13,39 @@ import { profilesApi } from "@/lib/api/profiles";
 import { categoriesApi, type Category } from "@/lib/api/categories";
 import type { Profile } from "@/types/profile";
 import { formatCurrency } from "@/utils/currency";
-import DateRangePicker from "@/components/DateRangePicker";
 import styles from "./page.module.css";
+
+/* Date filter chip definitions */
+type DateFilter = "this_month" | "last_month" | "last_3_months" | "this_year" | "all";
+
+const DATE_FILTERS: { key: DateFilter; label: string }[] = [
+  { key: "this_month", label: "This Month" },
+  { key: "last_month", label: "Last Month" },
+  { key: "last_3_months", label: "Last 3 Months" },
+  { key: "this_year", label: "This Year" },
+  { key: "all", label: "All" },
+];
+
+function getDateRange(filter: DateFilter): { start?: string; end?: string } {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth(); // 0-indexed
+
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+
+  switch (filter) {
+    case "this_month":
+      return { start: fmt(new Date(y, m, 1)), end: fmt(new Date(y, m + 1, 0)) };
+    case "last_month":
+      return { start: fmt(new Date(y, m - 1, 1)), end: fmt(new Date(y, m, 0)) };
+    case "last_3_months":
+      return { start: fmt(new Date(y, m - 2, 1)), end: fmt(new Date(y, m + 1, 0)) };
+    case "this_year":
+      return { start: fmt(new Date(y, 0, 1)), end: fmt(new Date(y, 11, 31)) };
+    case "all":
+      return {};
+  }
+}
 
 /* Fallback palette when a profile has no saved color */
 const PROFILE_COLORS = [
@@ -46,9 +77,14 @@ const MONTH_NAMES = [
 ];
 
 export default function AnalyticsPage() {
-  /* Date range state - DateRangePicker drives this */
-  const [dateStart, setDateStart] = useState<string | undefined>(undefined);
-  const [dateEnd, setDateEnd] = useState<string | undefined>(undefined);
+  /* Date filter chip state */
+  const [activeFilter, setActiveFilter] = useState<DateFilter>("this_month");
+
+  /* Date range derived from active filter */
+  const { start: dateStart, end: dateEnd } = useMemo(
+    () => getDateRange(activeFilter),
+    [activeFilter]
+  );
 
   /* Data state */
   const [summary, setSummary] = useState<SummaryData | null>(null);
@@ -201,24 +237,28 @@ export default function AnalyticsPage() {
     <div className={styles.page}>
       {/* Header */}
       <div className={styles.pageHeader}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.pageTitle}>Analytics</h1>
-          <p className={styles.pageSubtitle}>
-            Review your spending patterns and budgets.
-          </p>
-        </div>
-        <div className={styles.headerRight}>
-          <DateRangePicker
-            onChange={(startDate, endDate) => {
-              setDateStart(startDate);
-              setDateEnd(endDate);
-            }}
-          />
-        </div>
+        <h1 className={styles.pageTitle}>Analytics</h1>
+        <p className={styles.pageSubtitle}>
+          Review your spending patterns and budgets.
+        </p>
+      </div>
+
+      <div className={styles.contentSheet}>
+      {/* Date Filter Chips */}
+      <div className={styles.chipRow}>
+        {DATE_FILTERS.map((f) => (
+          <button
+            key={f.key}
+            className={`${styles.chip} ${activeFilter === f.key ? styles.chipActive : ""}`}
+            onClick={() => setActiveFilter(f.key)}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
 
       {/* Section 1: Summary Cards */}
-      <div className={styles.cardsGrid}>
+      <div className={styles.cardsRow}>
         {loadingSummary ? (
           <>
             <div className={styles.skeletonCard} />
@@ -229,20 +269,18 @@ export default function AnalyticsPage() {
           <>
             {/* Monthly Spend */}
             <div className={styles.card}>
-              <div className={styles.cardTop}>
-                <div className={`${styles.cardIconCircle} ${styles.cardIconPink}`}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E91E63" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
-                    <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
-                    <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z" />
-                  </svg>
-                </div>
-                <span className={styles.cardLabel}>MONTHLY SPEND</span>
+              <div className={`${styles.cardIconCircle} ${styles.cardIconPink}`}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E91E63" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+                  <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+                  <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z" />
+                </svg>
               </div>
-              <p className={styles.cardValue}>
+              <span className={styles.cardLabel}>MONTHLY SPEND</span>
+              <p className={styles.cardValueRed}>
                 {formatCurrency(totalSpent)}
               </p>
-              <p className={styles.cardStatusPink}>
+              <p className={styles.cardStatusGreen}>
                 {changePercent !== null ? (
                   <>
                     {changePercent >= 0 ? "\u2197" : "\u2198"}{" "}
@@ -256,19 +294,17 @@ export default function AnalyticsPage() {
 
             {/* Total Count */}
             <div className={styles.card}>
-              <div className={styles.cardTop}>
-                <div className={`${styles.cardIconCircle} ${styles.cardIconTeal}`}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0D9488" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                    <polyline points="10 9 9 9 8 9" />
-                  </svg>
-                </div>
-                <span className={styles.cardLabel}>TOTAL COUNT</span>
+              <div className={`${styles.cardIconCircle} ${styles.cardIconBlue}`}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                  <polyline points="10 9 9 9 8 9" />
+                </svg>
               </div>
-              <p className={styles.cardValue}>
+              <span className={styles.cardLabel}>TOTAL COUNT</span>
+              <p className={styles.cardValueDark}>
                 {totalExpenses.toLocaleString("en-IN")}
               </p>
               <p className={styles.cardStatusBlue}>
@@ -278,21 +314,19 @@ export default function AnalyticsPage() {
 
             {/* Average Daily */}
             <div className={styles.card}>
-              <div className={styles.cardTop}>
-                <div className={`${styles.cardIconCircle} ${styles.cardIconBlue}`}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="20" x2="18" y2="10" />
-                    <line x1="12" y1="20" x2="12" y2="4" />
-                    <line x1="6" y1="20" x2="6" y2="14" />
-                  </svg>
-                </div>
-                <span className={styles.cardLabel}>AVERAGE DAILY</span>
+              <div className={`${styles.cardIconCircle} ${styles.cardIconPurple}`}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E24AA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10" />
+                  <line x1="12" y1="20" x2="12" y2="4" />
+                  <line x1="6" y1="20" x2="6" y2="14" />
+                </svg>
               </div>
-              <p className={styles.cardValue}>
+              <span className={styles.cardLabel}>AVG DAILY</span>
+              <p className={styles.cardValueRed}>
                 {formatCurrency(avgDaily)}
               </p>
               <p className={styles.cardStatusGreen}>
-                Within budget limits
+                Within budget
               </p>
             </div>
           </>
@@ -341,7 +375,7 @@ export default function AnalyticsPage() {
                         </span>
                       </div>
                       <div className={styles.profileValues}>
-                        <span className={styles.profileAmount}>
+                        <span className={styles.profileAmountRed}>
                           {formatCurrency(p.total)}
                         </span>
                         <span className={styles.profilePct}>{pct}%</span>
@@ -464,6 +498,7 @@ export default function AnalyticsPage() {
             })}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

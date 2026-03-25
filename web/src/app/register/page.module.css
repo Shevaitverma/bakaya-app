@@ -15,9 +15,9 @@
   width: 100%;
   max-width: 420px;
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 40px 36px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   animation: fadeIn 400ms ease both;
 }
 

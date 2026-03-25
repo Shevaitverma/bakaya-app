@@ -184,7 +184,7 @@ export default function AddExpensePage() {
   };
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} ${isIncome ? styles.pageIncome : ""}`}>
       {/* ---------- Header ---------- */}
       <header className={`${styles.header} ${isIncome ? styles.headerIncome : ""}`}>
         <button

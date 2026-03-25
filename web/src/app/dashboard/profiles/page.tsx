@@ -6,6 +6,8 @@ import Link from "next/link";
 import { ApiError, clearAllAuth } from "@/lib/api-client";
 import { authApi } from "@/lib/api/auth";
 import { profilesApi } from "@/lib/api/profiles";
+import { expensesApi } from "@/lib/api/expenses";
+import { formatCurrency } from "@/utils/currency";
 import type { Profile } from "@/types/profile";
 import styles from "./page.module.css";
 
@@ -18,6 +20,7 @@ export default function ProfilesPage() {
   const [deleteError, setDeleteError] = useState("");
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
+  const [profileTotals, setProfileTotals] = useState<Record<string, { totalSpent: number; balance: number }>>({});
 
   useEffect(() => {
     try {
@@ -39,9 +42,30 @@ export default function ProfilesPage() {
   useEffect(() => {
     profilesApi
       .getProfiles()
-      .then((data) => setProfiles(data.profiles ?? []))
-      .catch(() => setProfiles([]))
-      .finally(() => setIsLoading(false));
+      .then(async (data) => {
+        const profilesList = data.profiles ?? [];
+        setProfiles(profilesList);
+        setIsLoading(false);
+
+        // Fetch totals for each profile sequentially to avoid rate limits
+        const totals: Record<string, { totalSpent: number; balance: number }> = {};
+        for (const profile of profilesList) {
+          try {
+            const expData = await expensesApi.list({ profileId: profile._id, limit: 1 });
+            totals[profile._id] = {
+              totalSpent: expData.totalExpenseAmount ?? 0,
+              balance: expData.balance ?? 0,
+            };
+          } catch {
+            // skip this profile
+          }
+        }
+        setProfileTotals(totals);
+      })
+      .catch(() => {
+        setProfiles([]);
+        setIsLoading(false);
+      });
   }, []);
 
   const confirmDelete = async () => {
@@ -69,10 +93,11 @@ export default function ProfilesPage() {
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Profiles</h1>
         <Link href="/dashboard/profiles/new" className={styles.createBtn}>
-          + New Profile
+          + Add
         </Link>
       </div>
 
+      <div className={styles.contentSheet}>
       {isLoading ? (
         <p className={styles.loadingText}>Loading profiles...</p>
       ) : profiles.length === 0 ? (
@@ -86,97 +111,98 @@ export default function ProfilesPage() {
           </Link>
         </div>
       ) : (
-        <div className={styles.profilesGrid}>
-          {profiles.map((profile) => (
-            <div key={profile._id} className={styles.profileCard}>
-              <Link
-                href={`/dashboard/profiles/${profile._id}`}
-                className={styles.profileLink}
-              >
-                <div
-                  className={styles.profileAvatar}
-                  style={{ backgroundColor: profile.color || "var(--color-primary)" }}
+        <div className={styles.profilesList}>
+          {profiles.map((profile, index) => {
+            const relationship = profile.relationship
+              ? profile.relationship.charAt(0).toUpperCase() + profile.relationship.slice(1)
+              : "";
+            const subtitle = profile.isDefault
+              ? "PRIMARY ACCOUNT"
+              : relationship
+                ? `${relationship.toUpperCase()} GROUP`
+                : "PERSONAL";
+
+            return (
+              <div key={profile._id}>
+                <Link
+                  href={`/dashboard/profiles/${profile._id}`}
+                  className={`${styles.profileCard} ${profile.isDefault ? styles.profileCardDefault : ""}`}
                 >
-                  {profile.name.charAt(0).toUpperCase()}
-                </div>
-                <div className={styles.profileInfo}>
-                  <p className={styles.profileName}>
-                    {profile.name}
-                    {profile.isDefault && (
-                      <span className={styles.defaultBadge}>Default</span>
+                  <div
+                    className={styles.profileAvatar}
+                    style={{ backgroundColor: profile.color || "var(--color-primary)" }}
+                  >
+                    {profile.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className={styles.profileInfo}>
+                    <div className={styles.nameRow}>
+                      <span className={styles.profileName}>{profile.name}</span>
+                      {profile.isDefault && (
+                        <span className={styles.defaultBadge}>DEFAULT</span>
+                      )}
+                      {relationship && !profile.isDefault && (
+                        <span className={styles.relationshipBadge}>{relationship.toUpperCase()}</span>
+                      )}
+                    </div>
+                    <span className={styles.profileSubtitle}>{subtitle}</span>
+                  </div>
+                  <div className={styles.profileRight}>
+                    <span className={styles.profileRightLabel}>
+                      {profile.isDefault ? "TOTAL SPENT" : "BALANCE"}
+                    </span>
+                    {profileTotals[profile._id] ? (
+                      <span className={`${styles.profileRightAmount} ${
+                        profile.isDefault
+                          ? styles.amountRed
+                          : (profileTotals[profile._id]?.balance ?? 0) >= 0
+                            ? styles.amountGreen
+                            : styles.amountRed
+                      }`}>
+                        {profile.isDefault
+                          ? formatCurrency(profileTotals[profile._id]?.totalSpent ?? 0)
+                          : `${(profileTotals[profile._id]?.balance ?? 0) >= 0 ? "+" : "-"}${formatCurrency(Math.abs(profileTotals[profile._id]?.balance ?? 0))}`
+                        }
+                      </span>
+                    ) : (
+                      <span className={styles.profileRightAmount} style={{ color: "#9CA3AF" }}>...</span>
                     )}
-                  </p>
-                  {profile.relationship && (
-                    <p className={styles.profileRelation}>{profile.relationship}</p>
-                  )}
-                </div>
-              </Link>
-              <Link
-                href={`/dashboard/profiles/${profile._id}/edit`}
-                className={styles.editBtn}
-                title="Edit profile"
-              >
-                &#9998;
-              </Link>
-              {!profile.isDefault && (
-                <button
-                  className={styles.deleteBtn}
-                  onClick={() => {
-                    setDeleteTarget(profile);
-                    setDeleteError("");
-                  }}
-                  title="Delete profile"
-                >
-                  &#10005;
-                </button>
-              )}
-            </div>
-          ))}
+                  </div>
+                </Link>
+                {index < profiles.length - 1 && !profile.isDefault && (
+                  <div className={styles.profileDivider} />
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Manage Categories Link */}
-      <div className={styles.accountSection} style={{ borderTop: "none", marginTop: "var(--spacing-md)", paddingTop: 0 }}>
-        <Link
-          href="/dashboard/categories"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "14px 20px",
-            background: "#FFFFFF",
-            borderRadius: "12px",
-            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)",
-            textDecoration: "none",
-            color: "#1A1A2E",
-            fontWeight: 600,
-            fontSize: "15px",
-            transition: "transform 200ms ease, box-shadow 200ms ease",
-          }}
-        >
-          <span>Manage Categories</span>
-          <span style={{ color: "#9CA3AF", fontSize: "1.25rem" }}>&rarr;</span>
-        </Link>
-      </div>
+      {/* Manage Categories Card */}
+      <Link href="/dashboard/categories" className={styles.manageCategoriesCard}>
+        <span className={styles.manageCategoriesIcon}>&#x1F3F7;</span>
+        <span className={styles.manageCategoriesText}>Manage Categories</span>
+        <span className={styles.manageCategoriesChevron}>&rsaquo;</span>
+      </Link>
 
-      {/* Account Section */}
+      {/* Account Settings Section */}
       <div className={styles.accountSection}>
-        <h2 className={styles.accountTitle}>Account</h2>
+        <h2 className={styles.accountTitle}>Account Settings</h2>
         <div className={styles.accountCard}>
-          <div className={styles.accountInfo}>
-            <div className={styles.accountAvatar}>
-              {(userName || userEmail).charAt(0).toUpperCase()}
-            </div>
+          <div className={styles.accountRow}>
+            <span className={styles.accountIconCircle}>&#x2709;</span>
             <div>
-              {userName && <p className={styles.accountName}>{userName}</p>}
-              {userEmail && <p className={styles.accountEmail}>{userEmail}</p>}
+              <p className={styles.accountLabel}>EMAIL ADDRESS</p>
+              <p className={styles.accountValue}>{userEmail || "Not set"}</p>
             </div>
           </div>
-          <button className={styles.logoutBtn} onClick={handleLogout}>
-            Sign Out
-          </button>
         </div>
       </div>
+
+      {/* Sign Out */}
+      <button className={styles.signOutBtn} onClick={handleLogout}>
+        <span className={styles.signOutIcon}>&#x2192;</span>
+        Sign Out
+      </button>
 
       {/* Delete Confirmation */}
       {deleteTarget && (
@@ -208,6 +234,7 @@ export default function ProfilesPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

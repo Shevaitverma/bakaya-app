@@ -15,8 +15,14 @@
 
 /* --- Page Shell --- */
 .page {
-  min-height: 100vh;
-  background: #F9F9FF;
+  min-height: 100dvh;
+  background: #D81B60;
+  display: flex;
+  flex-direction: column;
+}
+
+.pageIncome {
+  background: #059669;
 }
 
 /* --- Header --- */
@@ -24,9 +30,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-md) var(--spacing-lg);
-  background: linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-end));
-  border-radius: 0 0 24px 24px;
+  padding: 32px 32px 60px;
+  background: #D81B60;
+  border-radius: 0;
 }
 
 .backBtn {
@@ -63,7 +69,7 @@
 /* --- Header Income variant --- */
 .headerIncome {
   background: linear-gradient(135deg, #059669, #10B981);
-  border-radius: 0 0 24px 24px;
+  border-radius: 0;
 }
 
 /* --- Type Toggle (segmented pill) --- */
@@ -117,9 +123,14 @@
 
 /* --- Form Container --- */
 .formContainer {
-  max-width: 600px;
-  margin-inline: auto;
-  padding: var(--spacing-lg);
+  flex: 1;
+  padding: 28px 32px 60px;
+  background: #F5F5F5;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  margin-top: -28px;
+  position: relative;
+  z-index: 1;
 }
 
 .form {
@@ -239,8 +250,8 @@
   overflow-y: auto;
   background: #FFFFFF;
   border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   z-index: 100;
   padding: var(--spacing-sm);
   animation: slideUp 200ms ease both;
@@ -406,8 +417,8 @@
 /* --- Mobile Responsive --- */
 @media (max-width: 768px) {
   .header {
-    padding: var(--spacing-sm) 16px var(--spacing-md);
-    border-radius: 0 0 20px 20px;
+    padding: 24px 16px 52px;
+    border-radius: 0;
   }
 
   .headerTitle {
@@ -415,8 +426,7 @@
   }
 
   .formContainer {
-    max-width: 100%;
-    padding: var(--spacing-md) 16px;
+    padding: 24px 20px 100px;
   }
 
   .input {

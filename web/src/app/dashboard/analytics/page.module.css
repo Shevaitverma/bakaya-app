@@ -1,69 +1,114 @@
 /* ============================================
-   Analytics Page Styles - Stitch Reference Design
+   Analytics Page Styles — Mobile-matching Design
    ============================================ */
 
-/* --- Page Shell --- */
+/* --- Page: full pink background --- */
 .page {
-  padding: var(--spacing-lg);
-  max-width: var(--max-width);
-  margin-inline: auto;
+  background: #D81B60;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
   animation: fadeIn 400ms ease both;
 }
 
-/* --- Page Header --- */
+/* --- Pink Header --- */
 .pageHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: var(--spacing-lg);
-  flex-wrap: wrap;
-}
-
-.headerLeft {
+  width: 100%;
+  padding: 32px 32px 60px;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.headerRight {
-  flex-shrink: 0;
-}
-
 .pageTitle {
   font-family: 'Plus Jakarta Sans', var(--font-family-base);
   font-size: 32px;
-  font-weight: var(--font-weight-bold);
-  color: #1A1A2E;
+  font-weight: 800;
+  color: #FFFFFF;
   letter-spacing: -0.5px;
   line-height: 1.2;
 }
 
 .pageSubtitle {
   font-size: 15px;
-  color: #6B7280;
+  color: rgba(255, 255, 255, 0.75);
   line-height: 1.4;
   margin: 0;
 }
 
-/* --- Summary Cards Grid --- */
-.cardsGrid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-xl);
+/* --- Content Sheet --- */
+.contentSheet {
+  flex: 1;
+  background: #F5F5F5;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  margin-top: -28px;
+  padding: 28px 32px 100px;
 }
 
-/* --- Individual Card (redesigned layout) --- */
+/* --- Date Filter Chips --- */
+.chipRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.chipRow::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex: 0 0 auto;
+  padding: 8px 20px;
+  border-radius: 100px;
+  border: 1.5px solid #E5E7EB;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 200ms ease;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.chip:hover {
+  border-color: #D81B60;
+  color: #D81B60;
+}
+
+.chipActive {
+  border-color: #D81B60;
+  color: #D81B60;
+  background: rgba(216, 27, 96, 0.06);
+  font-weight: 600;
+}
+
+/* --- Summary Cards Row (horizontal scroll) --- */
+.cardsRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+/* --- Individual Card --- */
 .card {
-  padding: 24px;
+  padding: 20px;
   background: #FFFFFF;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: column;
   gap: 0;
+  transition: transform 200ms ease, box-shadow 200ms ease;
 }
 
 .card:hover {
@@ -71,76 +116,80 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
-/* Card top row: icon left, label right */
-.cardTop {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-/* Icon circle */
+/* Icon circle — sits at top-left of card */
 .cardIconCircle {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   flex-shrink: 0;
+  margin-bottom: 12px;
 }
 
 .cardIconPink {
   background: rgba(233, 30, 99, 0.1);
 }
 
-.cardIconTeal {
-  background: rgba(13, 148, 136, 0.1);
-}
-
 .cardIconBlue {
   background: rgba(59, 130, 246, 0.1);
 }
 
+.cardIconPurple {
+  background: rgba(142, 36, 170, 0.1);
+}
+
+/* Uppercase label below icon */
 .cardLabel {
   font-size: 11px;
-  font-weight: var(--font-weight-semibold);
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #9CA3AF;
+  margin-bottom: 6px;
 }
 
-.cardValue {
-  font-size: 32px;
-  font-weight: var(--font-weight-bold);
+/* Card value variants */
+.cardValueRed {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #E53935;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+  margin: 0 0 6px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardValueDark {
+  font-size: 28px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: #1A1A2E;
-  line-height: 1.1;
+  line-height: 1.2;
   letter-spacing: -0.5px;
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 /* Card status line colors */
-.cardStatusPink {
-  font-size: 13px;
-  color: #E91E63;
+.cardStatusGreen {
+  font-size: 12px;
+  color: #10B981;
+  font-weight: 500;
   margin: 0;
   line-height: 1.4;
 }
 
 .cardStatusBlue {
-  font-size: 13px;
+  font-size: 12px;
   color: #3B82F6;
-  margin: 0;
-  line-height: 1.4;
-}
-
-.cardStatusGreen {
-  font-size: 13px;
-  color: #10B981;
+  font-weight: 500;
   margin: 0;
   line-height: 1.4;
 }
@@ -149,17 +198,18 @@
 .twoColGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
+  gap: 16px;
+  margin-bottom: 28px;
 }
 
 /* --- Section (chart cards) --- */
 .section {
   background: #FFFFFF;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   padding: 24px;
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: 28px;
 }
 
 /* Remove double margin when inside twoColGrid */
@@ -177,7 +227,7 @@
 .sectionTitle {
   font-family: 'Plus Jakarta Sans', var(--font-family-base);
   font-size: 18px;
-  font-weight: var(--font-weight-semibold);
+  font-weight: 600;
   color: #1A1A2E;
   margin: 0;
   line-height: 1.3;
@@ -192,7 +242,7 @@
 .profileList {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .profileItem {
@@ -211,20 +261,20 @@
 .profileNameGroup {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
 }
 
 .profileDot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
 .profileName {
   font-size: 14px;
-  font-weight: var(--font-weight-medium);
+  font-weight: 500;
   color: #1A1A2E;
   white-space: nowrap;
   overflow: hidden;
@@ -238,17 +288,17 @@
   flex-shrink: 0;
 }
 
-.profileAmount {
+.profileAmountRed {
   font-size: 14px;
-  font-weight: var(--font-weight-bold);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #1A1A2E;
+  color: #E53935;
   white-space: nowrap;
 }
 
 .profilePct {
   font-size: 13px;
-  font-weight: var(--font-weight-medium);
+  font-weight: 500;
   color: #9CA3AF;
   white-space: nowrap;
   min-width: 32px;
@@ -258,7 +308,7 @@
 /* Category row styling */
 .categoryName {
   font-size: 14px;
-  font-weight: var(--font-weight-medium);
+  font-weight: 600;
   color: #1A1A2E;
   white-space: nowrap;
   overflow: hidden;
@@ -267,9 +317,9 @@
 
 .categoryAmount {
   font-size: 14px;
-  font-weight: var(--font-weight-bold);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #E91E63;
+  color: #E53935;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -317,13 +367,13 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #E91E63;
+  background: #D81B60;
 }
 
 .legendLabel {
   font-size: 13px;
   color: #6B7280;
-  font-weight: var(--font-weight-medium);
+  font-weight: 500;
 }
 
 /* Vertical bar chart */
@@ -355,7 +405,7 @@
 
 .trendAmount {
   font-size: 13px;
-  font-weight: var(--font-weight-bold);
+  font-weight: 700;
   color: #1A1A2E;
   white-space: nowrap;
 }
@@ -371,7 +421,7 @@
 
 .trendBarFill {
   width: 100%;
-  background: linear-gradient(180deg, #E91E63 0%, #F48FB1 100%);
+  background: #D81B60;
   border-radius: 6px 6px 0 0;
   transition: height 600ms ease;
   min-height: 0;
@@ -379,23 +429,23 @@
 
 .trendLabel {
   font-size: 13px;
-  font-weight: var(--font-weight-medium);
+  font-weight: 500;
   color: #6B7280;
   white-space: nowrap;
   padding-top: 4px;
 }
 
 .trendLabelActive {
-  color: #E91E63;
-  font-weight: var(--font-weight-semibold);
+  color: #D81B60;
+  font-weight: 600;
 }
 
 /* --- Skeleton loading --- */
 .skeletonCard {
+  min-height: 160px;
   background: linear-gradient(90deg, #F0F3FF 25%, #E5E7EB 50%, #F0F3FF 75%);
   background-size: 200% 100%;
-  border-radius: 12px;
-  min-height: 140px;
+  border-radius: 16px;
   animation: shimmer 1.5s infinite;
 }
 
@@ -437,15 +487,8 @@
 }
 
 @media (max-width: 768px) {
-  .page {
-    padding: 16px 16px 16px;
-  }
-
   .pageHeader {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-    margin-bottom: 16px;
+    padding: 24px 20px 52px;
   }
 
   .pageTitle {
@@ -456,53 +499,53 @@
     font-size: 13px;
   }
 
-  .headerRight {
-    width: 100%;
+  .contentSheet {
+    padding: 24px 20px 100px;
   }
 
-  /* Cards: horizontal scroll row on mobile */
-  .cardsGrid {
-    display: flex;
+  /* Chips */
+  .chipRow {
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .chip {
+    padding: 7px 16px;
+    font-size: 13px;
+  }
+
+  /* Summary cards */
+  .cardsRow {
+    grid-template-columns: 1fr;
     gap: 10px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding-bottom: 4px;
-  }
-
-  .cardsGrid::-webkit-scrollbar {
-    display: none;
   }
 
   .card {
     padding: 14px;
-    flex: 0 0 auto;
-    width: 150px;
-  }
-
-  .cardTop {
-    margin-bottom: 8px;
   }
 
   .cardIconCircle {
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 10px;
   }
 
   .cardIconCircle svg {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
   }
 
   .cardLabel {
     font-size: 9px;
   }
 
-  .cardValue {
+  .cardValueRed,
+  .cardValueDark {
     font-size: 22px;
   }
 
-  .cardStatus {
+  .cardStatusGreen,
+  .cardStatusBlue {
     font-size: 10px;
   }
 
@@ -513,9 +556,9 @@
 
   /* Sections */
   .section {
-    padding: 14px;
+    padding: 16px;
     border-radius: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
   }
 
   .sectionTitle {
@@ -524,14 +567,14 @@
 
   /* Profile / Category bars */
   .profileList {
-    gap: 16px;
+    gap: 14px;
   }
 
   .profileName {
     font-size: 13px;
   }
 
-  .profileAmount {
+  .profileAmountRed {
     font-size: 13px;
   }
 
@@ -568,9 +611,19 @@
   .trendLabel {
     font-size: 11px;
   }
+
+  /* Skeleton */
+  .skeletonCard {
+    min-height: 140px;
+  }
 }
 
 @media (max-width: 480px) {
+  .card {
+    flex: 0 0 150px;
+    min-width: 140px;
+  }
+
   .trendBarWrapper {
     width: 24px;
     height: 120px;

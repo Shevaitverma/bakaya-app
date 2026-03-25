@@ -22,8 +22,10 @@
 
 /* --- Page Shell --- */
 .page {
-  min-height: 100vh;
-  background: #F9F9FF;
+  min-height: 100dvh;
+  background: #D81B60;
+  display: flex;
+  flex-direction: column;
 }
 
 /* --- Header --- */
@@ -31,9 +33,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-xl);
-  background: linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-end));
-  border-radius: 0 0 24px 24px;
+  padding: 32px 32px 60px;
+  background: #D81B60;
+  border-radius: 0;
 }
 
 .backBtn {
@@ -90,17 +92,23 @@
   width: 40px;
 }
 
+/* --- Content Sheet --- */
+.contentSheet {
+  flex: 1;
+  background: #F5F5F5;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  margin-top: -28px;
+  position: relative;
+  z-index: 1;
+}
+
 /* --- Summary Bar --- */
 .summaryBar {
   display: flex;
   align-items: stretch;
   gap: 12px;
-  padding: var(--spacing-md) var(--spacing-lg);
-  max-width: var(--max-width);
-  margin-inline: auto;
-  margin-top: -24px;
-  position: relative;
-  z-index: 1;
+  padding: 28px 32px 16px;
 }
 
 .summaryItem {
@@ -112,13 +120,14 @@
   flex: 1;
   padding: 14px;
   background: var(--color-card);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   transition: box-shadow var(--transition-fast);
 }
 
 .summaryItem:hover {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 /* Colored top borders for summary cards */
@@ -179,8 +188,6 @@
   display: flex;
   gap: 8px;
   padding: 16px var(--spacing-lg) 0;
-  max-width: var(--max-width);
-  margin-inline: auto;
 }
 
 .typeFilterBtn {
@@ -217,8 +224,6 @@
   align-items: center;
   gap: var(--spacing-sm);
   padding: 16px var(--spacing-lg) 0;
-  max-width: var(--max-width);
-  margin-inline: auto;
 }
 
 .searchInputWrap {
@@ -241,7 +246,7 @@
   height: 44px;
   padding: 0 var(--spacing-md) 0 2.5rem;
   font-size: var(--font-size-md);
-  background: #F0F3FF;
+  background: #F0F0F0;
   border: 1.5px solid transparent;
   border-radius: 12px;
   color: var(--color-text-primary);
@@ -308,7 +313,7 @@
   font-size: 16px;
   font-weight: var(--font-weight-bold);
   font-variant-numeric: tabular-nums;
-  color: var(--color-success);
+  color: #10B981;
   letter-spacing: -0.3px;
   white-space: nowrap;
 }
@@ -334,8 +339,6 @@
   gap: var(--spacing-sm);
   overflow-x: auto;
   padding: 16px var(--spacing-lg) 0;
-  max-width: var(--max-width);
-  margin-inline: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
@@ -383,9 +386,8 @@
 
 /* --- Content --- */
 .content {
-  max-width: 900px;
-  margin-inline: auto;
-  padding: 16px var(--spacing-lg);
+  padding: 28px 32px;
+  background: #F5F5F5;
 }
 
 /* --- Expense List --- */
@@ -399,8 +401,9 @@
 @media (min-width: 769px) {
   .expenseList {
     background: var(--color-card);
-    border-radius: 12px;
-    box-shadow: var(--shadow-sm);
+    border-radius: 16px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
     padding: var(--spacing-md);
   }
 
@@ -414,21 +417,6 @@
     border-bottom: none;
   }
 
-  .summaryBar {
-    max-width: 900px;
-  }
-
-  .typeFilterRow {
-    max-width: 900px;
-  }
-
-  .searchRow {
-    max-width: 900px;
-  }
-
-  .filterRow {
-    max-width: 900px;
-  }
 }
 
 /* --- Expense Card --- */
@@ -439,8 +427,9 @@
   gap: var(--spacing-md);
   padding: 16px;
   background: var(--color-card);
-  border-radius: 12px;
-  box-shadow: var(--shadow-sm);
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
   animation: fadeSlideUp 400ms ease both;
   position: relative;
@@ -531,7 +520,7 @@
   font-size: 16px;
   font-weight: var(--font-weight-bold);
   font-variant-numeric: tabular-nums;
-  color: #1A1A2E;
+  color: #EF4444;
   letter-spacing: -0.3px;
   white-space: nowrap;
 }
@@ -589,8 +578,9 @@
   text-align: center;
   gap: var(--spacing-md);
   background: var(--color-card);
-  border-radius: 12px;
-  box-shadow: var(--shadow-sm);
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
 .emptyIcon {
@@ -622,7 +612,7 @@
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-on-primary);
-  background: linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-end));
+  background: #D81B60;
   border-radius: var(--radius-round);
   box-shadow: 0 4px 16px rgba(216, 27, 96, 0.35);
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
@@ -652,7 +642,7 @@
   width: 90%;
   max-width: 400px;
   background: var(--color-card);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: var(--spacing-xl);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
 }
@@ -714,8 +704,8 @@
   }
 
   .header {
-    padding: 16px 16px 28px;
-    border-radius: 0 0 20px 20px;
+    padding: 24px 20px 52px;
+    border-radius: 0;
   }
 
   .headerTitle {
@@ -730,10 +720,13 @@
     font-size: 20px;
   }
 
+  .contentSheet {
+    margin-top: -28px;
+  }
+
   .summaryBar {
-    padding: 0 16px;
+    padding: 24px 20px 12px;
     gap: 8px;
-    margin-top: -24px;
   }
 
   .summaryItem {
@@ -800,7 +793,7 @@
   }
 
   .content {
-    padding: var(--spacing-md) 16px;
+    padding: 24px 20px;
   }
 
   .expenseCard {

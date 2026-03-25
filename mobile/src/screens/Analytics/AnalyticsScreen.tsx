@@ -718,24 +718,26 @@ const styles = StyleSheet.create({
   },
   summaryCardsContainer: {
     paddingHorizontal: Theme.spacing.md,
-    gap: Theme.spacing.sm,
+    flexDirection: 'row',
   },
   summaryCard: {
-    width: 148,
+    width: 155,
     backgroundColor: Theme.colors.cardBackground,
     borderRadius: Theme.borderRadius.lg,
     padding: Theme.spacing.md,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.05)',
+    marginRight: Theme.spacing.sm,
     ...Theme.shadows.small,
   },
   summaryIconCircle: {
     width: 40,
     height: 40,
-    borderRadius: Theme.borderRadius.round,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Theme.spacing.sm,
+    marginBottom: 6,
   },
   summaryLabel: {
     fontSize: 9,
@@ -743,6 +745,7 @@ const styles = StyleSheet.create({
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.bold,
     letterSpacing: 0.8,
+    textAlign: 'center',
     marginBottom: 4,
   },
   summaryValue: {
@@ -751,12 +754,14 @@ const styles = StyleSheet.create({
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.bold,
     letterSpacing: -0.5,
-    marginBottom: 4,
+    marginBottom: 2,
+    textAlign: 'center',
   },
   summarySubtext: {
     fontSize: 10,
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.medium,
+    textAlign: 'center',
   },
 
   // --- Section Cards ---

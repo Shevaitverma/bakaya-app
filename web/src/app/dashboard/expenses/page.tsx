@@ -207,115 +207,117 @@ export default function ExpensesPage() {
         <div className={styles.headerPlaceholder} />
       </header>
 
-      {/* ---------- Summary Bar ---------- */}
-      <div className={styles.summaryBar}>
-        <div className={`${styles.summaryItem} ${styles.summaryItemIncome}`}>
-          <span className={styles.summaryLabel}>Income</span>
-          <span className={styles.summaryIncome}>{formatCurrency(totalIncome)}</span>
+      {/* ---------- Content Sheet ---------- */}
+      <div className={styles.contentSheet}>
+        {/* ---------- Summary Bar ---------- */}
+        <div className={styles.summaryBar}>
+          <div className={`${styles.summaryItem} ${styles.summaryItemIncome}`}>
+            <span className={styles.summaryLabel}>Income</span>
+            <span className={styles.summaryIncome}>{formatCurrency(totalIncome)}</span>
+          </div>
+          <div className={styles.summarySep} />
+          <div className={`${styles.summaryItem} ${styles.summaryItemExpense}`}>
+            <span className={styles.summaryLabel}>Expenses</span>
+            <span className={styles.summaryExpense}>{formatCurrency(totalExpenses)}</span>
+          </div>
+          <div className={styles.summarySep} />
+          <div className={`${styles.summaryItem} ${styles.summaryItemBalance}`}>
+            <span className={styles.summaryLabel}>Balance</span>
+            <span className={balance >= 0 ? styles.summaryBalancePositive : styles.summaryBalanceNegative}>
+              {formatCurrency(Math.abs(balance))}
+            </span>
+          </div>
         </div>
-        <div className={styles.summarySep} />
-        <div className={`${styles.summaryItem} ${styles.summaryItemExpense}`}>
-          <span className={styles.summaryLabel}>Expenses</span>
-          <span className={styles.summaryExpense}>{formatCurrency(totalExpenses)}</span>
-        </div>
-        <div className={styles.summarySep} />
-        <div className={`${styles.summaryItem} ${styles.summaryItemBalance}`}>
-          <span className={styles.summaryLabel}>Balance</span>
-          <span className={balance >= 0 ? styles.summaryBalancePositive : styles.summaryBalanceNegative}>
-            {formatCurrency(Math.abs(balance))}
-          </span>
-        </div>
-      </div>
 
-      {/* ---------- Type Filter Tabs ---------- */}
-      <div className={styles.typeFilterRow}>
-        {(["all", "expense", "income"] as TypeFilter[]).map((t) => (
-          <button
-            key={t}
-            className={`${styles.typeFilterBtn} ${typeFilter === t ? styles.typeFilterBtnActive : ""}`}
-            onClick={() => setTypeFilter(t)}
-          >
-            {t === "all" ? "All" : t === "expense" ? "Expenses" : "Income"}
-          </button>
-        ))}
-      </div>
-
-      {/* ---------- Search & Export Row ---------- */}
-      <div className={styles.searchRow}>
-        <div className={styles.searchInputWrap}>
-          <span className={styles.searchIcon} aria-hidden>&#128269;</span>
-          <input
-            type="text"
-            className={styles.searchInput}
-            placeholder="Search transactions..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-          />
-          {searchInput && (
+        {/* ---------- Type Filter Tabs ---------- */}
+        <div className={styles.typeFilterRow}>
+          {(["all", "expense", "income"] as TypeFilter[]).map((t) => (
             <button
-              className={styles.searchClear}
-              onClick={() => setSearchInput("")}
-              aria-label="Clear search"
+              key={t}
+              className={`${styles.typeFilterBtn} ${typeFilter === t ? styles.typeFilterBtnActive : ""}`}
+              onClick={() => setTypeFilter(t)}
             >
-              &#10005;
-            </button>
-          )}
-        </div>
-        <button
-          className={styles.exportBtn}
-          onClick={handleExportCSV}
-          disabled={isExporting}
-          title="Export as CSV"
-        >
-          {isExporting ? "..." : "Export CSV"}
-        </button>
-      </div>
-
-      {/* ---------- Profile Filter ---------- */}
-      {profiles.length > 0 && (
-        <div className={styles.filterRow}>
-          <button
-            className={`${styles.filterChip} ${
-              activeProfileFilter === null ? styles.filterChipActive : ""
-            }`}
-            onClick={() => setActiveProfileFilter(null)}
-          >
-            All
-          </button>
-          {profiles.map((profile) => (
-            <button
-              key={profile._id}
-              className={`${styles.filterChip} ${
-                activeProfileFilter === profile._id
-                  ? styles.filterChipActive
-                  : ""
-              }`}
-              onClick={() => setActiveProfileFilter(profile._id)}
-            >
-              <span
-                className={styles.filterChipDot}
-                style={{
-                  backgroundColor: profile.color || "var(--color-primary)",
-                }}
-              />
-              {profile.name}
+              {t === "all" ? "All" : t === "expense" ? "Expenses" : "Income"}
             </button>
           ))}
         </div>
-      )}
 
-      {/* ---------- Date Range Picker ---------- */}
-      <div className={styles.content} style={{ paddingBottom: 0 }}>
-        <DateRangePicker
-          onChange={(startDate, endDate) => {
-            setDateStartFilter(startDate);
-            setDateEndFilter(endDate);
-          }}
-        />
-      </div>
+        {/* ---------- Search & Export Row ---------- */}
+        <div className={styles.searchRow}>
+          <div className={styles.searchInputWrap}>
+            <span className={styles.searchIcon} aria-hidden>&#128269;</span>
+            <input
+              type="text"
+              className={styles.searchInput}
+              placeholder="Search transactions..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+            {searchInput && (
+              <button
+                className={styles.searchClear}
+                onClick={() => setSearchInput("")}
+                aria-label="Clear search"
+              >
+                &#10005;
+              </button>
+            )}
+          </div>
+          <button
+            className={styles.exportBtn}
+            onClick={handleExportCSV}
+            disabled={isExporting}
+            title="Export as CSV"
+          >
+            {isExporting ? "..." : "Export CSV"}
+          </button>
+        </div>
 
-      {/* ---------- Content ---------- */}
-      <main className={styles.content}>
+        {/* ---------- Profile Filter ---------- */}
+        {profiles.length > 0 && (
+          <div className={styles.filterRow}>
+            <button
+              className={`${styles.filterChip} ${
+                activeProfileFilter === null ? styles.filterChipActive : ""
+              }`}
+              onClick={() => setActiveProfileFilter(null)}
+            >
+              All
+            </button>
+            {profiles.map((profile) => (
+              <button
+                key={profile._id}
+                className={`${styles.filterChip} ${
+                  activeProfileFilter === profile._id
+                    ? styles.filterChipActive
+                    : ""
+                }`}
+                onClick={() => setActiveProfileFilter(profile._id)}
+              >
+                <span
+                  className={styles.filterChipDot}
+                  style={{
+                    backgroundColor: profile.color || "var(--color-primary)",
+                  }}
+                />
+                {profile.name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ---------- Date Range Picker ---------- */}
+        <div className={styles.content} style={{ paddingBottom: 0 }}>
+          <DateRangePicker
+            onChange={(startDate, endDate) => {
+              setDateStartFilter(startDate);
+              setDateEndFilter(endDate);
+            }}
+          />
+        </div>
+
+        {/* ---------- Content ---------- */}
+        <main className={styles.content}>
         {isLoading ? (
           <p style={{ textAlign: "center", padding: "2rem", opacity: 0.6 }}>
             Loading transactions...
@@ -419,6 +421,7 @@ export default function ExpensesPage() {
           </div>
         )}
       </main>
+      </div>
 
       {/* ---------- FAB ---------- */}
       <Link href="/dashboard/expenses/new" className={styles.fab}>

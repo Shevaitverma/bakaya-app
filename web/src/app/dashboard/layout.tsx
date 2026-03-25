@@ -172,9 +172,6 @@ export default function DashboardLayout({
               )}
             </div>
           </div>
-          <button className={styles.logoutBtn} onClick={handleLogout}>
-            Logout
-          </button>
         </div>
       </aside>
 

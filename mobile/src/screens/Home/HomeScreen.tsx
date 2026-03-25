@@ -642,11 +642,6 @@ const HomeScreen = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionHeaderLabel}>Recent Transactions</Text>
-            {recentExpenses.length > 0 && (
-              <TouchableOpacity onPress={handleViewAllExpenses}>
-                <Text style={styles.viewAllLink}>View All</Text>
-              </TouchableOpacity>
-            )}
           </View>
           {expensesLoading ? (
             renderSectionLoading()

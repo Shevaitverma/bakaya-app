@@ -98,13 +98,13 @@ export default function ProfileDetailPage() {
           <h1 className={styles.pageTitle}>
             {profile?.name ?? "Profile"}
             {profile?.isDefault && (
-              <span className={styles.defaultBadge} style={{ marginLeft: "0.5rem" }}>
+              <span className={styles.defaultBadge} style={{ marginLeft: "0.5rem", background: "rgba(255,255,255,0.2)", color: "#fff" }}>
                 Default
               </span>
             )}
           </h1>
           {profile?.relationship && (
-            <p style={{ color: "var(--color-text-secondary)", textTransform: "capitalize", marginTop: "0.25rem" }}>
+            <p style={{ color: "rgba(255,255,255,0.75)", textTransform: "capitalize", marginTop: "0.25rem" }}>
               {profile.relationship}
             </p>
           )}
@@ -114,7 +114,7 @@ export default function ProfileDetailPage() {
             href={`/dashboard/profiles/${profileId}/edit`}
             className={styles.editBtn}
             title="Edit profile"
-            style={{ fontSize: "1.125rem", padding: "0.375rem 0.625rem" }}
+            style={{ fontSize: "1.125rem", padding: "0.375rem 0.625rem", color: "#fff" }}
           >
             &#9998;
           </Link>
@@ -127,6 +127,7 @@ export default function ProfileDetailPage() {
         </div>
       </div>
 
+      <div className={styles.contentSheet}>
       {/* Total */}
       <div className={styles.totalCard}>
         <p className={styles.totalCardLabel}>
@@ -213,6 +214,7 @@ export default function ProfileDetailPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

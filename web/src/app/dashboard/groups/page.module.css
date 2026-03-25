@@ -1,106 +1,129 @@
+/* --- Page Shell --- */
 .page {
-  padding: var(--spacing-lg);
-  max-width: var(--max-width);
-  margin-inline: auto;
-  animation: fadeIn 400ms ease both;
+  min-height: 100dvh;
+  background: #D81B60;
+  display: flex;
+  flex-direction: column;
 }
 
-.pageHeader {
+/* --- Pink Header --- */
+.header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-xl);
+  padding: 32px 32px 60px;
 }
 
-.pageTitle {
-  font-size: var(--font-size-display);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
+.headerTitle {
+  font-size: 28px;
+  font-weight: 800;
+  color: #FFFFFF;
+  letter-spacing: -0.5px;
 }
 
 .createBtn {
-  padding: 0 1.5rem;
-  height: 48px;
-  background: linear-gradient(135deg, #D81B60, #E91E63);
-  color: #fff;
-  border-radius: 9999px;
-  font-size: 0.9375rem;
+  padding: 10px 24px;
+  background: #FFFFFF;
+  color: #D81B60;
+  border-radius: 12px;
+  font-size: 15px;
   font-weight: 600;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: transform 200ms ease, box-shadow 200ms ease;
 }
 
 .createBtn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(233, 30, 99, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
+/* --- Content Sheet --- */
+.content {
+  flex: 1;
+  padding: 28px 32px 60px;
+  background: #F5F5F5;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  margin-top: -28px;
+}
+
+/* --- Loading / Empty --- */
 .loadingText {
   text-align: center;
-  padding: 3rem;
-  opacity: 0.6;
+  padding: 4rem;
+  color: #9CA3AF;
+  font-size: 15px;
 }
 
 .emptyState {
   text-align: center;
-  padding: 4rem 1rem;
+  padding: 5rem 2rem;
 }
 
 .emptyIcon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+  opacity: 0.4;
 }
 
 .emptyTitle {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 8px;
 }
 
 .emptySubtitle {
-  color: var(--color-text-secondary);
-  margin-bottom: 1.5rem;
+  font-size: 15px;
+  color: #9CA3AF;
+  margin-bottom: 24px;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.5;
 }
 
 .emptyAction {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 1.5rem;
-  height: 48px;
-  background: linear-gradient(135deg, #D81B60, #E91E63);
-  color: #fff;
-  border-radius: 9999px;
+  padding: 14px 32px;
+  background: #D81B60;
+  color: #FFFFFF;
+  border-radius: 16px;
   text-decoration: none;
   font-weight: 600;
-  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
+  font-size: 15px;
+  box-shadow: 0 4px 12px rgba(216, 27, 96, 0.3);
   transition: transform 200ms ease, box-shadow 200ms ease;
 }
 
 .emptyAction:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(233, 30, 99, 0.4);
+  box-shadow: 0 6px 20px rgba(216, 27, 96, 0.4);
 }
 
+/* --- Group Cards --- */
 .groupsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: var(--spacing-md);
+  gap: 16px;
 }
 
 .groupCard {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px;
+  gap: 8px;
+  padding: 24px 16px;
   background: #FFFFFF;
-  border: none;
-  border-radius: 12px;
-  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   text-decoration: none;
   transition: transform 200ms ease, box-shadow 200ms ease;
   animation: fadeSlideUp 400ms ease both;
@@ -111,11 +134,6 @@
 .groupCard:nth-child(3) { animation-delay: 100ms; }
 .groupCard:nth-child(4) { animation-delay: 150ms; }
 .groupCard:nth-child(5) { animation-delay: 200ms; }
-.groupCard:nth-child(6) { animation-delay: 250ms; }
-.groupCard:nth-child(7) { animation-delay: 300ms; }
-.groupCard:nth-child(8) { animation-delay: 350ms; }
-.groupCard:nth-child(9) { animation-delay: 400ms; }
-.groupCard:nth-child(10) { animation-delay: 450ms; }
 
 .groupCard:hover {
   transform: translateY(-2px);
@@ -126,45 +144,42 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: linear-gradient(135deg, #7C3AED, #A78BFA);
-  color: #fff;
+  color: #FFFFFF;
   font-size: 1.25rem;
-  margin-bottom: 0.75rem;
   flex-shrink: 0;
 }
 
 .groupInfo {
-  display: flex;
-  flex-direction: column;
+  flex: 1;
   min-width: 0;
 }
 
 .groupName {
   font-weight: 600;
-  font-size: 1rem;
-  color: var(--color-text-primary);
-  margin-bottom: 0.25rem;
+  font-size: 16px;
+  color: #111827;
+  margin-bottom: 2px;
   text-align: center;
 }
 
 .groupDescription {
-  font-size: 0.8125rem;
-  color: var(--color-text-secondary);
-  margin-bottom: 0.5rem;
+  font-size: 13px;
+  color: #9CA3AF;
+  margin-bottom: 2px;
   text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .groupMembers {
-  font-size: 0.75rem;
-  color: var(--color-text-tertiary);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  font-size: 12px;
+  color: #9CA3AF;
+  text-align: center;
 }
 
 @keyframes fadeSlideUp {
@@ -172,77 +187,17 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* --- Mobile Responsive --- */
+/* --- Responsive --- */
 @media (max-width: 768px) {
-  .page {
-    padding: 16px 16px 16px;
+  .header {
+    padding: 24px 20px 52px;
   }
 
-  .pageHeader {
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 20px;
+  .headerTitle {
+    font-size: 24px;
   }
 
-  .pageTitle {
-    font-size: 20px;
-    font-weight: 700;
-  }
-
-  .createBtn {
-    padding: 0 20px;
-    height: 48px;
-    font-size: 0.9375rem;
-    min-height: 44px;
-  }
-
-  .groupsGrid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .groupCard {
-    padding: 16px;
-    border-radius: 12px;
-    flex-direction: row;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .groupIcon {
-    width: 44px;
-    height: 44px;
-    font-size: 1.125rem;
-    margin-bottom: 0;
-    flex-shrink: 0;
-  }
-
-  .groupInfo {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .groupName {
-    text-align: left;
-    font-size: 0.9375rem;
-  }
-
-  .groupDescription {
-    text-align: left;
-    font-size: 0.8125rem;
-  }
-
-  .groupMembers {
-    font-size: 0.75rem;
-  }
-
-  .emptyState {
-    padding: 3rem 1rem;
-  }
-
-  .emptyAction {
-    padding: 0 24px;
-    height: 48px;
-    min-height: 44px;
+  .content {
+    padding: 24px 20px 100px;
   }
 }
