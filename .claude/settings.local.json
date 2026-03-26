@@ -80,7 +80,11 @@
       "mcp__stitch__get_project",
       "mcp__stitch__list_projects",
       "Bash(find E:shevait-projectsbakaya-appwebsrcappdashboardgroups -name *.tsx -type f)",
-      "Bash(find E:shevait-projectsbakaya-appwebsrcappdashboardgroups -type f -name *.tsx)"
+      "Bash(find E:shevait-projectsbakaya-appwebsrcappdashboardgroups -type f -name *.tsx)",
+      "Bash(docker compose:*)",
+      "Bash(set -a)",
+      "Bash(source ./web/.env.local)",
+      "Bash(set +a)"
     ]
   }
 }

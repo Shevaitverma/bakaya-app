@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "devops-engineer": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "computedHash": "6d40f1befd55d5b300acbc86685b97983f145bc246b28609872a08ffd39237e9"
+    },
+    "software-architecture": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "87cf49408fdf09614ca9e39e3f2a3e8fd4ff5f628f72f70e142bbaa1c32f046e"
+    }
+  }
+}
