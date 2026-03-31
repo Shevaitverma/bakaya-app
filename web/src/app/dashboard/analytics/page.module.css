@@ -44,6 +44,12 @@
   border-top-right-radius: 24px;
   margin-top: -28px;
   padding: 28px 32px 100px;
+  animation: slideUp 0.35s ease both;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* --- Date Filter Chips --- */
@@ -73,7 +79,7 @@
   color: #374151;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 200ms ease;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
   font-family: inherit;
   line-height: 1.4;
 }
@@ -81,6 +87,11 @@
 .chip:hover {
   border-color: #D81B60;
   color: #D81B60;
+  box-shadow: 0 2px 8px rgba(216, 27, 96, 0.12);
+}
+
+.chip:active {
+  transform: scale(0.95);
 }
 
 .chipActive {
@@ -88,6 +99,7 @@
   color: #D81B60;
   background: rgba(216, 27, 96, 0.06);
   font-weight: 600;
+  box-shadow: 0 2px 8px rgba(216, 27, 96, 0.15);
 }
 
 /* --- Summary Cards Row (horizontal scroll) --- */
@@ -108,12 +120,22 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  animation: cardEntrance 0.4s ease both;
+}
+
+.card:nth-child(1) { animation-delay: 0s; }
+.card:nth-child(2) { animation-delay: 0.08s; }
+.card:nth-child(3) { animation-delay: 0.16s; }
+
+@keyframes cardEntrance {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
 /* Icon circle — sits at top-left of card */
@@ -210,12 +232,27 @@
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   padding: 24px;
   margin-bottom: 28px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  animation: sectionEntrance 0.5s ease both;
+  animation-delay: 0.2s;
+}
+
+@keyframes sectionEntrance {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.section:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
 }
 
 /* Remove double margin when inside twoColGrid */
 .twoColGrid > .section {
   margin-bottom: 0;
 }
+
+.twoColGrid > .section:nth-child(1) { animation-delay: 0.1s; }
+.twoColGrid > .section:nth-child(2) { animation-delay: 0.2s; }
 
 .sectionHeader {
   display: flex;
@@ -249,6 +286,26 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 8px;
+  margin: -8px;
+  border-radius: 12px;
+  transition: background 0.2s ease;
+  animation: itemSlideIn 0.4s ease both;
+}
+
+.profileItem:nth-child(1) { animation-delay: 0s; }
+.profileItem:nth-child(2) { animation-delay: 0.07s; }
+.profileItem:nth-child(3) { animation-delay: 0.14s; }
+.profileItem:nth-child(4) { animation-delay: 0.21s; }
+.profileItem:nth-child(5) { animation-delay: 0.28s; }
+
+@keyframes itemSlideIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.profileItem:hover {
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .profileRow {
@@ -336,7 +393,7 @@
 .thinBarFill {
   height: 100%;
   border-radius: 4px;
-  transition: width 600ms ease;
+  transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
   min-width: 0;
 }
 
@@ -423,8 +480,22 @@
   width: 100%;
   background: #D81B60;
   border-radius: 6px 6px 0 0;
-  transition: height 600ms ease;
+  transition: height 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
   min-height: 0;
+}
+
+.trendCol:hover .trendBarFill {
+  filter: brightness(1.1);
+  box-shadow: 0 4px 12px rgba(216, 27, 96, 0.3);
+}
+
+.trendCol {
+  transition: transform 0.2s ease;
+  cursor: default;
+}
+
+.trendCol:hover {
+  transform: translateY(-2px);
 }
 
 .trendLabel {

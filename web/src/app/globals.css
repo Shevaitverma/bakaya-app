@@ -233,12 +233,6 @@ ol {
   color: var(--color-text-primary);
 }
 
-/* --- Button Press Feedback --- */
-button:active,
-a:active {
-  transform: scale(0.97);
-}
-
 /* --- Tabular Numbers for Currency --- */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
@@ -276,4 +270,42 @@ a:active {
   select {
     font-size: 16px !important;
   }
+}
+
+/* ============================================
+   Global Animations & Transitions
+   ============================================ */
+
+/* Button press effect */
+button, [role="button"], a.btn {
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.2s ease;
+}
+
+button:active, [role="button"]:active {
+  transform: scale(0.97);
+}
+
+/* Card hover lift */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Pulse */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Smooth chip/tab selection */
+[data-chip], [data-tab] {
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+[data-chip]:active, [data-tab]:active {
+  transform: scale(0.95);
 }

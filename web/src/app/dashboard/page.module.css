@@ -19,12 +19,7 @@
 .header {
   width: 100%;
   padding: 32px 32px 60px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
 }
-
-.headerLeft { flex: 1; }
 
 .greeting {
   font-size: 15px;
@@ -41,25 +36,6 @@
   margin: 0;
 }
 
-.avatarCircle {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  margin-top: 4px;
-}
-
-.avatarText {
-  font-size: 20px;
-  color: #FFFFFF;
-  font-weight: 700;
-}
-
 /* --- Content Sheet --- */
 .contentSheet {
   width: 100%;
@@ -70,6 +46,7 @@
   margin-top: -28px;
   padding: 28px 32px 100px;
   min-height: 0;
+  animation: fadeSlideUp 0.3s ease;
 }
 
 /* --- Balance Card --- */
@@ -80,6 +57,7 @@
   border: 1px solid rgba(0, 0, 0, 0.06);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   margin-bottom: 8px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .balanceCardTopRow {
@@ -117,10 +95,14 @@
   color: #D81B60;
   cursor: pointer;
   text-decoration: none;
-  transition: background 150ms ease;
+  transition: background 0.2s ease, transform 0.15s ease;
 }
 
 .incomeButton:hover { background: rgba(216, 27, 96, 0.05); }
+
+.incomeButton:active {
+  transform: scale(0.95);
+}
 
 /* Balance summary row */
 .balanceSummaryRow {
@@ -217,9 +199,17 @@
   color: #D81B60;
   text-decoration: none;
   cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
-.sectionLink:hover { text-decoration: underline; }
+.sectionLink:hover {
+  text-decoration: underline;
+  opacity: 0.8;
+}
+
+.sectionLink:active {
+  transform: scale(0.95);
+}
 
 /* --- Profile Chips --- */
 .profileChips {
@@ -243,11 +233,15 @@
   color: #111827;
   white-space: nowrap;
   cursor: pointer;
-  transition: all 150ms ease;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .profileChip:hover { background: #F0F0F0; }
+
+.profileChip:active {
+  transform: scale(0.95);
+}
 
 .profileChipActive,
 .profileChipActive:hover {
@@ -303,6 +297,12 @@
   padding: 16px 20px;
   gap: 14px;
   animation: fadeSlideUp 400ms ease both;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.expenseRow:active {
+  transform: scale(0.99);
+  background: #F9FAFB;
 }
 
 .expenseRow:not(:last-child) {
@@ -370,10 +370,15 @@
   color: #D81B60;
   text-decoration: none;
   border-top: 1px solid #F3F4F6;
+  transition: background 0.15s ease, transform 0.1s ease;
 }
 
 .viewAllTransactions:hover {
   background: rgba(216, 27, 96, 0.03);
+}
+
+.viewAllTransactions:active {
+  transform: scale(0.98);
 }
 
 /* --- Loading & Empty --- */

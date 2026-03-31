@@ -9,6 +9,7 @@ import type { BalanceData } from "@/lib/api/analytics";
 import type { Category } from "@/lib/api/categories";
 import type { Profile } from "@/types/profile";
 import { useProfiles, useCategoriesMap, useBalance, useExpenses } from "@/lib/queries";
+import { SkeletonCard, SkeletonRow } from "@/components/Skeleton";
 import styles from "./page.module.css";
 
 function formatDate(dateStr: string): string {
@@ -43,7 +44,6 @@ function getProgressColor(percentage: number): string {
 
 export default function DashboardPage() {
   const [userName, setUserName] = useState("User");
-  const [userInitial, setUserInitial] = useState("U");
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -52,9 +52,7 @@ export default function DashboardPage() {
       try {
         const user = JSON.parse(stored);
         const fullName = typeof user.name === "string" ? user.name : "User";
-        const firstName = fullName.split(" ")[0] || "User";
-        setUserName(firstName);
-        setUserInitial(firstName.charAt(0).toUpperCase());
+        setUserName(fullName.split(" ")[0] || "User");
       } catch {
         // ignore
       }
@@ -97,13 +95,8 @@ export default function DashboardPage() {
     <div className={styles.page}>
       {/* ===== Pink Header ===== */}
       <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <p className={styles.greeting}>Hello, {userName}</p>
-          <h1 className={styles.title}>Bakaya</h1>
-        </div>
-        <div className={styles.avatarCircle}>
-          <span className={styles.avatarText}>{userInitial}</span>
-        </div>
+        <p className={styles.greeting}>Hello, {userName}</p>
+        <h1 className={styles.title}>Bakaya</h1>
       </div>
 
       {/* ===== Content Sheet ===== */}
@@ -111,7 +104,10 @@ export default function DashboardPage() {
 
         {/* ===== Balance Summary Card ===== */}
         {isLoading ? (
-          <div className={styles.loadingContainer}>Loading...</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <SkeletonCard lines={3} />
+            <SkeletonCard lines={2} />
+          </div>
         ) : balanceData ? (
           <div className={styles.balanceCard}>
             {/* Top row: Month chip + Income button */}
@@ -186,7 +182,9 @@ export default function DashboardPage() {
             )}
           </div>
           {isLoading ? (
-            <div className={styles.loadingContainer}>Loading...</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {[1, 2].map(i => <SkeletonRow key={i} />)}
+            </div>
           ) : profiles.length === 0 ? (
             <div className={styles.emptyState}>
               <p>No profiles yet. Create one to get started!</p>
@@ -250,7 +248,9 @@ export default function DashboardPage() {
           </div>
 
           {isLoading || expensesLoading ? (
-            <div className={styles.loadingContainer}>Loading...</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {[1, 2, 3].map(i => <SkeletonRow key={i} />)}
+            </div>
           ) : recentExpenses.length === 0 ? (
             <div className={styles.emptyState}>
               <div className={styles.emptyStateIcon}>{"\uD83E\uDDFE"}</div>

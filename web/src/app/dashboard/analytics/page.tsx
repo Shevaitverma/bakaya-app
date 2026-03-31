@@ -195,8 +195,8 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
-      {/* Section 1: Summary Cards */}
-      <div className={styles.cardsRow}>
+      {/* Section 1: Summary Cards — key forces re-mount animation on filter change */}
+      <div className={styles.cardsRow} key={`cards-${activeFilter}`}>
         {loadingSummary ? (
           <>
             <div className={styles.skeletonCard} />
@@ -272,7 +272,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Section 2: Spending by Profile & Category (side by side) */}
-      <div className={styles.twoColGrid}>
+      <div className={styles.twoColGrid} key={`charts-${activeFilter}`}>
         {/* Spending by Profile */}
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
@@ -386,7 +386,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Section 3: Monthly Trends */}
-      <div className={styles.section}>
+      <div className={styles.section} key={`trends-${activeFilter}`}>
         <div className={styles.trendsHeader}>
           <div>
             <h2 className={styles.sectionTitle}>Monthly Trends</h2>
