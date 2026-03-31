@@ -6,14 +6,17 @@ import { useRouter, useParams } from "next/navigation";
 import { formatDate } from "@/utils/format";
 import { formatCurrency, formatCurrencyExact } from "@/utils/currency";
 import { ApiError } from "@/lib/api-client";
+import type { GroupExpense, GroupBalances } from "@/lib/api/groups";
 import {
-  groupsApi,
-  type Group,
-  type GroupExpense,
-  type GroupBalances,
-} from "@/lib/api/groups";
-import type { Settlement } from "@/types/settlement";
-import { categoriesApi, type Category } from "@/lib/api/categories";
+  useGroup,
+  useGroupExpenses,
+  useGroupBalances,
+  useGroupSettlements,
+  useCategoriesMap,
+  useDeleteGroupExpense,
+  useAddMember,
+  useCreateSettlement,
+} from "@/lib/queries";
 import styles from "./page.module.css";
 
 function getMemberDisplayName(member: {
@@ -40,45 +43,40 @@ export default function GroupDetailPage() {
   const params = useParams();
   const groupId = params.id as string;
 
-  const [group, setGroup] = useState<Group | null>(null);
-  const [expenses, setExpenses] = useState<GroupExpense[]>([]);
-  const [totalAmount, setTotalAmount] = useState(0);
-  const [balances, setBalances] = useState<GroupBalances | null>(null);
-  const [settlements, setSettlements] = useState<Settlement[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // TanStack Query hooks for data fetching
+  const { data: group, isLoading: isGroupLoading } = useGroup(groupId);
+  const { data: expensesData, isLoading: isExpensesLoading } = useGroupExpenses(groupId);
+  const { data: balances, isLoading: isBalancesLoading } = useGroupBalances(groupId);
+  const { data: settlementsData, isLoading: isSettlementsLoading } = useGroupSettlements(groupId);
+  const { data: categoriesMap = {} } = useCategoriesMap();
+
+  const expenses = expensesData?.expenses ?? [];
+  const totalAmount = expensesData?.totalAmount ?? 0;
+  const settlements = settlementsData?.settlements ?? [];
+
+  const isLoading = isGroupLoading || isExpensesLoading || isBalancesLoading || isSettlementsLoading;
+
+  // Mutation hooks
+  const deleteExpenseMutation = useDeleteGroupExpense(groupId);
+  const addMemberMutation = useAddMember(groupId);
+  const createSettlementMutation = useCreateSettlement(groupId);
+
+  // Delete dialog state
   const [deleteTarget, setDeleteTarget] = useState<GroupExpense | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-  const [currentUserId, setCurrentUserId] = useState<string>("");
 
   // Add member state
   const [showAddMember, setShowAddMember] = useState(false);
   const [memberEmail, setMemberEmail] = useState("");
-  const [isAddingMember, setIsAddingMember] = useState(false);
   const [addMemberError, setAddMemberError] = useState("");
 
   // Settle up state
   const [settleTarget, setSettleTarget] = useState<SettleUpTarget | null>(null);
   const [settleAmount, setSettleAmount] = useState("");
   const [settleNotes, setSettleNotes] = useState("");
-  const [isSettling, setIsSettling] = useState(false);
   const [settleError, setSettleError] = useState("");
 
-  const [categoriesMap, setCategoriesMap] = useState<Record<string, Category>>({});
-
-  // Fetch categories for emoji lookup
-  useEffect(() => {
-    categoriesApi
-      .list()
-      .then((data) => {
-        const map: Record<string, Category> = {};
-        for (const c of data.categories ?? []) {
-          map[c.name] = c;
-        }
-        setCategoriesMap(map);
-      })
-      .catch(() => {});
-  }, []);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
 
   // Read current user ID from localStorage (layout already guards auth)
   useEffect(() => {
@@ -92,32 +90,6 @@ export default function GroupDetailPage() {
       // ignore — layout handles auth redirect
     }
   }, []);
-
-  // Fetch group, expenses, balances, and settlements in parallel
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [groupData, expensesData, balancesData, settlementsData] =
-          await Promise.all([
-            groupsApi.get(groupId),
-            groupsApi.getExpenses(groupId, { limit: 100 }),
-            groupsApi.getBalances(groupId),
-            groupsApi.getSettlements(groupId),
-          ]);
-        setGroup(groupData);
-        setExpenses(expensesData.expenses);
-        setTotalAmount(expensesData.totalAmount);
-        setBalances(balancesData);
-        setSettlements(settlementsData.settlements);
-      } catch {
-        // Swallow — session-expired redirect is handled centrally by api-client
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchData();
-  }, [groupId]);
 
   /** Resolve a userId to a display name using group members */
   function resolveUserName(userId: string): string {
@@ -153,17 +125,11 @@ export default function GroupDetailPage() {
   };
 
   const confirmDelete = async () => {
-    if (!deleteTarget || isDeleting) return;
-    setIsDeleting(true);
+    if (!deleteTarget || deleteExpenseMutation.isPending) return;
     setDeleteError("");
 
     try {
-      await groupsApi.deleteExpense(groupId, deleteTarget._id);
-      setExpenses((prev) => prev.filter((e) => e._id !== deleteTarget._id));
-      setTotalAmount((prev) => prev - deleteTarget.amount);
-      // Refresh balances after deleting an expense
-      const updatedBalances = await groupsApi.getBalances(groupId);
-      setBalances(updatedBalances);
+      await deleteExpenseMutation.mutateAsync(deleteTarget._id);
       setDeleteTarget(null);
     } catch (error) {
       if (error instanceof ApiError) {
@@ -175,8 +141,6 @@ export default function GroupDetailPage() {
       } else {
         setDeleteError("Unable to delete expense. Please try again.");
       }
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -187,14 +151,12 @@ export default function GroupDetailPage() {
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAddingMember || !memberEmail.trim()) return;
+    if (addMemberMutation.isPending || !memberEmail.trim()) return;
 
-    setIsAddingMember(true);
     setAddMemberError("");
 
     try {
-      const updatedGroup = await groupsApi.addMember(groupId, memberEmail.trim());
-      setGroup(updatedGroup);
+      await addMemberMutation.mutateAsync(memberEmail.trim());
       setMemberEmail("");
       setShowAddMember(false);
     } catch (error) {
@@ -203,8 +165,6 @@ export default function GroupDetailPage() {
       } else {
         setAddMemberError("Unable to add member. Please try again.");
       }
-    } finally {
-      setIsAddingMember(false);
     }
   };
 
@@ -232,7 +192,7 @@ export default function GroupDetailPage() {
   };
 
   const confirmSettle = async () => {
-    if (!settleTarget || isSettling) return;
+    if (!settleTarget || createSettlementMutation.isPending) return;
 
     const amt = parseFloat(settleAmount);
     if (isNaN(amt) || amt <= 0) {
@@ -240,7 +200,6 @@ export default function GroupDetailPage() {
       return;
     }
 
-    setIsSettling(true);
     setSettleError("");
 
     try {
@@ -249,18 +208,12 @@ export default function GroupDetailPage() {
       const paidBy = currentUserId;
       const paidTo = settleTarget.userId;
 
-      const newSettlement = await groupsApi.createSettlement(groupId, {
+      await createSettlementMutation.mutateAsync({
         paidBy,
         paidTo,
         amount: amt,
         notes: settleNotes.trim() || undefined,
       });
-
-      setSettlements((prev) => [newSettlement, ...prev]);
-
-      // Refresh balances after settling
-      const updatedBalances = await groupsApi.getBalances(groupId);
-      setBalances(updatedBalances);
 
       cancelSettle();
     } catch (error) {
@@ -269,8 +222,6 @@ export default function GroupDetailPage() {
       } else {
         setSettleError("Unable to record settlement. Please try again.");
       }
-    } finally {
-      setIsSettling(false);
     }
   };
 
@@ -439,7 +390,7 @@ export default function GroupDetailPage() {
                       type="button"
                       className={styles.settleCancelBtn}
                       onClick={cancelSettle}
-                      disabled={isSettling}
+                      disabled={createSettlementMutation.isPending}
                     >
                       Cancel
                     </button>
@@ -447,9 +398,9 @@ export default function GroupDetailPage() {
                       type="button"
                       className={styles.settleConfirmBtn}
                       onClick={confirmSettle}
-                      disabled={isSettling || !settleAmount.trim()}
+                      disabled={createSettlementMutation.isPending || !settleAmount.trim()}
                     >
-                      {isSettling ? "Recording..." : "Confirm Settlement"}
+                      {createSettlementMutation.isPending ? "Recording..." : "Confirm Settlement"}
                     </button>
                   </div>
                 </div>
@@ -551,9 +502,9 @@ export default function GroupDetailPage() {
                     <button
                       type="submit"
                       className={styles.addMemberSubmit}
-                      disabled={isAddingMember || !memberEmail.trim()}
+                      disabled={addMemberMutation.isPending || !memberEmail.trim()}
                     >
-                      {isAddingMember ? "Adding..." : "Add"}
+                      {addMemberMutation.isPending ? "Adding..." : "Add"}
                     </button>
                   </div>
                 </form>
@@ -694,16 +645,16 @@ export default function GroupDetailPage() {
               <button
                 className={styles.dialogCancel}
                 onClick={cancelDelete}
-                disabled={isDeleting}
+                disabled={deleteExpenseMutation.isPending}
               >
                 Cancel
               </button>
               <button
                 className={styles.dialogConfirm}
                 onClick={confirmDelete}
-                disabled={isDeleting}
+                disabled={deleteExpenseMutation.isPending}
               >
-                {isDeleting ? "Deleting..." : "Delete"}
+                {deleteExpenseMutation.isPending ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>

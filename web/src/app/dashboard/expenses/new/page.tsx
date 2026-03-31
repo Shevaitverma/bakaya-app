@@ -3,10 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ApiError } from "@/lib/api-client";
-import { expensesApi } from "@/lib/api/expenses";
-import { profilesApi } from "@/lib/api/profiles";
-import type { Profile } from "@/types/profile";
-import { categoriesApi, type Category } from "@/lib/api/categories";
+import { useProfiles, useCategories, useCreateExpense } from "@/lib/queries";
 import styles from "./page.module.css";
 
 const INCOME_SOURCES = [
@@ -48,9 +45,7 @@ export default function AddExpensePage() {
   const [source, setSource] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedProfileId, setSelectedProfileId] = useState(queryProfileId);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{
     title?: string;
     amount?: string;
@@ -63,33 +58,20 @@ export default function AddExpensePage() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const isIncome = entryType === "income";
 
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { data: profiles = [] } = useProfiles();
+  const { data: categories = [] } = useCategories();
+  const createExpense = useCreateExpense();
 
-  // Fetch categories on mount
+  // Pre-select default profile (unless query param already set)
+  const hasSetDefault = useRef(false);
   useEffect(() => {
-    categoriesApi
-      .list()
-      .then((data) => setCategories(data.categories ?? []))
-      .catch(() => {
-        // categories API not ready -- continue without
-      });
-  }, []);
-
-  // Fetch profiles and pre-select default (unless query param already set)
-  useEffect(() => {
-    profilesApi.getProfiles().then((data) => {
-      const list = data.profiles ?? [];
-      setProfiles(list);
-      // If a profileId was provided via query param and exists, keep it;
-      // otherwise fall back to the default profile
-      if (!queryProfileId || !list.some((p) => p._id === queryProfileId)) {
-        const defaultProfile = list.find((p) => p.isDefault);
-        if (defaultProfile) setSelectedProfileId(defaultProfile._id);
-      }
-    }).catch(() => {
-      // profiles API not ready -- continue without
-    });
-  }, [queryProfileId]);
+    if (hasSetDefault.current || profiles.length === 0) return;
+    if (!queryProfileId || !profiles.some((p) => p._id === queryProfileId)) {
+      const defaultProfile = profiles.find((p) => p.isDefault);
+      if (defaultProfile) setSelectedProfileId(defaultProfile._id);
+    }
+    hasSetDefault.current = true;
+  }, [profiles, queryProfileId]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -139,14 +121,13 @@ export default function AddExpensePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading) return;
+    if (createExpense.isPending) return;
     if (!validateForm()) return;
 
-    setIsLoading(true);
     setErrors({});
 
     try {
-      await expensesApi.create({
+      await createExpense.mutateAsync({
         title: title.trim(),
         amount: parseFloat(amount),
         type: entryType,
@@ -162,8 +143,6 @@ export default function AddExpensePage() {
       } else {
         setErrors({ server: "Unable to connect to server. Please try again." });
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -454,9 +433,9 @@ export default function AddExpensePage() {
           <button
             type="submit"
             className={`${styles.submitBtn} ${isIncome ? styles.submitBtnIncome : ""}`}
-            disabled={isLoading}
+            disabled={createExpense.isPending}
           >
-            {isLoading ? (
+            {createExpense.isPending ? (
               <span className={styles.spinner} />
             ) : isIncome ? (
               "Save Income"

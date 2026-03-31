@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError } from "@/lib/api-client";
-import { profilesApi } from "@/lib/api/profiles";
 import { expensesApi, type Expense } from "@/lib/api/expenses";
+import { useProfile, useExpenses, useDeleteExpense } from "@/lib/queries";
 import { formatCurrency } from "@/utils/currency";
-import type { Profile } from "@/types/profile";
 import DateRangePicker from "@/components/DateRangePicker";
 import styles from "../page.module.css";
 
@@ -21,63 +20,34 @@ export default function ProfileDetailPage() {
   const router = useRouter();
   const profileId = params.id as string;
 
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [totalAmount, setTotalAmount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [dateStart, setDateStart] = useState<string | undefined>(undefined);
   const [dateEnd, setDateEnd] = useState<string | undefined>(undefined);
 
-  // Fetch profile info once on mount
-  useEffect(() => {
-    profilesApi
-      .getProfile(profileId)
-      .then((profileData) => setProfile(profileData))
-      .catch(() => {
-        // Swallow — session-expired redirect is handled centrally by api-client
-      });
-  }, [profileId]);
+  const { data: profile } = useProfile(profileId);
 
-  // Fetch expenses (re-runs when date range changes)
-  const fetchExpenses = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const params: {
-        limit: number;
-        profileId: string;
-        startDate?: string;
-        endDate?: string;
-      } = { limit: 100, profileId };
-      if (dateStart) params.startDate = dateStart;
-      if (dateEnd) params.endDate = dateEnd;
-      const expenseData = await expensesApi.list(params);
-      setExpenses(expenseData.expenses);
-      setTotalAmount(expenseData.totalExpenseAmount);
-    } catch {
-      setExpenses([]);
-      setTotalAmount(0);
-    } finally {
-      setIsLoading(false);
-    }
+  const expenseParams = useMemo(() => {
+    const p: { limit: number; profileId: string; startDate?: string; endDate?: string } = {
+      limit: 100,
+      profileId,
+    };
+    if (dateStart) p.startDate = dateStart;
+    if (dateEnd) p.endDate = dateEnd;
+    return p;
   }, [profileId, dateStart, dateEnd]);
 
-  useEffect(() => {
-    fetchExpenses();
-  }, [fetchExpenses]);
+  const { data: expenseData, isLoading } = useExpenses(expenseParams);
+  const expenses = expenseData?.expenses ?? [];
+  const totalAmount = expenseData?.totalExpenseAmount ?? 0;
+
+  const deleteExpenseMutation = useDeleteExpense();
 
   const confirmDelete = async () => {
-    if (!deleteTarget || isDeleting) return;
-    setIsDeleting(true);
+    if (!deleteTarget || deleteExpenseMutation.isPending) return;
     setDeleteError("");
     try {
-      await expensesApi.delete(deleteTarget._id);
-      setExpenses((prev) => prev.filter((e) => e._id !== deleteTarget._id));
-      if ((deleteTarget as any).type !== "income") {
-        setTotalAmount((prev) => prev - deleteTarget.amount);
-      }
+      await deleteExpenseMutation.mutateAsync(deleteTarget._id);
       setDeleteTarget(null);
     } catch (error) {
       if (error instanceof ApiError) {
@@ -85,8 +55,6 @@ export default function ProfileDetailPage() {
       } else {
         setDeleteError("Failed to delete expense");
       }
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -204,11 +172,11 @@ export default function ProfileDetailPage() {
               <p className={styles.dialogError}>{deleteError}</p>
             )}
             <div className={styles.dialogActions}>
-              <button className={styles.dialogCancel} onClick={() => setDeleteTarget(null)} disabled={isDeleting}>
+              <button className={styles.dialogCancel} onClick={() => setDeleteTarget(null)} disabled={deleteExpenseMutation.isPending}>
                 Cancel
               </button>
-              <button className={styles.dialogConfirm} onClick={confirmDelete} disabled={isDeleting}>
-                {isDeleting ? "Deleting..." : "Delete"}
+              <button className={styles.dialogConfirm} onClick={confirmDelete} disabled={deleteExpenseMutation.isPending}>
+                {deleteExpenseMutation.isPending ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>

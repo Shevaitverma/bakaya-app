@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDate } from "@/utils/format";
 import { formatCurrency, formatCurrencyExact } from "@/utils/currency";
-import { expensesApi, type Expense } from "@/lib/api/expenses";
-import { profilesApi } from "@/lib/api/profiles";
-import { categoriesApi, type Category } from "@/lib/api/categories";
-import type { Profile } from "@/types/profile";
+import { expensesApi, type Expense, type ExpenseQueryParams } from "@/lib/api/expenses";
+import { useProfiles, useCategoriesMap, useExpenses, useDeleteExpense } from "@/lib/queries";
 import DateRangePicker from "@/components/DateRangePicker";
 import styles from "./page.module.css";
 
@@ -44,15 +42,7 @@ type TypeFilter = "all" | "expense" | "income";
 
 export default function ExpensesPage() {
   const router = useRouter();
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [totalAmount, setTotalAmount] = useState(0);
-  const [totalIncome, setTotalIncome] = useState(0);
-  const [totalExpenses, setTotalExpenses] = useState(0);
-  const [balance, setBalance] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [activeProfileFilter, setActiveProfileFilter] = useState<string | null>(null);
   const [dateStartFilter, setDateStartFilter] = useState<string | undefined>(undefined);
   const [dateEndFilter, setDateEndFilter] = useState<string | undefined>(undefined);
@@ -60,7 +50,6 @@ export default function ExpensesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [isExporting, setIsExporting] = useState(false);
-  const [categoriesMap, setCategoriesMap] = useState<Record<string, Category>>({});
 
   // Debounce search input
   useEffect(() => {
@@ -70,96 +59,42 @@ export default function ExpensesPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // Fetch profiles and categories once on mount
-  useEffect(() => {
-    profilesApi
-      .getProfiles()
-      .then((data) => setProfiles(data.profiles ?? []))
-      .catch(() => {
-        // Swallow -- session-expired redirect is handled centrally by api-client
-      });
-    categoriesApi
-      .list()
-      .then((data) => {
-        const map: Record<string, Category> = {};
-        for (const c of data.categories ?? []) {
-          map[c.name] = c;
-        }
-        setCategoriesMap(map);
-      })
-      .catch(() => {
-        // Swallow -- continue with empty map, fallback emoji/color will be used
-      });
-  }, []);
+  // ---------- TanStack Query hooks ----------
+  const { data: profiles = [] } = useProfiles();
+  const { data: categoriesMap = {} } = useCategoriesMap();
 
-  // Fetch expenses from API (re-runs when filters change)
-  const fetchExpenses = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const params: {
-        limit: number;
-        type?: "income" | "expense";
-        search?: string;
-        profileId?: string;
-        startDate?: string;
-        endDate?: string;
-      } = { limit: 100 };
-      if (typeFilter !== "all") {
-        params.type = typeFilter;
-      }
-      if (searchQuery.trim()) {
-        params.search = searchQuery.trim();
-      }
-      if (activeProfileFilter) {
-        params.profileId = activeProfileFilter;
-      }
-      if (dateStartFilter) {
-        params.startDate = dateStartFilter;
-      }
-      if (dateEndFilter) {
-        params.endDate = dateEndFilter;
-      }
-      const data = await expensesApi.list(params);
-      setExpenses(data.expenses);
-      setTotalAmount(data.totalExpenseAmount);
-      setTotalIncome(data.totalIncome ?? 0);
-      setTotalExpenses(data.totalExpenses ?? 0);
-      setBalance(data.balance ?? 0);
-    } catch {
-      setExpenses([]);
-      setTotalAmount(0);
-      setTotalIncome(0);
-      setTotalExpenses(0);
-      setBalance(0);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [activeProfileFilter, dateStartFilter, dateEndFilter, typeFilter, searchQuery]);
+  const params = useMemo(() => {
+    const p: ExpenseQueryParams = { limit: 100 };
+    if (typeFilter !== "all") p.type = typeFilter;
+    if (searchQuery.trim()) p.search = searchQuery.trim();
+    if (activeProfileFilter) p.profileId = activeProfileFilter;
+    if (dateStartFilter) p.startDate = dateStartFilter;
+    if (dateEndFilter) p.endDate = dateEndFilter;
+    return p;
+  }, [typeFilter, searchQuery, activeProfileFilter, dateStartFilter, dateEndFilter]);
 
-  useEffect(() => {
-    fetchExpenses();
-  }, [fetchExpenses]);
+  const { data: expenseData, isLoading } = useExpenses(params);
+  const expenses = expenseData?.expenses ?? [];
+  const totalAmount = expenseData?.totalExpenseAmount ?? 0;
+  const totalIncome = expenseData?.totalIncome ?? 0;
+  const totalExpenses = expenseData?.totalExpenses ?? 0;
+  const balance = expenseData?.balance ?? 0;
+
+  const deleteExpenseMutation = useDeleteExpense();
+  const isDeleting = deleteExpenseMutation.isPending;
 
   const handleDelete = (expense: Expense) => {
     setDeleteTarget(expense);
   };
 
-  const confirmDelete = async () => {
+  const confirmDelete = () => {
     if (!deleteTarget || isDeleting) return;
-    setIsDeleting(true);
 
-    try {
-      await expensesApi.delete(deleteTarget._id);
-      setExpenses((prev) => prev.filter((e) => e._id !== deleteTarget._id));
-      if (deleteTarget.type !== "income") {
-        setTotalAmount((prev) => prev - deleteTarget.amount);
-      }
-    } catch {
-      // Swallow -- session-expired redirect is handled centrally by api-client
-    } finally {
-      setDeleteTarget(null);
-      setIsDeleting(false);
-    }
+    deleteExpenseMutation.mutate(deleteTarget._id, {
+      onSettled: () => {
+        setDeleteTarget(null);
+      },
+    });
   };
 
   const cancelDelete = () => {

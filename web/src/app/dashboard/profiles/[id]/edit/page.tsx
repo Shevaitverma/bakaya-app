@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api-client";
 import { profilesApi } from "@/lib/api/profiles";
+import { useProfile, queryKeys } from "@/lib/queries";
 import type { Profile } from "@/types/profile";
 import styles from "../../page.module.css";
 
@@ -16,42 +18,36 @@ export default function EditProfilePage() {
   routerRef.current = router;
   const params = useParams();
   const profileId = params.id as string;
+  const queryClient = useQueryClient();
 
   const [name, setName] = useState("");
   const [relationship, setRelationship] = useState("");
   const [color, setColor] = useState(COLORS[0]);
   const [isDefault, setIsDefault] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isFetching, setIsFetching] = useState(true);
-  const [fetchError, setFetchError] = useState("");
+  const [hasPopulated, setHasPopulated] = useState(false);
   const [error, setError] = useState("");
 
-  // Fetch profile data
-  useEffect(() => {
-    async function fetchProfile() {
-      try {
-        const profile = await profilesApi.getProfile(profileId);
-        setName(profile.name);
-        setRelationship(profile.relationship || "");
-        setColor(profile.color || COLORS[0]);
-        setIsDefault(profile.isDefault);
-      } catch (err) {
-        if (err instanceof ApiError) {
-          if (err.status === 404) {
-            setFetchError("Profile not found.");
-            return;
-          }
-          setFetchError(err.message);
-        } else {
-          setFetchError("Unable to connect to server. Please try again.");
-        }
-      } finally {
-        setIsFetching(false);
-      }
-    }
+  const { data: profile, isLoading: isFetching, error: fetchErr } = useProfile(profileId);
 
-    fetchProfile();
-  }, [profileId]);
+  // Populate form state when profile data arrives
+  useEffect(() => {
+    if (profile && !hasPopulated) {
+      setName(profile.name);
+      setRelationship(profile.relationship || "");
+      setColor(profile.color || COLORS[0]);
+      setIsDefault(profile.isDefault);
+      setHasPopulated(true);
+    }
+  }, [profile, hasPopulated]);
+
+  const fetchError = fetchErr
+    ? fetchErr instanceof ApiError
+      ? fetchErr.status === 404
+        ? "Profile not found."
+        : fetchErr.message
+      : "Unable to connect to server. Please try again."
+    : "";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +65,8 @@ export default function EditProfilePage() {
         relationship: relationship || undefined,
         color,
       });
+      queryClient.invalidateQueries({ queryKey: queryKeys.profiles.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.profiles.detail(profileId) });
       routerRef.current.push("/dashboard/profiles");
     } catch (err) {
       if (err instanceof ApiError) {

@@ -1,26 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useQueryClient, useQueries } from "@tanstack/react-query";
 import { ApiError, clearAllAuth } from "@/lib/api-client";
 import { authApi } from "@/lib/api/auth";
 import { profilesApi } from "@/lib/api/profiles";
 import { expensesApi } from "@/lib/api/expenses";
+import { useProfiles } from "@/lib/queries";
+import { queryKeys } from "@/lib/queries";
 import { formatCurrency } from "@/utils/currency";
 import type { Profile } from "@/types/profile";
 import styles from "./page.module.css";
 
 export default function ProfilesPage() {
   const router = useRouter();
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
-  const [profileTotals, setProfileTotals] = useState<Record<string, { totalSpent: number; balance: number }>>({});
 
   useEffect(() => {
     try {
@@ -39,34 +40,30 @@ export default function ProfilesPage() {
     router.push("/login");
   };
 
-  useEffect(() => {
-    profilesApi
-      .getProfiles()
-      .then(async (data) => {
-        const profilesList = data.profiles ?? [];
-        setProfiles(profilesList);
-        setIsLoading(false);
+  const { data: profiles = [], isLoading } = useProfiles();
 
-        // Fetch totals for each profile sequentially to avoid rate limits
-        const totals: Record<string, { totalSpent: number; balance: number }> = {};
-        for (const profile of profilesList) {
-          try {
-            const expData = await expensesApi.list({ profileId: profile._id, limit: 1 });
-            totals[profile._id] = {
-              totalSpent: expData.totalExpenseAmount ?? 0,
-              balance: expData.balance ?? 0,
-            };
-          } catch {
-            // skip this profile
-          }
-        }
-        setProfileTotals(totals);
-      })
-      .catch(() => {
-        setProfiles([]);
-        setIsLoading(false);
-      });
-  }, []);
+  // Fetch spending totals for each profile in parallel
+  const totalsQueries = useQueries({
+    queries: profiles.map((profile) => ({
+      queryKey: queryKeys.expenses.list({ profileId: profile._id, limit: 1 }),
+      queryFn: () => expensesApi.list({ profileId: profile._id, limit: 1 }),
+      enabled: profiles.length > 0,
+    })),
+  });
+
+  const profileTotals = useMemo(() => {
+    const totals: Record<string, { totalSpent: number; balance: number }> = {};
+    profiles.forEach((profile, index) => {
+      const query = totalsQueries[index];
+      if (query?.data) {
+        totals[profile._id] = {
+          totalSpent: query.data.totalExpenseAmount ?? 0,
+          balance: query.data.balance ?? 0,
+        };
+      }
+    });
+    return totals;
+  }, [profiles, totalsQueries]);
 
   const confirmDelete = async () => {
     if (!deleteTarget || isDeleting) return;
@@ -75,7 +72,7 @@ export default function ProfilesPage() {
 
     try {
       await profilesApi.deleteProfile(deleteTarget._id);
-      setProfiles((prev) => prev.filter((p) => p._id !== deleteTarget._id));
+      queryClient.invalidateQueries({ queryKey: queryKeys.profiles.all });
       setDeleteTarget(null);
     } catch (error) {
       if (error instanceof ApiError) {

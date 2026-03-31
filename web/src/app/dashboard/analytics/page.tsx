@@ -1,17 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import {
-  analyticsApi,
-  type SummaryData,
-  type ByProfileData,
-  type ByCategoryData,
-  type TrendsData,
-  type AnalyticsQueryParams,
-} from "@/lib/api/analytics";
-import { profilesApi } from "@/lib/api/profiles";
-import { categoriesApi, type Category } from "@/lib/api/categories";
+import { useState, useMemo } from "react";
+import type { AnalyticsQueryParams } from "@/lib/api/analytics";
 import type { Profile } from "@/types/profile";
+import { useProfiles } from "@/lib/queries/useProfiles";
+import { useCategoriesMap } from "@/lib/queries/useCategories";
+import {
+  useSummary,
+  useByProfile,
+  useByCategory,
+  useTrends,
+} from "@/lib/queries/useAnalytics";
 import { formatCurrency } from "@/utils/currency";
 import styles from "./page.module.css";
 
@@ -26,7 +25,7 @@ const DATE_FILTERS: { key: DateFilter; label: string }[] = [
   { key: "all", label: "All" },
 ];
 
-function getDateRange(filter: DateFilter): { start?: string; end?: string } {
+function getDateRange(filter: DateFilter): AnalyticsQueryParams {
   const now = new Date();
   const y = now.getFullYear();
   const m = now.getMonth(); // 0-indexed
@@ -40,13 +39,13 @@ function getDateRange(filter: DateFilter): { start?: string; end?: string } {
 
   switch (filter) {
     case "this_month":
-      return { start: fmt(new Date(y, m, 1)), end: fmt(now) };
+      return { startDate: fmt(new Date(y, m, 1)), endDate: fmt(now) };
     case "last_month":
-      return { start: fmt(new Date(y, m - 1, 1)), end: fmt(new Date(y, m, 0)) };
+      return { startDate: fmt(new Date(y, m - 1, 1)), endDate: fmt(new Date(y, m, 0)) };
     case "last_3_months":
-      return { start: fmt(new Date(y, m - 2, 1)), end: fmt(now) };
+      return { startDate: fmt(new Date(y, m - 2, 1)), endDate: fmt(now) };
     case "this_year":
-      return { start: fmt(new Date(y, 0, 1)), end: fmt(now) };
+      return { startDate: fmt(new Date(y, 0, 1)), endDate: fmt(now) };
     case "all":
       return {};
   }
@@ -85,92 +84,26 @@ export default function AnalyticsPage() {
   /* Date filter chip state */
   const [activeFilter, setActiveFilter] = useState<DateFilter>("this_month");
 
-  /* Date range derived from active filter */
-  const { start: dateStart, end: dateEnd } = useMemo(
-    () => getDateRange(activeFilter),
-    [activeFilter]
-  );
+  /* Query params derived from active filter */
+  const params = useMemo(() => getDateRange(activeFilter), [activeFilter]);
 
-  /* Data state */
-  const [summary, setSummary] = useState<SummaryData | null>(null);
-  const [profileData, setProfileData] = useState<ByProfileData | null>(null);
-  const [categoryData, setCategoryData] = useState<ByCategoryData | null>(null);
-  const [trendsData, setTrendsData] = useState<TrendsData | null>(null);
-  const [profilesMap, setProfilesMap] = useState<Record<string, Profile>>({});
-  const [categoriesMap, setCategoriesMap] = useState<Record<string, Category>>({});
+  /* Profiles & categories (for colors) — cached globally by TanStack Query */
+  const { data: profiles } = useProfiles();
+  const { data: categoriesMap } = useCategoriesMap();
 
-  /* Independent loading states per section */
-  const [loadingSummary, setLoadingSummary] = useState(true);
-  const [loadingProfiles, setLoadingProfiles] = useState(true);
-  const [loadingCategories, setLoadingCategories] = useState(true);
-  const [loadingTrends, setLoadingTrends] = useState(true);
+  const profilesMap = useMemo(() => {
+    const map: Record<string, Profile> = {};
+    for (const p of profiles ?? []) {
+      map[p._id] = p;
+    }
+    return map;
+  }, [profiles]);
 
-  // Swallow errors - session-expired redirect is handled centrally by api-client
-  const swallowError = useCallback(() => null, []);
-
-  /* Fetch profiles once (for colors) */
-  useEffect(() => {
-    profilesApi
-      .getProfiles()
-      .then((res) => {
-        const map: Record<string, Profile> = {};
-        res.profiles.forEach((p) => {
-          map[p._id] = p;
-        });
-        setProfilesMap(map);
-      })
-      .catch(() => {});
-    categoriesApi
-      .list()
-      .then((data) => {
-        const map: Record<string, Category> = {};
-        for (const c of data.categories ?? []) {
-          map[c.name] = c;
-        }
-        setCategoriesMap(map);
-      })
-      .catch(() => {});
-  }, []);
-
-  /* Fetch all 4 analytics endpoints when date range changes */
-  const fetchAnalytics = useCallback(() => {
-    const params: AnalyticsQueryParams = {};
-    if (dateStart) params.startDate = dateStart;
-    if (dateEnd) params.endDate = dateEnd;
-
-    setLoadingSummary(true);
-    setLoadingProfiles(true);
-    setLoadingCategories(true);
-    setLoadingTrends(true);
-
-    analyticsApi
-      .summary(params)
-      .then((res) => setSummary(res))
-      .catch(swallowError)
-      .finally(() => setLoadingSummary(false));
-
-    analyticsApi
-      .byProfile(params)
-      .then((res) => setProfileData(res))
-      .catch(swallowError)
-      .finally(() => setLoadingProfiles(false));
-
-    analyticsApi
-      .byCategory(params)
-      .then((res) => setCategoryData(res))
-      .catch(swallowError)
-      .finally(() => setLoadingCategories(false));
-
-    analyticsApi
-      .trends(params)
-      .then((res) => setTrendsData(res))
-      .catch(swallowError)
-      .finally(() => setLoadingTrends(false));
-  }, [dateStart, dateEnd, swallowError]);
-
-  useEffect(() => {
-    fetchAnalytics();
-  }, [fetchAnalytics]);
+  /* Analytics queries — each keyed by params so filter switches cache automatically */
+  const { data: summary, isLoading: loadingSummary } = useSummary(params);
+  const { data: profileData, isLoading: loadingProfiles } = useByProfile(params);
+  const { data: categoryData, isLoading: loadingCategories } = useByCategory(params);
+  const { data: trendsData, isLoading: loadingTrends } = useTrends(params);
 
   /* --- Derived values --- */
   const totalExpenses = categoryData
@@ -232,7 +165,7 @@ export default function AnalyticsPage() {
   }
 
   function getCategoryColor(categoryName: string, index: number): string {
-    const cat = categoriesMap[categoryName];
+    const cat = categoriesMap?.[categoryName];
     if (cat?.color) return cat.color;
     if (CATEGORY_COLORS[categoryName]) return CATEGORY_COLORS[categoryName]!;
     return CATEGORY_COLORS_FALLBACK[index % CATEGORY_COLORS_FALLBACK.length]!;

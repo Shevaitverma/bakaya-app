@@ -1,21 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
-import { groupsApi, type Group } from "@/lib/api/groups";
+import { useGroups } from "@/lib/queries";
 import styles from "./page.module.css";
 
 export default function GroupsPage() {
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    groupsApi
-      .list()
-      .then((data) => setGroups(data.groups))
-      .catch(() => setGroups([]))
-      .finally(() => setIsLoading(false));
-  }, []);
+  const { data, isLoading } = useGroups();
+  const groups = data?.groups ?? [];
 
   return (
     <div className={styles.page}>

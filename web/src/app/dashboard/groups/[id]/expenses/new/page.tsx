@@ -4,8 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ApiError } from "@/lib/api-client";
 import { formatCurrencyExact } from "@/utils/currency";
-import { groupsApi, type Group } from "@/lib/api/groups";
-import { categoriesApi, type Category } from "@/lib/api/categories";
+import { useGroup, useCategories, useCreateGroupExpense } from "@/lib/queries";
 import styles from "./page.module.css";
 
 
@@ -29,12 +28,16 @@ export default function AddGroupExpensePage() {
   const params = useParams();
   const groupId = params.id as string;
 
+  // TanStack Query hooks
+  const { data: group, isLoading: isGroupLoading } = useGroup(groupId);
+  const { data: categories = [] } = useCategories();
+  const createExpenseMutation = useCreateGroupExpense(groupId);
+
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [notes, setNotes] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{
     title?: string;
     amount?: string;
@@ -43,10 +46,6 @@ export default function AddGroupExpensePage() {
     splitAmong?: string;
     server?: string;
   }>({});
-
-  // Group data for member selection
-  const [group, setGroup] = useState<Group | null>(null);
-  const [isGroupLoading, setIsGroupLoading] = useState(true);
 
   // Paid by
   const [paidBy, setPaidBy] = useState("");
@@ -67,19 +66,7 @@ export default function AddGroupExpensePage() {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const [categories, setCategories] = useState<Category[]>([]);
-
-  // Fetch categories on mount
-  useEffect(() => {
-    categoriesApi
-      .list()
-      .then((data) => setCategories(data.categories ?? []))
-      .catch(() => {
-        // categories API not ready -- continue without
-      });
-  }, []);
-
-  // Read current user ID and fetch group details
+  // Read current user ID from localStorage
   useEffect(() => {
     try {
       const stored = localStorage.getItem("bakaya_user");
@@ -91,25 +78,17 @@ export default function AddGroupExpensePage() {
     } catch {
       // layout handles auth redirect
     }
+  }, []);
 
-    async function fetchGroup() {
-      try {
-        const groupData = await groupsApi.get(groupId);
-        setGroup(groupData);
-        // Select all members by default for splitting
-        const allMemberIds = new Set(
-          groupData.members.map((m) => m.userId.id)
-        );
-        setSelectedMembers(allMemberIds);
-      } catch {
-        // Swallow — session-expired redirect is handled centrally by api-client
-      } finally {
-        setIsGroupLoading(false);
-      }
+  // Select all members by default when group data loads
+  useEffect(() => {
+    if (group) {
+      const allMemberIds = new Set(
+        group.members.map((m) => m.userId.id)
+      );
+      setSelectedMembers(allMemberIds);
     }
-
-    fetchGroup();
-  }, [groupId]);
+  }, [group]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -268,10 +247,9 @@ export default function AddGroupExpensePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading) return;
+    if (createExpenseMutation.isPending) return;
     if (!validateForm()) return;
 
-    setIsLoading(true);
     setErrors({});
 
     const totalAmount = parseFloat(amount);
@@ -307,7 +285,7 @@ export default function AddGroupExpensePage() {
     }
 
     try {
-      await groupsApi.createExpense(groupId, {
+      await createExpenseMutation.mutateAsync({
         title: title.trim(),
         amount: totalAmount,
         category: category.trim(),
@@ -324,8 +302,6 @@ export default function AddGroupExpensePage() {
           server: "Unable to connect to server. Please try again.",
         });
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -771,9 +747,9 @@ export default function AddGroupExpensePage() {
             <button
               type="submit"
               className={styles.submitBtn}
-              disabled={isLoading}
+              disabled={createExpenseMutation.isPending}
             >
-              {isLoading ? <span className={styles.spinner} /> : "Add Expense"}
+              {createExpenseMutation.isPending ? <span className={styles.spinner} /> : "Add Expense"}
             </button>
           </form>
         )}

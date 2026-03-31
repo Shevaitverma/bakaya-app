@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { formatCurrency } from "@/utils/currency";
-import { expensesApi, type Expense } from "@/lib/api/expenses";
-import { profilesApi } from "@/lib/api/profiles";
-import { analyticsApi, type BalanceData } from "@/lib/api/analytics";
-import { categoriesApi, type Category } from "@/lib/api/categories";
+import type { Expense } from "@/lib/api/expenses";
+import type { BalanceData } from "@/lib/api/analytics";
+import type { Category } from "@/lib/api/categories";
 import type { Profile } from "@/types/profile";
+import { useProfiles, useCategoriesMap, useBalance, useExpenses } from "@/lib/queries";
 import styles from "./page.module.css";
 
 const SOURCE_EMOJI: Record<string, string> = {
@@ -71,13 +71,7 @@ function getProgressColor(percentage: number): string {
 export default function DashboardPage() {
   const [userName, setUserName] = useState("User");
   const [userInitial, setUserInitial] = useState("U");
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
-  const [expensesLoading, setExpensesLoading] = useState(false);
-  const [balanceData, setBalanceData] = useState<BalanceData | null>(null);
-  const [categoriesMap, setCategoriesMap] = useState<Record<string, Category>>({});
 
   useEffect(() => {
     const stored = localStorage.getItem("bakaya_user");
@@ -92,55 +86,31 @@ export default function DashboardPage() {
         // ignore
       }
     }
-
-    async function fetchDashboardData() {
-      try {
-        const [expenseData, profilesData, balData, catData] = await Promise.all([
-          expensesApi.list({ limit: 5 }).catch(() => null),
-          profilesApi.getProfiles().catch(() => null),
-          analyticsApi.balance().catch(() => null),
-          categoriesApi.list().catch(() => null),
-        ]);
-
-        if (expenseData) {
-          setRecentExpenses(expenseData.expenses);
-        }
-        if (profilesData) {
-          setProfiles(profilesData.profiles ?? []);
-        }
-        if (balData) {
-          setBalanceData(balData);
-        }
-        if (catData) {
-          const map: Record<string, Category> = {};
-          for (const c of catData.categories ?? []) {
-            map[c.name.toLowerCase()] = c;
-          }
-          setCategoriesMap(map);
-        }
-      } catch {
-        // graceful fallback
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchDashboardData();
   }, []);
 
-  const handleProfileSelect = async (profileId: string | null) => {
-    setSelectedProfileId(profileId);
-    setExpensesLoading(true);
-    try {
-      const params: { limit: number; profileId?: string } = { limit: 5 };
-      if (profileId) params.profileId = profileId;
-      const data = await expensesApi.list(params);
-      setRecentExpenses(data.expenses);
-    } catch {
-      // keep existing on error
-    } finally {
-      setExpensesLoading(false);
+  // --- TanStack Query hooks ---
+  const { data: profiles = [], isLoading: profilesLoading } = useProfiles();
+  const { data: rawCategoriesMap = {}, isLoading: categoriesLoading } = useCategoriesMap();
+  const { data: balanceData, isLoading: balanceLoading } = useBalance({});
+  const { data: expensesData, isLoading: expensesLoading } = useExpenses({
+    limit: 5,
+    ...(selectedProfileId ? { profileId: selectedProfileId } : {}),
+  });
+
+  // Build a lowercased categories map for case-insensitive lookup
+  const categoriesMap = useMemo(() => {
+    const map: Record<string, Category> = {};
+    for (const [key, value] of Object.entries(rawCategoriesMap)) {
+      map[key.toLowerCase()] = value;
     }
+    return map;
+  }, [rawCategoriesMap]);
+
+  const recentExpenses: Expense[] = expensesData?.expenses ?? [];
+  const isLoading = profilesLoading || balanceLoading || categoriesLoading;
+
+  const handleProfileSelect = (profileId: string | null) => {
+    setSelectedProfileId(profileId);
   };
 
   const clampedPercentage = balanceData ? Math.min(Math.max(balanceData.spentPercentage, 0), 100) : 0;

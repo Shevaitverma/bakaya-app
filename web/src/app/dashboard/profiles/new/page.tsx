@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { profilesApi } from "@/lib/api/profiles";
 import { ApiError } from "@/lib/api-client";
+import { queryKeys } from "@/lib/queries";
 import styles from "../page.module.css";
 
 const RELATIONSHIPS = ["self", "family", "partner", "friend", "other"] as const;
@@ -11,6 +13,7 @@ const COLORS = ["#D81B60", "#1E88E5", "#43A047", "#FB8C00", "#8E24AA", "#00ACC1"
 
 export default function NewProfilePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [relationship, setRelationship] = useState("");
   const [color, setColor] = useState(COLORS[0]);
@@ -33,6 +36,7 @@ export default function NewProfilePage() {
         relationship: relationship || undefined,
         color,
       });
+      queryClient.invalidateQueries({ queryKey: queryKeys.profiles.all });
       router.push("/dashboard/profiles");
     } catch (err) {
       if (err instanceof ApiError) {

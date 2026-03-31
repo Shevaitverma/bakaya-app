@@ -3,10 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ApiError } from "@/lib/api-client";
-import { expensesApi, type Expense } from "@/lib/api/expenses";
-import { profilesApi } from "@/lib/api/profiles";
-import type { Profile } from "@/types/profile";
-import { categoriesApi, type Category } from "@/lib/api/categories";
+import { useProfiles, useCategories, useExpense, useUpdateExpense } from "@/lib/queries";
 import styles from "../../new/page.module.css";
 
 const INCOME_SOURCES = [
@@ -47,11 +44,7 @@ export default function EditExpensePage() {
   const [source, setSource] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedProfileId, setSelectedProfileId] = useState("");
-  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isFetching, setIsFetching] = useState(true);
-  const [fetchError, setFetchError] = useState("");
   const [errors, setErrors] = useState<{
     title?: string;
     amount?: string;
@@ -64,54 +57,24 @@ export default function EditExpensePage() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const isIncome = entryType === "income";
 
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { data: profiles = [] } = useProfiles();
+  const { data: categories = [] } = useCategories();
+  const { data: expense, isLoading: isFetching, error: fetchErr } = useExpense(expenseId);
+  const updateExpense = useUpdateExpense();
 
-  // Fetch categories on mount
+  // Populate form fields once expense data arrives
+  const hasPopulated = useRef(false);
   useEffect(() => {
-    categoriesApi
-      .list()
-      .then((data) => setCategories(data.categories ?? []))
-      .catch(() => {
-        // categories API not ready -- continue without
-      });
-  }, []);
-
-  // Fetch expense and profiles
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [expense, profilesData] = await Promise.all([
-          expensesApi.getById(expenseId),
-          profilesApi.getProfiles().catch(() => ({ profiles: [] as Profile[], pagination: {} })),
-        ]);
-
-        setEntryType(expense.type === "income" ? "income" : "expense");
-        setTitle(expense.title);
-        setAmount(String(expense.amount));
-        setCategory(expense.category || "");
-        setSource(expense.source || "");
-        setNotes(expense.notes || "");
-        setSelectedProfileId(expense.profileId || "");
-
-        const list = profilesData.profiles ?? [];
-        setProfiles(list);
-      } catch (error) {
-        if (error instanceof ApiError) {
-          if (error.status === 404) {
-            setFetchError("Expense not found.");
-            return;
-          }
-          setFetchError(error.message);
-        } else {
-          setFetchError("Unable to connect to server. Please try again.");
-        }
-      } finally {
-        setIsFetching(false);
-      }
-    }
-
-    fetchData();
-  }, [expenseId]);
+    if (hasPopulated.current || !expense) return;
+    setEntryType(expense.type === "income" ? "income" : "expense");
+    setTitle(expense.title);
+    setAmount(String(expense.amount));
+    setCategory(expense.category || "");
+    setSource(expense.source || "");
+    setNotes(expense.notes || "");
+    setSelectedProfileId(expense.profileId || "");
+    hasPopulated.current = true;
+  }, [expense]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -161,21 +124,23 @@ export default function EditExpensePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading) return;
+    if (updateExpense.isPending) return;
     if (!validateForm()) return;
 
-    setIsLoading(true);
     setErrors({});
 
     try {
-      await expensesApi.update(expenseId, {
-        title: title.trim(),
-        amount: parseFloat(amount),
-        type: entryType,
-        profileId: isIncome ? undefined : (selectedProfileId || undefined),
-        category: isIncome ? undefined : category.trim(),
-        source: isIncome ? source.trim() : undefined,
-        notes: notes.trim() || undefined,
+      await updateExpense.mutateAsync({
+        id: expenseId,
+        data: {
+          title: title.trim(),
+          amount: parseFloat(amount),
+          type: entryType,
+          profileId: isIncome ? undefined : (selectedProfileId || undefined),
+          category: isIncome ? undefined : category.trim(),
+          source: isIncome ? source.trim() : undefined,
+          notes: notes.trim() || undefined,
+        },
       });
       routerRef.current.push("/dashboard/expenses");
     } catch (error) {
@@ -184,8 +149,6 @@ export default function EditExpensePage() {
       } else {
         setErrors({ server: "Unable to connect to server. Please try again." });
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -204,6 +167,15 @@ export default function EditExpensePage() {
       setErrors((prev) => ({ ...prev, source: undefined }));
     }
   };
+
+  // Derive a user-friendly fetch error message
+  const fetchError = fetchErr
+    ? fetchErr instanceof ApiError
+      ? fetchErr.status === 404
+        ? "Expense not found."
+        : fetchErr.message
+      : "Unable to connect to server. Please try again."
+    : "";
 
   if (isFetching) {
     return (
@@ -532,9 +504,9 @@ export default function EditExpensePage() {
           <button
             type="submit"
             className={`${styles.submitBtn} ${isIncome ? styles.submitBtnIncome : ""}`}
-            disabled={isLoading}
+            disabled={updateExpense.isPending}
           >
-            {isLoading ? <span className={styles.spinner} /> : "Save Changes"}
+            {updateExpense.isPending ? <span className={styles.spinner} /> : "Save Changes"}
           </button>
         </form>
       </div>

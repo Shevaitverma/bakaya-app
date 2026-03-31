@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError } from "@/lib/api-client";
-import { groupsApi } from "@/lib/api/groups";
+import { useCreateGroup } from "@/lib/queries";
 import styles from "./page.module.css";
 
 export default function CreateGroupPage() {
@@ -11,9 +11,10 @@ export default function CreateGroupPage() {
   const routerRef = useRef(router);
   routerRef.current = router;
 
+  const createGroup = useCreateGroup();
+
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{
     name?: string;
     server?: string;
@@ -32,14 +33,13 @@ export default function CreateGroupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading) return;
+    if (createGroup.isPending) return;
     if (!validateForm()) return;
 
-    setIsLoading(true);
     setErrors({});
 
     try {
-      await groupsApi.create({
+      await createGroup.mutateAsync({
         name: name.trim(),
         description: description.trim() || undefined,
       });
@@ -50,8 +50,6 @@ export default function CreateGroupPage() {
       } else {
         setErrors({ server: "Unable to connect to server. Please try again." });
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -120,9 +118,9 @@ export default function CreateGroupPage() {
           <button
             type="submit"
             className={styles.submitBtn}
-            disabled={isLoading}
+            disabled={createGroup.isPending}
           >
-            {isLoading ? <span className={styles.spinner} /> : "Create Group"}
+            {createGroup.isPending ? <span className={styles.spinner} /> : "Create Group"}
           </button>
         </form>
       </div>

@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api-client";
 import { categoriesApi, type Category } from "@/lib/api/categories";
+import { queryKeys } from "@/lib/queries";
 import styles from "./page.module.css";
 
 const COLOR_PRESETS = [
@@ -16,12 +18,12 @@ const COLOR_PRESETS = [
 ];
 
 const EMOJI_OPTIONS = [
-  "🍽️", "🍴", "🍕", "☕", "🛒", "🛍️", "👕", "💊", "🏥", "🎓",
-  "📚", "🚗", "🚕", "✈️", "🚌", "⛽", "🏠", "🔑", "💡", "⚡",
-  "📱", "💻", "🎮", "🎬", "🎵", "🎁", "💰", "💳", "🏦", "📊",
-  "🧾", "📄", "🔄", "🛡️", "🏋️", "💇", "🐕", "🌿", "🍺", "🎉",
-  "✂️", "🔧", "🧹", "👶", "💍", "📸", "🎨", "⚽", "🏖️", "🚿",
-  "🧴", "🦷", "👓", "🎒", "📦", "🚚", "🏪", "🧸", "📌", "🎂",
+  "\uD83C\uDF7D\uFE0F", "\uD83C\uDF74", "\uD83C\uDF55", "\u2615", "\uD83D\uDED2", "\uD83D\uDECD\uFE0F", "\uD83D\uDC55", "\uD83D\uDC8A", "\uD83C\uDFE5", "\uD83C\uDF93",
+  "\uD83D\uDCDA", "\uD83D\uDE97", "\uD83D\uDE95", "\u2708\uFE0F", "\uD83D\uDE8C", "\u26FD", "\uD83C\uDFE0", "\uD83D\uDD11", "\uD83D\uDCA1", "\u26A1",
+  "\uD83D\uDCF1", "\uD83D\uDCBB", "\uD83C\uDFAE", "\uD83C\uDFAC", "\uD83C\uDFB5", "\uD83C\uDF81", "\uD83D\uDCB0", "\uD83D\uDCB3", "\uD83C\uDFE6", "\uD83D\uDCCA",
+  "\uD83E\uDDFE", "\uD83D\uDCC4", "\uD83D\uDD04", "\uD83D\uDEE1\uFE0F", "\uD83C\uDFCB\uFE0F", "\uD83D\uDC87", "\uD83D\uDC15", "\uD83C\uDF3F", "\uD83C\uDF7A", "\uD83C\uDF89",
+  "\u2702\uFE0F", "\uD83D\uDD27", "\uD83E\uDDF9", "\uD83D\uDC76", "\uD83D\uDC8D", "\uD83D\uDCF8", "\uD83C\uDFA8", "\u26BD", "\uD83C\uDFD6\uFE0F", "\uD83D\uDEBF",
+  "\uD83E\uDDF4", "\uD83E\uDDB7", "\uD83D\uDC53", "\uD83C\uDF92", "\uD83D\uDCE6", "\uD83D\uDE9A", "\uD83C\uDFEA", "\uD83E\uDDF8", "\uD83D\uDCCC", "\uD83C\uDF82",
 ];
 
 type FormMode = "add" | "edit";
@@ -40,8 +42,14 @@ const INITIAL_FORM: FormState = {
 
 export default function CategoriesPage() {
   const router = useRouter();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  // Fetch categories including archived via direct useQuery (the shared hook doesn't include archived)
+  const { data: categories = [], isLoading } = useQuery({
+    queryKey: [...queryKeys.categories.all, { includeArchived: true }],
+    queryFn: () => categoriesApi.list(true),
+    select: (data) => data.categories ?? [],
+  });
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -56,17 +64,12 @@ export default function CategoriesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Include archived so we can show them in a separate section
-  useEffect(() => {
-    categoriesApi
-      .list(true)
-      .then((data) => setCategories(data.categories ?? []))
-      .catch(() => setCategories([]))
-      .finally(() => setIsLoading(false));
-  }, []);
-
   const activeCategories = categories.filter((c) => c.isActive);
   const archivedCategories = categories.filter((c) => !c.isActive);
+
+  const invalidateCategories = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.categories.all });
+  };
 
   const openAddForm = () => {
     setFormMode("add");
@@ -105,22 +108,19 @@ export default function CategoriesPage() {
 
     try {
       if (formMode === "add") {
-        const newCat = await categoriesApi.create({
+        await categoriesApi.create({
           name: form.name.trim(),
           emoji: form.emoji.trim() || undefined,
           color: form.color || undefined,
         });
-        setCategories((prev) => [...prev, newCat]);
       } else if (editingId) {
-        const updated = await categoriesApi.update(editingId, {
+        await categoriesApi.update(editingId, {
           name: form.name.trim(),
           emoji: form.emoji.trim(),
           color: form.color,
         });
-        setCategories((prev) =>
-          prev.map((c) => (c.id === editingId ? updated : c))
-        );
       }
+      invalidateCategories();
       closeForm();
     } catch (error) {
       if (error instanceof ApiError) {
@@ -135,12 +135,10 @@ export default function CategoriesPage() {
 
   const handleToggleArchive = async (cat: Category) => {
     try {
-      const updated = await categoriesApi.update(cat.id, {
+      await categoriesApi.update(cat.id, {
         isActive: !cat.isActive,
       });
-      setCategories((prev) =>
-        prev.map((c) => (c.id === cat.id ? updated : c))
-      );
+      invalidateCategories();
     } catch {
       // Swallow -- could show a toast in the future
     }
@@ -156,7 +154,7 @@ export default function CategoriesPage() {
 
     try {
       await categoriesApi.delete(deleteTarget.id);
-      setCategories((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+      invalidateCategories();
       setDeleteTarget(null);
     } catch {
       // Swallow -- keep dialog open on error, user can retry
@@ -317,7 +315,7 @@ export default function CategoriesPage() {
                     className={styles.emojiButton}
                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   >
-                    {form.emoji || "📄"}
+                    {form.emoji || "\uD83D\uDCC4"}
                   </button>
                   {showEmojiPicker && (
                     <div className={styles.emojiGrid}>
