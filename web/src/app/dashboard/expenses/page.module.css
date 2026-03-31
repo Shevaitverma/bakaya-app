@@ -142,17 +142,20 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
-/* Colored top borders for summary cards */
+/* Colored top accent for summary cards */
 .summaryItemIncome {
-  border-top: 2px solid var(--color-success);
+  border-color: rgba(16, 185, 129, 0.2);
+  box-shadow: 0 -3px 0 0 var(--color-success) inset, 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
 .summaryItemExpense {
-  border-top: 2px solid var(--color-primary);
+  border-color: rgba(216, 27, 96, 0.2);
+  box-shadow: 0 -3px 0 0 var(--color-primary) inset, 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
 .summaryItemBalance {
-  border-top: 2px solid #14b8a6;
+  border-color: rgba(20, 184, 166, 0.2);
+  box-shadow: 0 -3px 0 0 #14b8a6 inset, 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
 .summaryLabel {
@@ -205,16 +208,16 @@
 .typeFilterBtn {
   flex: 1;
   height: 36px;
-  padding: 10px 20px;
-  border: 1.5px solid rgba(0, 0, 0, 0.08);
-  border-radius: var(--radius-round);
-  background: var(--color-card);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
+  padding: 0 20px;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 9999px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7280;
   white-space: nowrap;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
   text-align: center;
 }
 
@@ -223,14 +226,15 @@
 }
 
 .typeFilterBtn:hover {
-  background: var(--color-light-grey);
+  border-color: #D1D5DB;
+  background: #F9FAFB;
 }
 
 .typeFilterBtnActive {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-text-on-primary);
-  font-weight: var(--font-weight-bold);
+  background: linear-gradient(135deg, #D81B60, #E91E63);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
   box-shadow: 0 3px 10px rgba(216, 27, 96, 0.3);
 }
 
