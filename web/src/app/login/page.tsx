@@ -178,7 +178,7 @@ export default function LoginPage() {
           {/* Submit */}
           <button
             type="submit"
-            className={styles.submitBtn}
+            className="btn-primary"
             disabled={isLoading}
           >
             {isLoading ? <span className={styles.spinner} /> : "Sign In"}
@@ -194,7 +194,7 @@ export default function LoginPage() {
           {/* Google Sign-In */}
           <button
             type="button"
-            className={styles.googleBtn}
+            className="btn-secondary"
             onClick={handleGoogleSignIn}
             disabled={isGoogleLoading}
           >

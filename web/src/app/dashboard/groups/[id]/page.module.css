@@ -82,12 +82,20 @@
   border-top-right-radius: 24px;
   margin-top: -28px;
   background: #F5F5F5;
+  animation: fadeSlideUp 0.3s ease both;
 }
 
 /* --- Section --- */
 .section {
   margin-bottom: var(--spacing-xl);
+  animation: fadeSlideUp 0.35s ease both;
 }
+
+.section:nth-child(1) { animation-delay: 0s; }
+.section:nth-child(2) { animation-delay: 0.06s; }
+.section:nth-child(3) { animation-delay: 0.12s; }
+.section:nth-child(4) { animation-delay: 0.18s; }
+.section:nth-child(5) { animation-delay: 0.24s; }
 
 .section + .section {
   margin-top: 16px;
@@ -144,7 +152,14 @@
   border-radius: 16px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   transition: transform 200ms ease, box-shadow 200ms ease;
+  animation: cardEntrance 0.35s ease both;
 }
+
+.balanceCard:nth-child(1) { animation-delay: 0s; }
+.balanceCard:nth-child(2) { animation-delay: 0.05s; }
+.balanceCard:nth-child(3) { animation-delay: 0.1s; }
+.balanceCard:nth-child(4) { animation-delay: 0.15s; }
+.balanceCard:nth-child(5) { animation-delay: 0.2s; }
 
 .balanceCard:hover {
   transform: translateY(-2px);
@@ -196,25 +211,15 @@
   color: #EF4444;
 }
 
-.settleBtn {
-  padding: 0 16px;
-  height: 36px;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
+/* Green color variant for settle button (uses global btn-outline-accent) */
+.settleBtnGreen {
   color: #22c55e;
-  background: transparent;
-  border: 1px solid #22c55e;
-  border-radius: 9999px;
-  cursor: pointer;
-  transition: background 200ms ease;
-  white-space: nowrap;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
+  border-color: #22c55e;
 }
 
-.settleBtn:hover {
+.settleBtnGreen:hover {
   background: rgba(34, 197, 94, 0.08);
+  border-color: #22c55e;
 }
 
 /* --- Settle Up Inline Form --- */
@@ -296,53 +301,6 @@
   gap: var(--spacing-sm);
 }
 
-.settleCancelBtn {
-  padding: 0 16px;
-  height: 44px;
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-medium);
-  color: #1A1A2E;
-  background: transparent;
-  border: 1px solid #E5E7EB;
-  border-radius: 9999px;
-  cursor: pointer;
-  transition: background 200ms ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.settleCancelBtn:hover {
-  background: #F9FAFB;
-}
-
-.settleConfirmBtn {
-  padding: 0 16px;
-  height: 44px;
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: #fff;
-  background: linear-gradient(135deg, #D81B60, #E91E63);
-  border: none;
-  border-radius: 9999px;
-  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
-  cursor: pointer;
-  transition: transform 200ms ease, box-shadow 200ms ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.settleConfirmBtn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(233, 30, 99, 0.4);
-}
-
-.settleConfirmBtn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none;
-}
 
 /* --- Settlements Section --- */
 .settlementList {
@@ -362,7 +320,14 @@
   border-radius: 16px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   transition: transform 200ms ease, box-shadow 200ms ease;
+  animation: cardEntrance 0.35s ease both;
 }
+
+.settlementCard:nth-child(1) { animation-delay: 0s; }
+.settlementCard:nth-child(2) { animation-delay: 0.05s; }
+.settlementCard:nth-child(3) { animation-delay: 0.1s; }
+.settlementCard:nth-child(4) { animation-delay: 0.15s; }
+.settlementCard:nth-child(5) { animation-delay: 0.2s; }
 
 .settlementCard:hover {
   transform: translateY(-2px);
@@ -413,24 +378,6 @@
 }
 
 /* --- Add Member --- */
-.addMemberBtn {
-  padding: 0 16px;
-  height: 36px;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: #E91E63;
-  background: transparent;
-  border: 1px solid #E5E7EB;
-  border-radius: 9999px;
-  cursor: pointer;
-  transition: background 200ms ease;
-  display: inline-flex;
-  align-items: center;
-}
-
-.addMemberBtn:hover {
-  background: rgba(233, 30, 99, 0.04);
-}
 
 .addMemberForm {
   margin-bottom: var(--spacing-md);
@@ -507,7 +454,18 @@
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 16px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  transition: background 0.2s ease, transform 0.15s ease, box-shadow 200ms ease;
+  animation: cardEntrance 0.35s ease both;
+}
+
+.memberCard:nth-child(1) { animation-delay: 0s; }
+.memberCard:nth-child(2) { animation-delay: 0.05s; }
+.memberCard:nth-child(3) { animation-delay: 0.1s; }
+.memberCard:nth-child(4) { animation-delay: 0.15s; }
+.memberCard:nth-child(5) { animation-delay: 0.2s; }
+
+.memberCard:active {
+  transform: scale(0.98);
 }
 
 .memberCard:hover {
@@ -560,6 +518,11 @@
   font-weight: var(--font-weight-semibold);
   flex-shrink: 0;
   text-transform: capitalize;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.roleBadge:active {
+  transform: scale(0.95);
 }
 
 .roleBadgeAdmin {
@@ -591,8 +554,18 @@
   border-radius: 16px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   transition: transform 200ms ease, box-shadow 200ms ease;
+  animation: rowSlideIn 0.3s ease both;
   position: relative;
 }
+
+.expenseCard:nth-child(1) { animation-delay: 0ms; }
+.expenseCard:nth-child(2) { animation-delay: 0.04s; }
+.expenseCard:nth-child(3) { animation-delay: 0.08s; }
+.expenseCard:nth-child(4) { animation-delay: 0.12s; }
+.expenseCard:nth-child(5) { animation-delay: 0.16s; }
+.expenseCard:nth-child(6) { animation-delay: 0.2s; }
+.expenseCard:nth-child(7) { animation-delay: 0.24s; }
+.expenseCard:nth-child(8) { animation-delay: 0.28s; }
 
 .expenseCard:hover {
   transform: translateY(-2px);
@@ -715,31 +688,6 @@
   color: var(--color-text-tertiary);
 }
 
-/* --- FAB --- */
-.fab {
-  position: fixed;
-  bottom: var(--spacing-lg);
-  right: var(--spacing-lg);
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: 0 24px;
-  height: 48px;
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: #fff;
-  background: linear-gradient(135deg, #D81B60, #E91E63);
-  border-radius: 9999px;
-  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
-  transition: transform 200ms ease, box-shadow 200ms ease;
-  z-index: 50;
-  text-decoration: none;
-}
-
-.fab:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(233, 30, 99, 0.4);
-}
 
 /* --- Confirm Dialog Overlay --- */
 .dialogOverlay {
@@ -782,43 +730,6 @@
   gap: var(--spacing-sm);
 }
 
-.dialogCancel {
-  padding: 0 16px;
-  height: 44px;
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-medium);
-  color: #1A1A2E;
-  background: transparent;
-  border: 1px solid #E5E7EB;
-  border-radius: 9999px;
-  transition: background 200ms ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.dialogCancel:hover {
-  background: #F9FAFB;
-}
-
-.dialogConfirm {
-  padding: 0 16px;
-  height: 44px;
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: #fff;
-  background: #EF4444;
-  border: none;
-  border-radius: 9999px;
-  transition: background 200ms ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.dialogConfirm:hover {
-  background: #DC2626;
-}
 
 @keyframes fadeIn {
   from {
@@ -826,6 +737,39 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rowSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes cardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -890,17 +834,6 @@
     font-size: 1rem;
   }
 
-  .settleBtn {
-    width: 100%;
-    min-height: 44px;
-    justify-content: center;
-    display: flex;
-    align-items: center;
-    padding: 0 16px;
-    height: 44px;
-    font-size: 0.9375rem;
-    border-radius: 9999px;
-  }
 
   /* Settle up form: full width fields */
   .settleForm {
@@ -923,17 +856,6 @@
     gap: 8px;
   }
 
-  .settleCancelBtn,
-  .settleConfirmBtn {
-    width: 100%;
-    min-height: 44px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.9375rem;
-    border-radius: 9999px;
-  }
 
   /* Settlement cards: full width */
   .settlementCard {
@@ -952,15 +874,6 @@
   }
 
   /* Members section */
-  .addMemberBtn {
-    min-height: 44px;
-    height: 44px;
-    padding: 0 16px;
-    font-size: 0.875rem;
-    border-radius: 9999px;
-    display: inline-flex;
-    align-items: center;
-  }
 
   .addMemberForm {
     width: 100%;
@@ -1038,17 +951,6 @@
     height: 44px;
   }
 
-  /* FAB: full width at bottom */
-  .fab {
-    left: 16px;
-    right: 16px;
-    bottom: 16px;
-    justify-content: center;
-    width: auto;
-    min-height: 48px;
-    font-size: 1rem;
-    border-radius: 9999px;
-  }
 
   /* Delete dialog */
   .dialog {
@@ -1062,17 +964,6 @@
     gap: 8px;
   }
 
-  .dialogCancel,
-  .dialogConfirm {
-    width: 100%;
-    min-height: 44px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.9375rem;
-    border-radius: 9999px;
-  }
 
   /* Empty states */
   .empty {

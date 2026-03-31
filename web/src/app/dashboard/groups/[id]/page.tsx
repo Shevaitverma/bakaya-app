@@ -312,7 +312,7 @@ export default function GroupDetailPage() {
                         </div>
                         {canSettle ? (
                           <button
-                            className={styles.settleBtn}
+                            className={`btn-outline-accent ${styles.settleBtnGreen}`}
                             onClick={() => handleSettleUp(entry)}
                           >
                             Settle Up
@@ -382,7 +382,7 @@ export default function GroupDetailPage() {
                   <div className={styles.settleFormActions}>
                     <button
                       type="button"
-                      className={styles.settleCancelBtn}
+                      className="btn-ghost"
                       onClick={cancelSettle}
                       disabled={createSettlementMutation.isPending}
                     >
@@ -390,7 +390,7 @@ export default function GroupDetailPage() {
                     </button>
                     <button
                       type="button"
-                      className={styles.settleConfirmBtn}
+                      className="btn-primary"
                       onClick={confirmSettle}
                       disabled={createSettlementMutation.isPending || !settleAmount.trim()}
                     >
@@ -458,7 +458,7 @@ export default function GroupDetailPage() {
               <div className={styles.sectionHeader}>
                 <h2 className={styles.sectionTitle}>Members</h2>
                 <button
-                  className={styles.addMemberBtn}
+                  className="btn-outline-accent"
                   onClick={() => {
                     setShowAddMember(!showAddMember);
                     setAddMemberError("");
@@ -604,7 +604,7 @@ export default function GroupDetailPage() {
       {/* ---------- FAB ---------- */}
       <Link
         href={`/dashboard/groups/${groupId}/expenses/new`}
-        className={styles.fab}
+        className="btn-fab"
       >
         <span aria-hidden>+</span> Add expense
       </Link>
@@ -637,14 +637,14 @@ export default function GroupDetailPage() {
             )}
             <div className={styles.dialogActions}>
               <button
-                className={styles.dialogCancel}
+                className="btn-ghost"
                 onClick={cancelDelete}
                 disabled={deleteExpenseMutation.isPending}
               >
                 Cancel
               </button>
               <button
-                className={styles.dialogConfirm}
+                className="btn-danger"
                 onClick={confirmDelete}
                 disabled={deleteExpenseMutation.isPending}
               >

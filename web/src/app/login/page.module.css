@@ -155,41 +155,6 @@
   font-weight: 500;
 }
 
-/* --- Submit Button --- */
-.submitBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 48px;
-  margin-top: 4px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #ffffff;
-  background: linear-gradient(135deg, #D81B60, #E91E63);
-  border: none;
-  border-radius: 9999px;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(233, 30, 99, 0.35);
-  transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
-}
-
-.submitBtn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(233, 30, 99, 0.4);
-}
-
-.submitBtn:active {
-  transform: translateY(0) scale(0.99);
-  box-shadow: 0 2px 8px rgba(233, 30, 99, 0.3);
-}
-
-.submitBtn:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: 0 4px 14px rgba(233, 30, 99, 0.2);
-}
 
 /* --- Divider --- */
 .divider {
@@ -212,38 +177,6 @@
   font-weight: 500;
 }
 
-/* --- Google Button --- */
-.googleBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-  height: 48px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #1A1A2E;
-  background: #ffffff;
-  border: 1px solid #E5E7EB;
-  border-radius: 9999px;
-  cursor: pointer;
-  transition: background 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
-}
-
-.googleBtn:hover {
-  background: #FAFAFA;
-  border-color: #D1D5DB;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.googleBtn:active {
-  transform: scale(0.99);
-}
-
-.googleBtn:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
 
 .googleIcon {
   width: 20px;

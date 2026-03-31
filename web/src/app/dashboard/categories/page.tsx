@@ -177,7 +177,7 @@ export default function CategoriesPage() {
           </button>
           <h1 className={styles.pageTitle}>Categories</h1>
         </div>
-        <button className={styles.addBtn} onClick={openAddForm}>
+        <button className="btn-header" onClick={openAddForm}>
           + Add Category
         </button>
       </div>
@@ -371,11 +371,11 @@ export default function CategoriesPage() {
             </div>
 
             <div className={styles.formActions}>
-              <button className={styles.formCancelBtn} onClick={closeForm}>
+              <button className="btn-ghost btn-sm" onClick={closeForm}>
                 Cancel
               </button>
               <button
-                className={styles.formSaveBtn}
+                className="btn-primary btn-sm"
                 onClick={handleSave}
                 disabled={isSaving}
               >
@@ -404,14 +404,14 @@ export default function CategoriesPage() {
             )}
             <div className={styles.dialogActions}>
               <button
-                className={styles.dialogCancel}
+                className="btn-ghost"
                 onClick={() => setDeleteTarget(null)}
                 disabled={isDeleting}
               >
                 Cancel
               </button>
               <button
-                className={styles.dialogConfirm}
+                className="btn-danger"
                 onClick={confirmDelete}
                 disabled={isDeleting}
               >

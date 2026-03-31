@@ -154,7 +154,7 @@ export default function AddExpensePage() {
       {/* ---------- Header ---------- */}
       <header className={`${styles.header} ${isIncome ? styles.headerIncome : ""}`}>
         <button
-          className={styles.backBtn}
+          className="btn-back"
           onClick={() => router.back()}
           aria-label="Go back"
         >
@@ -419,7 +419,7 @@ export default function AddExpensePage() {
           {/* Submit */}
           <button
             type="submit"
-            className={`${styles.submitBtn} ${isIncome ? styles.submitBtnIncome : ""}`}
+            className={`btn-primary ${isIncome ? styles.submitBtnIncome : ""}`}
             disabled={createExpense.isPending}
           >
             {createExpense.isPending ? (

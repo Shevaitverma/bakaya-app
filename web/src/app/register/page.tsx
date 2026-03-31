@@ -388,7 +388,7 @@ export default function RegisterPage() {
           {/* Submit */}
           <button
             type="submit"
-            className={styles.submitBtn}
+            className="btn-primary"
             disabled={isLoading}
           >
             {isLoading ? (
@@ -408,7 +408,7 @@ export default function RegisterPage() {
           {/* Google Sign-Up */}
           <button
             type="button"
-            className={styles.googleBtn}
+            className="btn-secondary"
             onClick={handleGoogleSignUp}
             disabled={isGoogleLoading}
           >

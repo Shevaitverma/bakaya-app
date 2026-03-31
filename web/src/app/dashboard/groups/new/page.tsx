@@ -58,7 +58,7 @@ export default function CreateGroupPage() {
       {/* ---------- Header ---------- */}
       <header className={styles.header}>
         <button
-          className={styles.backBtn}
+          className="btn-back"
           onClick={() => router.push("/dashboard")}
           aria-label="Go back"
         >
@@ -117,7 +117,7 @@ export default function CreateGroupPage() {
           {/* Submit */}
           <button
             type="submit"
-            className={styles.submitBtn}
+            className="btn-primary"
             disabled={createGroup.isPending}
           >
             {createGroup.isPending ? <span className={styles.spinner} /> : "Create Group"}

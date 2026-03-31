@@ -137,14 +137,14 @@ export default function NewProfilePage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className={styles.formCancelBtn}
+            className="btn-ghost"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isLoading}
-            className={styles.formSubmitBtn}
+            className="btn-primary"
           >
             {isLoading ? "Creating..." : "Create Profile"}
           </button>

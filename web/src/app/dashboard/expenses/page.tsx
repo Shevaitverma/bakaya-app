@@ -172,7 +172,7 @@ export default function ExpensesPage() {
             )}
           </div>
           <button
-            className={styles.exportBtn}
+            className="btn-outline-accent"
             onClick={handleExportCSV}
             disabled={isExporting}
             title="Export as CSV"
@@ -307,7 +307,7 @@ export default function ExpensesPage() {
                 {/* Edit */}
                 <Link
                   href={`/dashboard/expenses/${expense._id}/edit`}
-                  className={styles.expenseEdit}
+                  className="btn-icon"
                   aria-label={`Edit ${expense.title}`}
                   title="Edit"
                 >
@@ -316,7 +316,7 @@ export default function ExpensesPage() {
 
                 {/* Delete */}
                 <button
-                  className={styles.expenseDelete}
+                  className="btn-icon btn-icon-danger"
                   onClick={() => handleDelete(expense)}
                   aria-label={`Delete ${expense.title}`}
                   title="Delete"
@@ -332,7 +332,7 @@ export default function ExpensesPage() {
       </div>
 
       {/* ---------- FAB ---------- */}
-      <Link href="/dashboard/expenses/new" className={styles.fab}>
+      <Link href="/dashboard/expenses/new" className="btn-fab">
         <span aria-hidden>+</span> Add expense
       </Link>
 
@@ -350,14 +350,14 @@ export default function ExpensesPage() {
             </p>
             <div className={styles.dialogActions}>
               <button
-                className={styles.dialogCancel}
+                className="btn-ghost"
                 onClick={cancelDelete}
                 disabled={isDeleting}
               >
                 Cancel
               </button>
               <button
-                className={styles.dialogConfirm}
+                className="btn-danger"
                 onClick={confirmDelete}
                 disabled={isDeleting}
               >

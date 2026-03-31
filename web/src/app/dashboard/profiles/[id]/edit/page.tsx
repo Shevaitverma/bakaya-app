@@ -217,14 +217,14 @@ export default function EditProfilePage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className={styles.formCancelBtn}
+            className="btn-ghost"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isLoading}
-            className={styles.formSubmitBtn}
+            className="btn-primary"
           >
             {isLoading ? "Saving..." : "Save Changes"}
           </button>

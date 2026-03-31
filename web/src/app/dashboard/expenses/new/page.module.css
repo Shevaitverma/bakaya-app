@@ -13,6 +13,16 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fieldSlideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* --- Page Shell --- */
 .page {
   min-height: 100dvh;
@@ -33,25 +43,6 @@
   padding: 32px 32px 60px;
   background: #D81B60;
   border-radius: 0;
-}
-
-.backBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  color: var(--color-text-on-primary);
-  font-size: var(--font-size-xl);
-  background: rgba(255, 255, 255, 0.15);
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: background 200ms ease;
-}
-
-.backBtn:hover {
-  background: rgba(255, 255, 255, 0.25);
 }
 
 .headerTitle {
@@ -97,6 +88,10 @@
   text-align: center;
 }
 
+.typeBtn:active {
+  transform: scale(0.97);
+}
+
 .typeBtnActiveExpense {
   background: linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-end));
   color: var(--color-text-on-primary);
@@ -131,6 +126,7 @@
   margin-top: -28px;
   position: relative;
   z-index: 1;
+  animation: fadeSlideUp 0.3s ease both;
 }
 
 .form {
@@ -144,7 +140,15 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
+  animation: fieldSlideIn 0.35s ease both;
 }
+
+.field:nth-child(1) { animation-delay: 0s; }
+.field:nth-child(2) { animation-delay: 0.05s; }
+.field:nth-child(3) { animation-delay: 0.1s; }
+.field:nth-child(4) { animation-delay: 0.15s; }
+.field:nth-child(5) { animation-delay: 0.2s; }
+.field:nth-child(6) { animation-delay: 0.25s; }
 
 .label {
   font-size: 14px;
@@ -351,7 +355,11 @@
   white-space: nowrap;
   flex-shrink: 0;
   cursor: pointer;
-  transition: background 200ms ease, border-color 200ms ease;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.profileChip:active {
+  transform: scale(0.95);
 }
 
 .profileChipActive {
@@ -361,41 +369,6 @@
   font-weight: var(--font-weight-semibold);
 }
 
-/* --- Submit Button --- */
-.submitBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 48px;
-  margin-top: var(--spacing-lg);
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-on-primary);
-  background: linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-end));
-  border: none;
-  border-radius: 9999px;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(216, 27, 96, 0.3);
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
-
-.submitBtn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(216, 27, 96, 0.4);
-}
-
-.submitBtn:active {
-  transform: scale(0.98);
-  box-shadow: 0 2px 8px rgba(216, 27, 96, 0.3);
-}
-
-.submitBtn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
 
 /* --- Spinner --- */
 .spinner {
@@ -457,12 +430,6 @@
 
   .textarea {
     min-height: 100px;
-  }
-
-  .submitBtn {
-    width: 100%;
-    min-height: 48px;
-    font-size: var(--font-size-md);
   }
 
   .profileChipsRow {

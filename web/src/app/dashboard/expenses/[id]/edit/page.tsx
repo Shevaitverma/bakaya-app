@@ -169,7 +169,7 @@ export default function EditExpensePage() {
       <div className={`${styles.page} ${isIncome ? styles.pageIncome : ""}`}>
         <header className={styles.header}>
           <button
-            className={styles.backBtn}
+            className="btn-back"
             onClick={() => router.back()}
             aria-label="Go back"
           >
@@ -192,7 +192,7 @@ export default function EditExpensePage() {
       <div className={`${styles.page} ${isIncome ? styles.pageIncome : ""}`}>
         <header className={styles.header}>
           <button
-            className={styles.backBtn}
+            className="btn-back"
             onClick={() => router.back()}
             aria-label="Go back"
           >
@@ -237,7 +237,7 @@ export default function EditExpensePage() {
       {/* ---------- Header ---------- */}
       <header className={`${styles.header} ${isIncome ? styles.headerIncome : ""}`}>
         <button
-          className={styles.backBtn}
+          className="btn-back"
           onClick={() => router.back()}
           aria-label="Go back"
         >
@@ -490,7 +490,7 @@ export default function EditExpensePage() {
           {/* Submit */}
           <button
             type="submit"
-            className={`${styles.submitBtn} ${isIncome ? styles.submitBtnIncome : ""}`}
+            className={`btn-primary ${isIncome ? styles.submitBtnIncome : ""}`}
             disabled={updateExpense.isPending}
           >
             {updateExpense.isPending ? <span className={styles.spinner} /> : "Save Changes"}

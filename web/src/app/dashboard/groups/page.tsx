@@ -13,7 +13,7 @@ export default function GroupsPage() {
       {/* ---------- Pink Header ---------- */}
       <header className={styles.header}>
         <h1 className={styles.headerTitle}>My Groups</h1>
-        <Link href="/dashboard/groups/new" className={styles.createBtn}>
+        <Link href="/dashboard/groups/new" className="btn-header">
           + New Group
         </Link>
       </header>

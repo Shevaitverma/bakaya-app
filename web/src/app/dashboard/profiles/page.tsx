@@ -89,7 +89,7 @@ export default function ProfilesPage() {
     <div className={styles.page}>
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Profiles</h1>
-        <Link href="/dashboard/profiles/new" className={styles.createBtn}>
+        <Link href="/dashboard/profiles/new" className="btn-header">
           + Add
         </Link>
       </div>
@@ -214,14 +214,14 @@ export default function ProfilesPage() {
             )}
             <div className={styles.dialogActions}>
               <button
-                className={styles.dialogCancel}
+                className="btn-ghost"
                 onClick={() => setDeleteTarget(null)}
                 disabled={isDeleting}
               >
                 Cancel
               </button>
               <button
-                className={styles.dialogConfirm}
+                className="btn-danger"
                 onClick={confirmDelete}
                 disabled={isDeleting}
               >

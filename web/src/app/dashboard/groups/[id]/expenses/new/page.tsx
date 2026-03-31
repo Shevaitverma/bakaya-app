@@ -320,7 +320,7 @@ export default function AddGroupExpensePage() {
       {/* ---------- Header ---------- */}
       <header className={styles.header}>
         <button
-          className={styles.backBtn}
+          className="btn-back"
           onClick={() => router.push(`/dashboard/groups/${groupId}`)}
           aria-label="Go back"
         >
@@ -746,7 +746,7 @@ export default function AddGroupExpensePage() {
             {/* Submit */}
             <button
               type="submit"
-              className={styles.submitBtn}
+              className="btn-primary"
               disabled={createExpenseMutation.isPending}
             >
               {createExpenseMutation.isPending ? <span className={styles.spinner} /> : "Add Expense"}
