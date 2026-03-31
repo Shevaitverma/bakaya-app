@@ -2,6 +2,7 @@ import { Expense } from "@/models/Expense";
 import type { CreateExpenseInput, UpdateExpenseInput } from "@/schemas/expense.schema";
 import mongoose from "mongoose";
 import { logger } from "@/utils/logger";
+import { parseISTDate } from "@/utils/date";
 
 export async function createExpense(userId: string, input: CreateExpenseInput) {
   return Expense.create({ ...input, userId });
@@ -46,12 +47,10 @@ export async function findExpensesByUser(
   if (options.startDate || options.endDate) {
     const dateFilter: Record<string, Date> = {};
     if (options.startDate) {
-      dateFilter.$gte = new Date(options.startDate);
+      dateFilter.$gte = parseISTDate(options.startDate);
     }
     if (options.endDate) {
-      const end = new Date(options.endDate);
-      end.setHours(23, 59, 59, 999);
-      dateFilter.$lte = end;
+      dateFilter.$lte = parseISTDate(options.endDate, true);
     }
     filter.createdAt = dateFilter;
   }
@@ -120,12 +119,10 @@ export async function exportExpensesCSV(
   if (options.startDate || options.endDate) {
     const dateFilter: Record<string, Date> = {};
     if (options.startDate) {
-      dateFilter.$gte = new Date(options.startDate);
+      dateFilter.$gte = parseISTDate(options.startDate);
     }
     if (options.endDate) {
-      const end = new Date(options.endDate);
-      end.setHours(23, 59, 59, 999);
-      dateFilter.$lte = end;
+      dateFilter.$lte = parseISTDate(options.endDate, true);
     }
     filter.createdAt = dateFilter;
   }

@@ -6,6 +6,7 @@ import { User } from "@/models/User";
 import { successResponse, badRequestResponse, notFoundResponse, forbiddenResponse } from "@/utils/response";
 import { createPaginationMeta } from "@/utils/pagination";
 import { logger } from "@/utils/logger";
+import { toISTDateStr } from "@/utils/date";
 import { z } from "zod";
 
 export async function getPersonalExpenses(req: Request): Promise<Response> {
@@ -172,7 +173,7 @@ export async function exportExpensesCSVHandler(req: Request): Promise<Response> 
 
     const csvHeaders = "Date,Type,Title,Amount,Category,Source,Profile,Notes";
     const csvRows = expenses.map((e) => {
-      const date = e.createdAt.toISOString().split("T")[0];
+      const date = toISTDateStr(e.createdAt);
       const type = e.type || "expense";
       const title = csvEscape(e.title);
       const amount = e.amount;

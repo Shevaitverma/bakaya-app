@@ -31,17 +31,22 @@ function getDateRange(filter: DateFilter): { start?: string; end?: string } {
   const y = now.getFullYear();
   const m = now.getMonth(); // 0-indexed
 
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const fmt = (d: Date) => {
+    const dy = d.getFullYear();
+    const dm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${dy}-${dm}-${dd}`;
+  };
 
   switch (filter) {
     case "this_month":
-      return { start: fmt(new Date(y, m, 1)), end: fmt(new Date(y, m + 1, 0)) };
+      return { start: fmt(new Date(y, m, 1)), end: fmt(now) };
     case "last_month":
       return { start: fmt(new Date(y, m - 1, 1)), end: fmt(new Date(y, m, 0)) };
     case "last_3_months":
-      return { start: fmt(new Date(y, m - 2, 1)), end: fmt(new Date(y, m + 1, 0)) };
+      return { start: fmt(new Date(y, m - 2, 1)), end: fmt(now) };
     case "this_year":
-      return { start: fmt(new Date(y, 0, 1)), end: fmt(new Date(y, 11, 31)) };
+      return { start: fmt(new Date(y, 0, 1)), end: fmt(now) };
     case "all":
       return {};
   }

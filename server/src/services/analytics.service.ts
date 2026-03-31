@@ -1,6 +1,7 @@
 import { Expense } from "@/models/Expense";
 import mongoose from "mongoose";
 import type { AnalyticsQueryInput } from "@/schemas/analytics.schema";
+import { toISTDateStr, parseISTDate } from "@/utils/date";
 
 interface DateRange {
   start: Date;
@@ -9,18 +10,21 @@ interface DateRange {
 
 function getDateRange(query: AnalyticsQueryInput): DateRange {
   if (query.startDate && query.endDate) {
-    const end = new Date(query.endDate);
-    end.setHours(23, 59, 59, 999);
     return {
-      start: new Date(query.startDate),
-      end,
+      start: parseISTDate(query.startDate),
+      end: parseISTDate(query.endDate, true),
     };
   }
 
-  // Default: current month (1st of month to now)
+  // Default: current month (1st of month to now) in IST
   const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  return { start, end: now };
+  const nowStr = toISTDateStr(now);
+  const y = nowStr.slice(0, 4);
+  const m = nowStr.slice(5, 7);
+  return {
+    start: parseISTDate(`${y}-${m}-01`),
+    end: now,
+  };
 }
 
 function buildMatchStage(
@@ -84,8 +88,8 @@ export async function getSummary(userId: string, query: AnalyticsQueryInput) {
     totalSpent,
     byProfile,
     period: {
-      start: start.toISOString().split("T")[0],
-      end: end.toISOString().split("T")[0],
+      start: toISTDateStr(start),
+      end: toISTDateStr(end),
     },
   };
 }
@@ -137,8 +141,8 @@ export async function getByProfile(
     profiles,
     totalSpent,
     period: {
-      start: start.toISOString().split("T")[0],
-      end: end.toISOString().split("T")[0],
+      start: toISTDateStr(start),
+      end: toISTDateStr(end),
     },
   };
 }
@@ -180,8 +184,8 @@ export async function getByCategory(
     categories,
     totalSpent,
     period: {
-      start: start.toISOString().split("T")[0],
-      end: end.toISOString().split("T")[0],
+      start: toISTDateStr(start),
+      end: toISTDateStr(end),
     },
   };
 }
@@ -223,13 +227,13 @@ export async function getBalance(userId: string, query: AnalyticsQueryInput) {
       (Math.min(end.getTime(), Date.now()) - start.getTime()) / 86400000
     )
   );
-  const endOfMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0);
-  const daysInPeriod = Math.ceil(
-    (endOfMonth.getTime() - start.getTime()) / 86400000
+  const daysInPeriod = Math.max(
+    1,
+    Math.ceil((end.getTime() - start.getTime()) / 86400000)
   );
-  const dailySpendingRate = Math.round(totalExpenses / daysPassed);
+  const dailySpendingRate = Math.round((totalExpenses / daysPassed) * 100) / 100;
   const dailyBudgetRate =
-    totalIncome > 0 ? Math.round(totalIncome / daysInPeriod) : 0;
+    totalIncome > 0 ? Math.round((totalIncome / daysInPeriod) * 100) / 100 : 0;
   const daysRemaining = Math.max(0, daysInPeriod - daysPassed);
 
   return {
@@ -241,13 +245,15 @@ export async function getBalance(userId: string, query: AnalyticsQueryInput) {
     spentPercentage:
       totalIncome > 0
         ? Math.round((totalExpenses / totalIncome) * 100)
-        : 0,
+        : totalExpenses > 0
+          ? 100
+          : 0,
     dailySpendingRate,
     dailyBudgetRate,
     daysRemaining,
     period: {
-      start: start.toISOString().split("T")[0],
-      end: end.toISOString().split("T")[0],
+      start: toISTDateStr(start),
+      end: toISTDateStr(end),
     },
   };
 }
@@ -260,11 +266,14 @@ export async function getTrends(userId: string, query: AnalyticsQueryInput) {
   let end: Date;
 
   if (hasCustomRange) {
-    start = new Date(query.startDate!);
-    end = new Date(query.endDate!);
+    start = parseISTDate(query.startDate!);
+    end = parseISTDate(query.endDate!, true);
   } else {
     end = new Date();
-    start = new Date(end.getFullYear(), end.getMonth() - 5, 1); // 6 months back
+    // 6 months back, 1st of that month, IST midnight
+    const istEnd = new Date(end.getTime() + 5.5 * 60 * 60 * 1000);
+    const sm = istEnd.getUTCMonth() - 5; // may be negative, Date.UTC handles it
+    start = new Date(Date.UTC(istEnd.getUTCFullYear(), sm, 1) - 5.5 * 60 * 60 * 1000);
   }
 
   const match: Record<string, unknown> = {
@@ -282,8 +291,8 @@ export async function getTrends(userId: string, query: AnalyticsQueryInput) {
     {
       $group: {
         _id: {
-          year: { $year: "$createdAt" },
-          month: { $month: "$createdAt" },
+          year: { $year: { date: "$createdAt", timezone: "Asia/Kolkata" } },
+          month: { $month: { date: "$createdAt", timezone: "Asia/Kolkata" } },
         },
         total: { $sum: "$amount" },
         count: { $sum: 1 },
@@ -306,8 +315,8 @@ export async function getTrends(userId: string, query: AnalyticsQueryInput) {
   return {
     months,
     period: {
-      start: start.toISOString().split("T")[0],
-      end: end.toISOString().split("T")[0],
+      start: toISTDateStr(start),
+      end: toISTDateStr(end),
     },
   };
 }

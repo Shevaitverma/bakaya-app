@@ -361,7 +361,7 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
       const header = 'Date,Title,Amount,Type,Category,Profile,Notes';
 
       const rows = expenses.map((exp) => {
-        const date = new Date(exp.createdAt).toISOString().split('T')[0];
+        const date = toISODate(new Date(exp.createdAt));
         const title = `"${(exp.title || '').replace(/"/g, '""')}"`;
         const amount = exp.amount.toFixed(2);
         const type = exp.type || 'expense';
@@ -400,11 +400,8 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
 
   const formatTime = (dateString: string): string => {
     const date = new Date(dateString);
-    const utcTime = date.getTime();
-    const istOffset = 5.5 * 60 * 60 * 1000;
-    const istTime = new Date(utcTime + istOffset);
-    const hours = String(istTime.getUTCHours()).padStart(2, '0');
-    const minutes = String(istTime.getUTCMinutes()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
     return `${hours}:${minutes}`;
   };
 
