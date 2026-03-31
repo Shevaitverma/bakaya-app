@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ApiError } from "@/lib/api-client";
+import { getSourceEmoji } from "@/utils/source-helpers";
 import { useProfiles, useCategories, useExpense, useUpdateExpense } from "@/lib/queries";
 import styles from "../../new/page.module.css";
 
@@ -15,20 +16,6 @@ const INCOME_SOURCES = [
   "Rental",
   "Other",
 ] as const;
-
-const SOURCE_EMOJI: Record<string, string> = {
-  salary: "\u{1F4B0}",
-  freelance: "\u{1F4BB}",
-  investment: "\u{1F4C8}",
-  gift: "\u{1F381}",
-  refund: "\u{1F504}",
-  rental: "\u{1F3E0}",
-  other: "\u{1F4B5}",
-};
-
-function getSourceEmoji(source: string): string {
-  return SOURCE_EMOJI[source.toLowerCase()] ?? "\u{1F4B5}";
-}
 
 export default function EditExpensePage() {
   const router = useRouter();

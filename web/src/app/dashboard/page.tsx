@@ -3,40 +3,13 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { formatCurrency } from "@/utils/currency";
+import { getSourceEmoji, getSourceColor } from "@/utils/source-helpers";
 import type { Expense } from "@/lib/api/expenses";
 import type { BalanceData } from "@/lib/api/analytics";
 import type { Category } from "@/lib/api/categories";
 import type { Profile } from "@/types/profile";
 import { useProfiles, useCategoriesMap, useBalance, useExpenses } from "@/lib/queries";
 import styles from "./page.module.css";
-
-const SOURCE_EMOJI: Record<string, string> = {
-  salary: "\u{1F4B0}",
-  freelance: "\u{1F4BB}",
-  investment: "\u{1F4C8}",
-  gift: "\u{1F381}",
-  refund: "\u{1F504}",
-  rental: "\u{1F3E0}",
-  other: "\u{1F4B5}",
-};
-
-const SOURCE_COLORS: Record<string, string> = {
-  salary: "rgba(16, 185, 129, 0.1)",
-  freelance: "rgba(99, 102, 241, 0.1)",
-  investment: "rgba(34, 197, 94, 0.1)",
-  gift: "rgba(244, 63, 94, 0.1)",
-  refund: "rgba(59, 130, 246, 0.1)",
-  rental: "rgba(139, 92, 246, 0.1)",
-  other: "rgba(16, 185, 129, 0.1)",
-};
-
-function getSourceEmoji(source: string): string {
-  return SOURCE_EMOJI[source.toLowerCase()] ?? "\u{1F4B5}";
-}
-
-function getSourceColor(source: string): string {
-  return SOURCE_COLORS[source.toLowerCase()] ?? "rgba(16, 185, 129, 0.1)";
-}
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -92,10 +65,13 @@ export default function DashboardPage() {
   const { data: profiles = [], isLoading: profilesLoading } = useProfiles();
   const { data: rawCategoriesMap = {}, isLoading: categoriesLoading } = useCategoriesMap();
   const { data: balanceData, isLoading: balanceLoading } = useBalance({});
-  const { data: expensesData, isLoading: expensesLoading } = useExpenses({
-    limit: 5,
+
+  const expenseParams = useMemo(() => ({
+    limit: 5 as const,
     ...(selectedProfileId ? { profileId: selectedProfileId } : {}),
-  });
+  }), [selectedProfileId]);
+
+  const { data: expensesData, isLoading: expensesLoading } = useExpenses(expenseParams);
 
   // Build a lowercased categories map for case-insensitive lookup
   const categoriesMap = useMemo(() => {

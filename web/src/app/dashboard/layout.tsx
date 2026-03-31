@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { clearAllAuth, getToken, setOnSessionExpired } from "@/lib/api-client";
-import { authApi } from "@/lib/api/auth";
 import styles from "./layout.module.css";
 
 interface NavItem {
@@ -104,13 +103,6 @@ export default function DashboardLayout({
       setOnSessionExpired(null);
     };
   }, []);
-
-  const handleLogout = async () => {
-    // Best-effort server logout before clearing local tokens
-    await authApi.logout();
-    clearAllAuth();
-    router.push("/login");
-  };
 
   const isActive = (href: string) => {
     if (href === "/dashboard") {

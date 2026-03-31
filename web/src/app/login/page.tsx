@@ -3,8 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signInWithPopup } from "firebase/auth";
-import { auth, googleProvider } from "@/lib/firebase";
 import { authApi } from "@/lib/api/auth";
 import { ApiError, setToken, setRefreshToken } from "@/lib/api-client";
 import styles from "./page.module.css";
@@ -29,6 +27,8 @@ export default function LoginPage() {
     setErrors({});
 
     try {
+      const { signInWithPopup } = await import("firebase/auth");
+      const { auth, googleProvider } = await import("@/lib/firebase");
       const result = await signInWithPopup(auth, googleProvider);
       const idToken = await result.user.getIdToken();
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { formatDate } from "@/utils/format";
@@ -100,11 +100,7 @@ export default function GroupDetailPage() {
   }
 
   /** Build human-readable balance entries from the balances object */
-  function getBalanceEntries(): {
-    userId: string;
-    userName: string;
-    amount: number;
-  }[] {
+  const balanceEntries = useMemo(() => {
     if (!balances || !currentUserId) return [];
     const entries: { userId: string; userName: string; amount: number }[] = [];
 
@@ -117,7 +113,7 @@ export default function GroupDetailPage() {
       });
     }
     return entries;
-  }
+  }, [balances, currentUserId, group]);
 
   const handleDelete = (expense: GroupExpense) => {
     setDeleteError("");
@@ -224,8 +220,6 @@ export default function GroupDetailPage() {
       }
     }
   };
-
-  const balanceEntries = getBalanceEntries();
 
   return (
     <div className={styles.page}>
