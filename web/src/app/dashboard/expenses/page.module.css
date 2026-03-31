@@ -230,7 +230,8 @@
   background: #F9FAFB;
 }
 
-.typeFilterBtnActive {
+.typeFilterBtn.typeFilterBtnActive,
+.typeFilterBtn.typeFilterBtnActive:hover {
   background: linear-gradient(135deg, #D81B60, #E91E63);
   border-color: transparent;
   color: #fff;
