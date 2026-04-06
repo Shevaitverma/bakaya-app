@@ -221,20 +221,40 @@ export async function getBalance(userId: string, query: AnalyticsQueryInput) {
   const totalExpenses = byType.expense?.total ?? 0;
   const balance = totalIncome - totalExpenses;
 
+  // For custom date ranges (historical), use the period end directly;
+  // for default (current month), cap at today so future days aren't counted as elapsed
+  const hasCustomRange = query.startDate && query.endDate;
+  const effectiveEnd = hasCustomRange ? end : new Date(Math.min(end.getTime(), Date.now()));
   const daysPassed = Math.max(
     1,
     Math.ceil(
-      (Math.min(end.getTime(), Date.now()) - start.getTime()) / 86400000
+      (effectiveEnd.getTime() - start.getTime()) / 86400000
     )
   );
+
+  // For budget calculation, use end-of-month as the period end
+  // so there are remaining days to budget against
+  const periodEnd = query.startDate && query.endDate
+    ? end
+    : (() => {
+        const nowStr = toISTDateStr(new Date());
+        const y = parseInt(nowStr.slice(0, 4));
+        const m = parseInt(nowStr.slice(5, 7));
+        const lastDay = new Date(y, m, 0); // last day of current month
+        lastDay.setHours(23, 59, 59, 999);
+        return lastDay;
+      })();
+
   const daysInPeriod = Math.max(
     1,
-    Math.ceil((end.getTime() - start.getTime()) / 86400000)
+    Math.ceil((periodEnd.getTime() - start.getTime()) / 86400000)
   );
   const dailySpendingRate = Math.round((totalExpenses / daysPassed) * 100) / 100;
-  const dailyBudgetRate =
-    totalIncome > 0 ? Math.round((totalIncome / daysInPeriod) * 100) / 100 : 0;
   const daysRemaining = Math.max(0, daysInPeriod - daysPassed);
+  const dailyBudgetRate =
+    daysRemaining > 0 && balance > 0
+      ? Math.round((balance / daysRemaining) * 100) / 100
+      : 0;
 
   return {
     totalIncome,
@@ -271,9 +291,15 @@ export async function getTrends(userId: string, query: AnalyticsQueryInput) {
   } else {
     end = new Date();
     // 6 months back, 1st of that month, IST midnight
-    const istEnd = new Date(end.getTime() + 5.5 * 60 * 60 * 1000);
-    const sm = istEnd.getUTCMonth() - 5; // may be negative, Date.UTC handles it
-    start = new Date(Date.UTC(istEnd.getUTCFullYear(), sm, 1) - 5.5 * 60 * 60 * 1000);
+    const endStr = toISTDateStr(end);
+    const ey = parseInt(endStr.slice(0, 4));
+    const em = parseInt(endStr.slice(5, 7));
+    // Subtract 5 months (current month + 5 previous = 6 months total)
+    const startMonth = em - 5;
+    const startYear = ey + Math.floor((startMonth - 1) / 12);
+    const normMonth = ((((startMonth - 1) % 12) + 12) % 12) + 1;
+    const startStr = `${startYear}-${String(normMonth).padStart(2, "0")}-01`;
+    start = parseISTDate(startStr);
   }
 
   const match: Record<string, unknown> = {

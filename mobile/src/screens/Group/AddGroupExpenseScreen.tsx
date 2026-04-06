@@ -304,7 +304,7 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
     if (!amount || splitMembers.size === 0) return formatCurrencyExact(0);
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) return formatCurrencyExact(0);
-    const perPerson = amountNum / splitMembers.size;
+    const perPerson = Math.floor((amountNum / splitMembers.size) * 100) / 100;
     return formatCurrencyExact(perPerson);
   };
 

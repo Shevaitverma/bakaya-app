@@ -108,8 +108,9 @@ class CategoryService {
    * GET /categories
    * Fetch all categories. Auto-seeds defaults on first call.
    */
-  async getCategories(token: string): Promise<CategoriesResponse> {
-    const endpoint = API_CONFIG.ENDPOINTS.CATEGORIES.LIST;
+  async getCategories(token: string, includeArchived = false): Promise<CategoriesResponse> {
+    const qs = includeArchived ? '?activeOnly=false' : '';
+    const endpoint = `${API_CONFIG.ENDPOINTS.CATEGORIES.LIST}${qs}`;
 
     return this.request<CategoriesResponse>(endpoint, {
       method: 'GET',

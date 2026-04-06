@@ -129,7 +129,7 @@ export default function AnalyticsPage() {
     if (!summary) return 0;
     const start = new Date(summary.period.start + "T00:00:00");
     const end = new Date(summary.period.end + "T00:00:00");
-    const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    const days = Math.max(1, Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
     return Math.round(totalSpent / days);
   }, [summary, totalSpent]);
 
@@ -465,7 +465,7 @@ function EmptyState({ message }: { message: string }) {
 /* ---- Utility functions ---- */
 
 function abbreviateAmount(amount: number): string {
-  if (amount >= 100000) return `\u20B9${(amount / 100000).toFixed(1)}L`;
-  if (amount >= 1000) return `\u20B9${(amount / 1000).toFixed(1)}K`;
+  if (amount >= 100000) return `\u20B9${parseFloat((amount / 100000).toFixed(1))}L`;
+  if (amount >= 1000) return `\u20B9${parseFloat((amount / 1000).toFixed(1))}K`;
   return formatCurrency(amount);
 }

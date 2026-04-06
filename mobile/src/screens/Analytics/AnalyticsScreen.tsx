@@ -295,7 +295,7 @@ const AnalyticsScreen: React.FC = () => {
     const end = new Date(summary.period.end + 'T00:00:00');
     const days = Math.max(
       1,
-      Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+      Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1,
     );
     return Math.round(totalSpent / days);
   }, [summary, totalSpent]);

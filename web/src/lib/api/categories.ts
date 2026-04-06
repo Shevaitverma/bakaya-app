@@ -13,7 +13,7 @@ export interface Category {
 
 export const categoriesApi = {
   list(includeArchived = false) {
-    const qs = includeArchived ? "?includeArchived=true" : "";
+    const qs = includeArchived ? "?activeOnly=false" : "";
     return api.get<{ categories: Category[] }>(`/api/v1/categories${qs}`);
   },
   create(data: { name: string; emoji?: string; color?: string }) {

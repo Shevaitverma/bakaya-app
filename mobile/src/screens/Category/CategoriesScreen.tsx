@@ -107,7 +107,7 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await categoryService.getCategories(accessToken);
+      const response = await categoryService.getCategories(accessToken, true);
 
       if (response.success && response.data) {
         setCategories(response.data.categories);
