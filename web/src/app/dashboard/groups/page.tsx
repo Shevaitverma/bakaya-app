@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useGroups } from "@/lib/queries";
+import { Skeleton } from "@/components/Skeleton";
 import styles from "./page.module.css";
 
 export default function GroupsPage() {
@@ -21,7 +22,18 @@ export default function GroupsPage() {
       {/* ---------- Content Sheet ---------- */}
       <div className={styles.content}>
         {isLoading ? (
-          <p className={styles.loadingText}>Loading groups...</p>
+          <div className={styles.groupsGrid}>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className={styles.groupCard} style={{ pointerEvents: "none" }}>
+                <Skeleton width={48} height={48} borderRadius="50%" />
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <Skeleton width="60%" height={14} />
+                  <Skeleton width="80%" height={10} />
+                  <Skeleton width="40%" height={10} />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : groups.length === 0 ? (
           <div className={styles.emptyState}>
             <p className={styles.emptyIcon}>&#128101;</p>

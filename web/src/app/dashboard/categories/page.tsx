@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api-client";
 import { categoriesApi, type Category } from "@/lib/api/categories";
 import { queryKeys } from "@/lib/queries";
+import { Skeleton } from "@/components/Skeleton";
 import styles from "./page.module.css";
 
 const COLOR_PRESETS = [
@@ -184,7 +185,17 @@ export default function CategoriesPage() {
 
       <div className={styles.contentSheet}>
       {isLoading ? (
-        <p className={styles.loadingText}>Loading categories...</p>
+        <div className={styles.categoryList}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className={styles.categoryCard} style={{ pointerEvents: "none" }}>
+              <Skeleton width={40} height={40} borderRadius="50%" />
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                <Skeleton width={`${50 + (i % 3) * 15}%`} height={14} />
+              </div>
+              <Skeleton width={12} height={12} borderRadius="50%" />
+            </div>
+          ))}
+        </div>
       ) : activeCategories.length === 0 && archivedCategories.length === 0 ? (
         <div className={styles.emptyState}>
           <p className={styles.emptyTitle}>No categories yet</p>

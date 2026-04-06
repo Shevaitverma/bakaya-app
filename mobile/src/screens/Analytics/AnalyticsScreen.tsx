@@ -63,7 +63,7 @@ const CATEGORY_COLORS = [
 // Date filter presets (inline chips — replaces DateRangePicker modal)
 // ---------------------------------------------------------------------------
 
-type DatePreset = 'this_month' | 'last_month' | 'last_3_months' | 'this_year' | 'all';
+type DatePreset = 'this_month' | 'last_month' | 'last_3_months' | 'half_year' | 'all';
 
 interface DateRange {
   startDate: string | undefined;
@@ -93,12 +93,12 @@ function computeRange(preset: DatePreset): DateRange {
       const start = new Date(today.getFullYear(), today.getMonth() - 2, 1);
       return { startDate: toISODate(start), endDate: toISODate(today) };
     }
-    case 'this_year': {
-      const start = new Date(today.getFullYear(), 0, 1);
+    case 'half_year': {
+      const start = new Date(today.getFullYear(), today.getMonth() - 5, 1);
       return { startDate: toISODate(start), endDate: toISODate(today) };
     }
     case 'all':
-      return { startDate: undefined, endDate: undefined };
+      return { startDate: '2020-01-01', endDate: toISODate(today) };
     default:
       return { startDate: undefined, endDate: undefined };
   }
@@ -108,7 +108,7 @@ const DATE_PRESETS: { key: DatePreset; label: string }[] = [
   { key: 'this_month', label: 'This Month' },
   { key: 'last_month', label: 'Last Month' },
   { key: 'last_3_months', label: 'Last 3 Months' },
-  { key: 'this_year', label: 'This Year' },
+  { key: 'half_year', label: 'Half Year' },
   { key: 'all', label: 'All' },
 ];
 

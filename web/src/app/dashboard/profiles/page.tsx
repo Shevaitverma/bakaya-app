@@ -12,6 +12,7 @@ import { useProfiles } from "@/lib/queries";
 import { queryKeys } from "@/lib/queries";
 import { formatCurrency } from "@/utils/currency";
 import type { Profile } from "@/types/profile";
+import { Skeleton } from "@/components/Skeleton";
 import styles from "./page.module.css";
 
 export default function ProfilesPage() {
@@ -42,11 +43,16 @@ export default function ProfilesPage() {
 
   const { data: profiles = [], isLoading } = useProfiles();
 
-  // Fetch spending totals for each profile in parallel
+  // Current month date range for per-month spending
+  const now = new Date();
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+  // Fetch spending totals for each profile (current month)
   const totalsQueries = useQueries({
     queries: profiles.map((profile) => ({
-      queryKey: queryKeys.expenses.list({ profileId: profile._id, limit: 1 }),
-      queryFn: () => expensesApi.list({ profileId: profile._id, limit: 1 }),
+      queryKey: queryKeys.expenses.list({ profileId: profile._id, limit: 1, startDate: monthStart, endDate: today }),
+      queryFn: () => expensesApi.list({ profileId: profile._id, limit: 1, startDate: monthStart, endDate: today }),
       enabled: profiles.length > 0,
     })),
   });
@@ -96,7 +102,21 @@ export default function ProfilesPage() {
 
       <div className={styles.contentSheet}>
       {isLoading ? (
-        <p className={styles.loadingText}>Loading profiles...</p>
+        <div className={styles.profilesList}>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className={styles.profileCard} style={{ pointerEvents: "none" }}>
+              <Skeleton width={44} height={44} borderRadius="50%" />
+              <div className={styles.profileInfo} style={{ gap: 8 }}>
+                <Skeleton width="55%" height={14} />
+                <Skeleton width="35%" height={11} />
+              </div>
+              <div className={styles.profileRight}>
+                <Skeleton width={50} height={10} />
+                <Skeleton width={70} height={16} />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : profiles.length === 0 ? (
         <div className={styles.emptyState}>
           <p className={styles.emptyTitle}>No profiles yet</p>
@@ -145,7 +165,7 @@ export default function ProfilesPage() {
                   </div>
                   <div className={styles.profileRight}>
                     <span className={styles.profileRightLabel}>
-                      {profile.isDefault ? "TOTAL SPENT" : "BALANCE"}
+                      BALANCE
                     </span>
                     {profileTotals[profile._id] ? (
                       <span className={`${styles.profileRightAmount} ${

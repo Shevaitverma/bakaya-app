@@ -15,13 +15,13 @@ import { formatCurrency } from "@/utils/currency";
 import styles from "./page.module.css";
 
 /* Date filter chip definitions */
-type DateFilter = "this_month" | "last_month" | "last_3_months" | "this_year" | "all";
+type DateFilter = "this_month" | "last_month" | "last_3_months" | "half_year" | "all";
 
 const DATE_FILTERS: { key: DateFilter; label: string }[] = [
   { key: "this_month", label: "This Month" },
   { key: "last_month", label: "Last Month" },
   { key: "last_3_months", label: "Last 3 Months" },
-  { key: "this_year", label: "This Year" },
+  { key: "half_year", label: "Half Year" },
   { key: "all", label: "All" },
 ];
 
@@ -44,10 +44,10 @@ function getDateRange(filter: DateFilter): AnalyticsQueryParams {
       return { startDate: fmt(new Date(y, m - 1, 1)), endDate: fmt(new Date(y, m, 0)) };
     case "last_3_months":
       return { startDate: fmt(new Date(y, m - 2, 1)), endDate: fmt(now) };
-    case "this_year":
-      return { startDate: fmt(new Date(y, 0, 1)), endDate: fmt(now) };
+    case "half_year":
+      return { startDate: fmt(new Date(y, m - 5, 1)), endDate: fmt(now) };
     case "all":
-      return {};
+      return { startDate: "2020-01-01", endDate: fmt(now) };
   }
 }
 
@@ -176,9 +176,6 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Analytics</h1>
-        <p className={styles.pageSubtitle}>
-          Review your spending patterns and budgets.
-        </p>
       </div>
 
       <div className={styles.contentSheet}>

@@ -7,7 +7,7 @@
 /* --- Page Shell --- */
 .page {
   min-height: 100dvh;
-  background: #D81B60;
+  background: #F5F5F5;
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
@@ -46,10 +46,10 @@
 }
 
 .headerTitle {
-  font-size: var(--font-size-display);
-  font-weight: var(--font-weight-bold);
-  color: #fff;
-  letter-spacing: -1px;
+  font-size: 32px;
+  font-weight: 800;
+  color: #FFFFFF;
+  letter-spacing: -0.5px;
 }
 
 .totalRow {
@@ -82,7 +82,6 @@
   border-top-right-radius: 24px;
   margin-top: -28px;
   background: #F5F5F5;
-  animation: fadeSlideUp 0.3s ease both;
 }
 
 /* --- Section --- */

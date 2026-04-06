@@ -95,8 +95,8 @@ export default function DashboardPage() {
     <div className={styles.page}>
       {/* ===== Pink Header ===== */}
       <div className={styles.header}>
-        <p className={styles.greeting}>Hello, {userName}</p>
         <h1 className={styles.title}>Bakaya</h1>
+        <p className={styles.greeting}>Hello, {userName}</p>
       </div>
 
       {/* ===== Content Sheet ===== */}

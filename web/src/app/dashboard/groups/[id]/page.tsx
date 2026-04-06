@@ -17,6 +17,7 @@ import {
   useAddMember,
   useCreateSettlement,
 } from "@/lib/queries";
+import { Skeleton } from "@/components/Skeleton";
 import styles from "./page.module.css";
 
 function getMemberDisplayName(member: {
@@ -235,7 +236,7 @@ export default function GroupDetailPage() {
 
         <div className={styles.headerCenter}>
           <h1 className={styles.headerTitle}>
-            {isLoading ? "Loading..." : group?.name ?? "Group"}
+            {isLoading ? <Skeleton width={120} height={24} /> : group?.name ?? "Group"}
           </h1>
           <div className={styles.totalRow}>
             <p className={styles.totalLabel}>Total expense</p>
@@ -251,9 +252,23 @@ export default function GroupDetailPage() {
       {/* ---------- Content ---------- */}
       <main className={styles.content}>
         {isLoading ? (
-          <p style={{ textAlign: "center", padding: "2rem", opacity: 0.6 }}>
-            Loading group...
-          </p>
+          <>
+            {Array.from({ length: 3 }).map((_, s) => (
+              <div key={s} className={styles.section}>
+                <Skeleton width={140} height={16} style={{ marginBottom: 16 }} />
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0" }}>
+                    <Skeleton width={44} height={44} borderRadius={12} />
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                      <Skeleton width="50%" height={14} />
+                      <Skeleton width="30%" height={10} />
+                    </div>
+                    <Skeleton width={60} height={16} />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </>
         ) : (
           <>
             {/* ---------- Balances Section ---------- */}

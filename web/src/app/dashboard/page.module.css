@@ -3,13 +3,18 @@
    ============================================ */
 
 @keyframes fadeSlideUp {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* --- Page: full pink background --- */
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* --- Page --- */
 .page {
-  background: #D81B60;
+  background: #F5F5F5;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -17,15 +22,23 @@
 
 /* --- Pink Header --- */
 .header {
-  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding: 32px 32px 60px;
+  background: #D81B60;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
 }
 
 .greeting {
-  font-size: 15px;
+  font-size: 14px;
   color: rgba(255, 255, 255, 0.75);
   font-weight: 400;
-  margin: 0 0 6px;
+  margin: 0;
 }
 
 .title {
@@ -46,7 +59,6 @@
   margin-top: -28px;
   padding: 28px 32px 100px;
   min-height: 0;
-  animation: fadeSlideUp 0.3s ease;
 }
 
 /* --- Balance Card --- */
@@ -58,6 +70,7 @@
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   margin-bottom: 8px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: scaleIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .balanceCardTopRow {
@@ -289,6 +302,7 @@
   border: 1px solid rgba(0, 0, 0, 0.06);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   overflow: hidden;
+  animation: scaleIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
 }
 
 .expenseRow {
@@ -296,9 +310,15 @@
   align-items: center;
   padding: 16px 20px;
   gap: 14px;
-  animation: fadeSlideUp 400ms ease both;
+  animation: fadeSlideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
   transition: background 0.15s ease, transform 0.1s ease;
 }
+
+.expenseRow:nth-child(1) { animation-delay: 0.05s; }
+.expenseRow:nth-child(2) { animation-delay: 0.1s; }
+.expenseRow:nth-child(3) { animation-delay: 0.15s; }
+.expenseRow:nth-child(4) { animation-delay: 0.2s; }
+.expenseRow:nth-child(5) { animation-delay: 0.25s; }
 
 .expenseRow:active {
   transform: scale(0.99);
@@ -446,7 +466,7 @@
 @media (max-width: 768px) {
   .header { padding: 24px 20px 52px; }
   .contentSheet { padding: 24px 20px 140px; }
-  .title { font-size: 28px; }
+  .title { font-size: 24px; }
   .fab { bottom: 80px; right: 20px; }
 }
 

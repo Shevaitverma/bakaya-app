@@ -9,6 +9,7 @@ import { getSourceEmoji, getSourceColor } from "@/utils/source-helpers";
 import { expensesApi, type Expense, type ExpenseQueryParams } from "@/lib/api/expenses";
 import { useProfiles, useCategoriesMap, useExpenses, useDeleteExpense } from "@/lib/queries";
 import DateRangePicker from "@/components/DateRangePicker";
+import { SkeletonRow } from "@/components/Skeleton";
 import styles from "./page.module.css";
 
 type TypeFilter = "all" | "expense" | "income";
@@ -227,9 +228,11 @@ export default function ExpensesPage() {
         {/* ---------- Content ---------- */}
         <main className={styles.content}>
         {isLoading ? (
-          <p style={{ textAlign: "center", padding: "2rem", opacity: 0.6 }}>
-            Loading transactions...
-          </p>
+          <div className={styles.expenseList}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <SkeletonRow key={i} />
+            ))}
+          </div>
         ) : expenses.length === 0 ? (
           <div className={styles.empty}>
             <span className={styles.emptyIcon} aria-hidden>

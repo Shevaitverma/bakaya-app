@@ -6,7 +6,7 @@
 /* --- Page Shell --- */
 .page {
   min-height: 100dvh;
-  background: #D81B60;
+  background: #F5F5F5;
   display: flex;
   flex-direction: column;
 }
@@ -21,9 +21,9 @@
 }
 
 .headerTitle {
-  font-size: var(--font-size-display);
-  font-weight: var(--font-weight-bold);
-  color: #fff;
+  font-size: 32px;
+  font-weight: 800;
+  color: #FFFFFF;
   letter-spacing: -1px;
 }
 
@@ -41,7 +41,6 @@
   margin-top: -28px;
   position: relative;
   z-index: 1;
-  animation: fadeSlideUp 0.3s ease both;
 }
 
 .form {

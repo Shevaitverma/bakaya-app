@@ -2,19 +2,34 @@
    Analytics Page Styles — Mobile-matching Design
    ============================================ */
 
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* --- Page: full pink background --- */
 .page {
-  background: #D81B60;
+  background: #F5F5F5;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  animation: fadeIn 400ms ease both;
 }
 
 /* --- Pink Header --- */
 .pageHeader {
-  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding: 32px 32px 60px;
+  background: #D81B60;
+}
+
+.headerLeft {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -44,12 +59,6 @@
   border-top-right-radius: 24px;
   margin-top: -28px;
   padding: 28px 32px 100px;
-  animation: slideUp 0.35s ease both;
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 /* --- Date Filter Chips --- */
