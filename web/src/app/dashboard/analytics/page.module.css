@@ -594,25 +594,33 @@
     font-size: 13px;
   }
 
-  /* Summary cards */
+  /* Summary cards — horizontal scroll on mobile */
   .cardsRow {
-    grid-template-columns: 1fr;
+    display: flex;
     gap: 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
   }
+
+  .cardsRow::-webkit-scrollbar { display: none; }
 
   .card {
     padding: 14px;
+    min-width: 140px;
+    flex: 1;
   }
 
   .cardIconCircle {
-    width: 40px;
-    height: 40px;
-    margin-bottom: 10px;
+    width: 36px;
+    height: 36px;
+    margin-bottom: 8px;
   }
 
   .cardIconCircle svg {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
   }
 
   .cardLabel {
@@ -621,7 +629,7 @@
 
   .cardValueRed,
   .cardValueDark {
-    font-size: 22px;
+    font-size: 20px;
   }
 
   .cardStatusGreen,
