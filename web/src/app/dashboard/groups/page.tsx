@@ -22,7 +22,7 @@ function getMemberInitial(member: { userId: { email: string } }): string {
 }
 
 function getAvatarColor(index: number): string {
-  return AVATAR_PALETTE[index % AVATAR_PALETTE.length];
+  return AVATAR_PALETTE[index % AVATAR_PALETTE.length] ?? AVATAR_PALETTE[0]!;
 }
 
 export default function GroupsPage() {

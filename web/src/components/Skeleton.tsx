@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import styles from "./Skeleton.module.css";
 
 interface SkeletonProps {
@@ -5,9 +6,10 @@ interface SkeletonProps {
   height?: string | number;
   borderRadius?: string | number;
   className?: string;
+  style?: CSSProperties;
 }
 
-export function Skeleton({ width, height = 16, borderRadius = 8, className = "" }: SkeletonProps) {
+export function Skeleton({ width, height = 16, borderRadius = 8, className = "", style }: SkeletonProps) {
   return (
     <div
       className={`${styles.skeleton} ${className}`}
@@ -15,6 +17,7 @@ export function Skeleton({ width, height = 16, borderRadius = 8, className = "" 
         width: typeof width === "number" ? `${width}px` : width,
         height: typeof height === "number" ? `${height}px` : height,
         borderRadius: typeof borderRadius === "number" ? `${borderRadius}px` : borderRadius,
+        ...style,
       }}
     />
   );
