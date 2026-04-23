@@ -44,6 +44,7 @@ export type MeStackParamList = {
   ProfileExpenses: { profileId: string; profileName: string; profileColor?: string };
   Categories: undefined;
   Settings: undefined;
+  Invitations: undefined;
 };
 
 export type MainTabParamList = {

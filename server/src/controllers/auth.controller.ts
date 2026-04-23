@@ -342,7 +342,15 @@ export async function refreshTokenHandler(req: Request): Promise<Response> {
       return unauthorizedResponse("Account is deactivated");
     }
 
-    // Generate new token pair
+    // Rotate: issue a fresh access + refresh token pair on every refresh.
+    // This implements a sliding window: as long as the user opens the app
+    // within JWT_REFRESH_EXPIRES_IN, their session stays alive indefinitely.
+    //
+    // TODO(session-hardening): add a server-side refresh-token deny list or a
+    // Session model keyed by jti so rotated tokens can't be replayed. Today
+    // we accept any non-expired refresh token (signed with our secret),
+    // which is fine for typical mobile/web use but means a stolen refresh
+    // token remains valid until it naturally expires.
     const tokenPayload = { userId: user._id.toString(), email: user.email };
     const [accessToken, refreshToken] = await Promise.all([
       generateAccessToken(tokenPayload),

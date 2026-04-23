@@ -54,8 +54,14 @@ export const API_CONFIG = {
       BALANCES: (id: string) => `/groups/${id}/balances`,
       SETTLEMENTS: (id: string) => `/groups/${id}/settlements`,
       SINGLE_SETTLEMENT: (id: string, settlementId: string) => `/groups/${id}/settlements/${settlementId}`,
-      MEMBERS: (id: string) => `/groups/${id}/members`,
       SINGLE_MEMBER: (id: string, memberId: string) => `/groups/${id}/members/${memberId}`,
+      INVITATIONS: (id: string) => `/groups/${id}/invitations`,
+      INVITATION: (id: string, invId: string) => `/groups/${id}/invitations/${invId}`,
+    },
+    INVITATIONS: {
+      LIST_MINE: '/invitations/me',
+      ACCEPT: (id: string) => `/invitations/${id}/accept`,
+      DECLINE: (id: string) => `/invitations/${id}/decline`,
     },
     CATEGORIES: {
       LIST: '/categories',

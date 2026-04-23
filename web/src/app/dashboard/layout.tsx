@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { clearAllAuth, getToken, setOnSessionExpired } from "@/lib/api-client";
+import { useProactiveRefresh } from "@/lib/use-proactive-refresh";
+import { useMyInvitations } from "@/lib/queries";
 import styles from "./layout.module.css";
 
 interface NavItem {
@@ -13,10 +15,11 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Home", href: "/dashboard", icon: "\u2302" },
-  { label: "Groups", href: "/dashboard/groups", icon: "\uD83D\uDC65" },
-  { label: "Analytics", href: "/dashboard/analytics", icon: "\uD83D\uDCCA" },
-  { label: "Profiles", href: "/dashboard/profiles", icon: "\uD83D\uDC64" },
+  { label: "Home", href: "/dashboard", icon: "⌂" },
+  { label: "Groups", href: "/dashboard/groups", icon: "👥" },
+  { label: "Invitations", href: "/dashboard/invitations", icon: "✉" },
+  { label: "Analytics", href: "/dashboard/analytics", icon: "📊" },
+  { label: "Profiles", href: "/dashboard/profiles", icon: "👤" },
 ];
 
 interface StoredUser {
@@ -52,9 +55,44 @@ function NavIcon({ label }: { label: string }) {
           <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
       );
+    case "Invitations":
+      return (
+        <svg viewBox="0 0 24 24">
+          <path d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+      );
     default:
       return null;
   }
+}
+
+function PendingInvitationsBadge({ isAuthChecked }: { isAuthChecked: boolean }) {
+  const { data } = useMyInvitations("pending");
+  if (!isAuthChecked) return null;
+  const count = data?.invitations?.length ?? 0;
+  if (count <= 0) return null;
+  return (
+    <span
+      aria-label={`${count} pending invitation${count === 1 ? "" : "s"}`}
+      style={{
+        marginLeft: "auto",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minWidth: 20,
+        height: 20,
+        padding: "0 6px",
+        fontSize: 11,
+        fontWeight: 700,
+        color: "#fff",
+        background: "#E91E63",
+        borderRadius: 9999,
+        lineHeight: 1,
+      }}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
 }
 
 export default function DashboardLayout({
@@ -68,6 +106,10 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [user, setUser] = useState<StoredUser | null>(null);
+
+  // Proactively refresh the access token when the tab becomes visible, so the
+  // user never waits for a 401→refresh round-trip on return.
+  useProactiveRefresh(isAuthChecked);
 
   useEffect(() => {
     const token = getToken();
@@ -150,6 +192,9 @@ export default function DashboardLayout({
                 <NavIcon label={item.label} />
               </span>
               {item.label}
+              {item.label === "Invitations" && (
+                <PendingInvitationsBadge isAuthChecked={isAuthChecked} />
+              )}
             </Link>
           ))}
         </nav>
@@ -179,9 +224,21 @@ export default function DashboardLayout({
             className={`${styles.bottomNavTab} ${
               isActive(item.href) ? styles.bottomNavTabActive : ""
             }`}
+            style={{ position: "relative" }}
           >
             <NavIcon label={item.label} />
             <span className={styles.bottomNavLabel}>{item.label}</span>
+            {item.label === "Invitations" && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: 4,
+                  right: "calc(50% - 22px)",
+                }}
+              >
+                <PendingInvitationsBadge isAuthChecked={isAuthChecked} />
+              </span>
+            )}
           </Link>
         ))}
       </nav>

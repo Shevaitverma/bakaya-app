@@ -21,6 +21,7 @@ import { Theme } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { profileService } from '../../services/profileService';
 import { expenseService } from '../../services/expenseService';
+import { invitationService } from '../../services/invitationService';
 import { formatCurrency } from '../../utils/currency';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import type { Profile } from '../../types/profile';
@@ -42,7 +43,21 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [profileTotals, setProfileTotals] = useState<Record<string, { totalSpent: number; balance: number }>>({});
   const [totalsLoading, setTotalsLoading] = useState(false);
+  const [pendingInvitationCount, setPendingInvitationCount] = useState<number>(0);
   const lastFetchTime = useRef<number>(0);
+
+  const fetchPendingInvitationCount = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const response = await invitationService.listMyInvitations(accessToken, 'pending');
+      if (response.success && response.data) {
+        setPendingInvitationCount(response.data.invitations?.length ?? 0);
+      }
+    } catch (err) {
+      // Silently fail — don't disrupt the Profiles screen
+      console.warn('[ProfilesScreen] Failed to fetch invitation count', err);
+    }
+  }, [accessToken]);
 
   const fetchProfileTotals = useCallback(async (profilesList: Profile[]) => {
     if (!accessToken || profilesList.length === 0) return;
@@ -106,7 +121,8 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       fetchProfiles();
-    }, [fetchProfiles])
+      fetchPendingInvitationCount();
+    }, [fetchProfiles, fetchPendingInvitationCount])
   );
 
   const handleDeleteProfile = (profileId: string) => {
@@ -329,6 +345,46 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
             { paddingBottom: Theme.spacing.xxl },
           ]}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <TouchableOpacity
+              style={styles.invitationsCard}
+              onPress={() => navigation.navigate('Invitations')}
+              activeOpacity={0.7}>
+              <View style={styles.settingsRow}>
+                <View style={styles.settingsLeft}>
+                  <View style={[styles.settingsIcon, { backgroundColor: `${Theme.colors.primary}15` }]}>
+                    <FontAwesome6
+                      name="envelope-open-text"
+                      size={16}
+                      color={Theme.colors.primary}
+                      solid
+                    />
+                  </View>
+                  <Text style={styles.settingsText}>Invitations</Text>
+                </View>
+                <View style={styles.invitationsRight}>
+                  <View
+                    style={[
+                      styles.invitationsBadge,
+                      pendingInvitationCount === 0 && styles.invitationsBadgeEmpty,
+                    ]}>
+                    <Text
+                      style={[
+                        styles.invitationsBadgeText,
+                        pendingInvitationCount === 0 && styles.invitationsBadgeTextEmpty,
+                      ]}>
+                      {pendingInvitationCount}
+                    </Text>
+                  </View>
+                  <FontAwesome6
+                    name="chevron-right"
+                    size={14}
+                    color={Theme.colors.textTertiary}
+                  />
+                </View>
+              </View>
+            </TouchableOpacity>
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <FontAwesome6
@@ -629,6 +685,38 @@ const styles = StyleSheet.create({
     borderRadius: Theme.borderRadius.md,
     marginTop: Theme.spacing.lg,
     ...Theme.shadows.small,
+  },
+  invitationsCard: {
+    backgroundColor: Theme.colors.cardBackground,
+    borderRadius: Theme.borderRadius.md,
+    marginBottom: Theme.spacing.md,
+    ...Theme.shadows.small,
+  },
+  invitationsRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Theme.spacing.sm,
+  },
+  invitationsBadge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Theme.colors.primary,
+    paddingHorizontal: Theme.spacing.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  invitationsBadgeEmpty: {
+    backgroundColor: Theme.colors.lightGrey,
+  },
+  invitationsBadgeText: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.white,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.bold,
+  },
+  invitationsBadgeTextEmpty: {
+    color: Theme.colors.textSecondary,
   },
   accountCard: {
     backgroundColor: Theme.colors.cardBackground,

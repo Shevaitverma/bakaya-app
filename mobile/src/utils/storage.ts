@@ -1,6 +1,12 @@
 /**
  * Storage utilities using AsyncStorage
  * Compatible with Expo Go (no native linking required)
+ *
+ * TODO(session-hardening): move the refresh token (and ideally the access
+ * token) to `expo-secure-store` for Keychain/Keystore-backed encryption.
+ * Not installed today — deferred to avoid pulling a new native dep in this
+ * change. AsyncStorage is plain text under the app's sandbox, which is
+ * acceptable for a single-user device but not ideal.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';

@@ -94,7 +94,12 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
           setAmount(String(expense.amount));
           setCategory(expense.category || '');
           setNotes(expense.notes || '');
-          setPaidBy(expense.paidBy._id);
+          // The server's User.toJSON exposes `id`, not `_id`. Fall back to either
+          // so we don't end up with `paidBy = undefined` and a failed update.
+          const populatedPaidBy: any = expense.paidBy;
+          const paidById: string =
+            populatedPaidBy?.id ?? populatedPaidBy?._id ?? currentUserId;
+          setPaidBy(paidById);
 
           // Populate split members
           if (expense.splitAmong && expense.splitAmong.length > 0) {
@@ -136,6 +141,20 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
     if (paidBy === currentUserId) return 'You';
     const member = members.find((m) => m.userId === paidBy);
     return member?.name || 'Select';
+  };
+
+  /** Initial for the "Paid by" avatar — uses real name/email for current user. */
+  const getPaidByInitial = (): string => {
+    if (paidBy === currentUserId) {
+      const source =
+        user?.name ||
+        [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() ||
+        user?.email ||
+        'You';
+      return source.charAt(0).toUpperCase();
+    }
+    const member = members.find((m) => m.userId === paidBy);
+    return (member?.name || 'M').charAt(0).toUpperCase();
   };
 
   const validateForm = (): boolean => {
@@ -347,7 +366,7 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
     if (!amount || splitMembers.size === 0) return formatCurrencyExact(0);
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) return formatCurrencyExact(0);
-    const perPerson = amountNum / splitMembers.size;
+    const perPerson = Math.floor((amountNum / splitMembers.size) * 100) / 100;
     return formatCurrencyExact(perPerson);
   };
 
@@ -383,8 +402,8 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={0}>
       <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
 
       {/* Header */}
@@ -409,9 +428,10 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + Theme.spacing.lg },
+          { paddingBottom: insets.bottom + Theme.spacing.xxxl },
         ]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}>
         <View style={styles.form}>
           {/* Title Input */}
@@ -487,9 +507,7 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
               activeOpacity={0.7}>
               <View style={styles.pickerSelected}>
                 <View style={styles.memberAvatar}>
-                  <Text style={styles.memberAvatarText}>
-                    {getPaidByName().charAt(0).toUpperCase()}
-                  </Text>
+                  <Text style={styles.memberAvatarText}>{getPaidByInitial()}</Text>
                 </View>
                 <Text style={styles.pickerSelectedText}>{getPaidByName()}</Text>
               </View>
@@ -612,16 +630,18 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
             })()}
 
             <View style={styles.splitMembersList}>
-              {members.map((member) => {
+              {members.map((member, index) => {
                 const isSelected = splitMembers.has(member.userId);
                 const isCurrentUser = member.userId === currentUserId;
                 const displayName = isCurrentUser ? 'You' : member.name;
+                const isLast = index === members.length - 1;
 
                 return (
                   <View key={member.userId}>
                     <TouchableOpacity
                       style={[
                         styles.splitMemberRow,
+                        isLast && styles.splitMemberRowLast,
                         isSelected && styles.splitMemberRowSelected,
                       ]}
                       onPress={() => toggleSplitMember(member.userId)}
@@ -841,7 +861,7 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
                             styles.paidByAvatarText,
                             isSelected && styles.paidByAvatarTextSelected,
                           ]}>
-                          {member.name.charAt(0).toUpperCase()}
+                          {(member.name || 'M').charAt(0).toUpperCase()}
                         </Text>
                       </View>
                       <Text
@@ -1131,8 +1151,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Theme.spacing.md,
     paddingVertical: Theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#C8C8C8',
+  },
+  splitMemberRowLast: {
+    borderBottomWidth: 0,
   },
   splitMemberRowSelected: {
     backgroundColor: `${Theme.colors.primary}08`,

@@ -3,9 +3,9 @@
  */
 
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { Theme } from '../constants/theme';
 import type {
@@ -15,6 +15,15 @@ import type {
   AnalyticsStackParamList,
   MeStackParamList,
 } from './types';
+
+const stackScreenOptions: NativeStackNavigationOptions = {
+  headerShown: false,
+  animation: Platform.OS === 'ios' ? 'default' : 'slide_from_right',
+  animationDuration: 280,
+  gestureEnabled: true,
+  gestureDirection: 'horizontal',
+  contentStyle: { backgroundColor: Theme.colors.white },
+};
 
 // Home stack screens
 import HomeScreen from '../screens/Home/HomeScreen';
@@ -40,6 +49,7 @@ import EditProfileScreen from '../screens/Profile/EditProfileScreen';
 import MeProfileExpensesScreen from '../screens/Profile/ProfileExpensesScreen';
 import SettingsScreen from '../screens/Settings/SettingsScreen';
 import CategoriesScreen from '../screens/Category/CategoriesScreen';
+import InvitationsScreen from '../screens/Invitations/InvitationsScreen';
 
 // ── Home Stack ──────────────────────────────────────────────────────────────
 
@@ -48,10 +58,7 @@ const HomeStack = createNativeStackNavigator<HomeStackParamList>();
 const HomeStackNavigator: React.FC = () => {
   return (
     <HomeStack.Navigator
-      screenOptions={{
-        headerShown: false,
-        animation: 'slide_from_right',
-      }}>
+      screenOptions={stackScreenOptions}>
       <HomeStack.Screen name="Home" component={HomeScreen} />
       <HomeStack.Screen name="ExpenseDetail" component={ExpenseDetailScreen} />
       <HomeStack.Screen name="AddExpense" component={AddExpenseScreen} />
@@ -74,10 +81,7 @@ const GroupsStack = createNativeStackNavigator<GroupsStackParamList>();
 const GroupsStackNavigator: React.FC = () => {
   return (
     <GroupsStack.Navigator
-      screenOptions={{
-        headerShown: false,
-        animation: 'slide_from_right',
-      }}>
+      screenOptions={stackScreenOptions}>
       <GroupsStack.Screen name="GroupsList" component={GroupsListScreen} />
       <GroupsStack.Screen name="GroupDetail" component={GroupDetailScreen} />
       <GroupsStack.Screen name="CreateGroup" component={CreateGroupScreen} />
@@ -96,9 +100,7 @@ const AnalyticsStack = createNativeStackNavigator<AnalyticsStackParamList>();
 const AnalyticsStackNavigator: React.FC = () => {
   return (
     <AnalyticsStack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}>
+      screenOptions={stackScreenOptions}>
       <AnalyticsStack.Screen name="Analytics" component={AnalyticsScreen} />
     </AnalyticsStack.Navigator>
   );
@@ -111,16 +113,14 @@ const MeStack = createNativeStackNavigator<MeStackParamList>();
 const MeStackNavigator: React.FC = () => {
   return (
     <MeStack.Navigator
-      screenOptions={{
-        headerShown: false,
-        animation: 'slide_from_right',
-      }}>
+      screenOptions={stackScreenOptions}>
       <MeStack.Screen name="Profiles" component={ProfilesScreen} />
       <MeStack.Screen name="AddProfile" component={AddProfileScreen} />
       <MeStack.Screen name="EditProfile" component={EditProfileScreen} />
       <MeStack.Screen name="ProfileExpenses" component={MeProfileExpensesScreen as any} />
       <MeStack.Screen name="Categories" component={CategoriesScreen} options={{ headerShown: false }} />
       <MeStack.Screen name="Settings" component={SettingsScreen} />
+      <MeStack.Screen name="Invitations" component={InvitationsScreen} />
     </MeStack.Navigator>
   );
 };
@@ -134,6 +134,7 @@ export const MainTabNavigator: React.FC = () => {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
+        animation: 'fade',
         tabBarActiveTintColor: Theme.colors.primary,
         tabBarInactiveTintColor: '#9CA3AF',
         tabBarStyle: styles.tabBar,

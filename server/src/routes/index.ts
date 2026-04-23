@@ -28,9 +28,16 @@ import {
   createGroup as createGroupHandler,
   updateGroup as updateGroupHandler,
   deleteGroup as deleteGroupHandler,
-  addMember as addMemberHandler,
   removeMember as removeMemberHandler,
 } from "@/controllers/group.controller";
+import {
+  createInvitationHandler,
+  listGroupInvitationsHandler,
+  cancelInvitationHandler,
+  listMyInvitationsHandler,
+  acceptInvitationHandler,
+  declineInvitationHandler,
+} from "@/controllers/invitation.controller";
 import {
   getGroupExpenses,
   getGroupExpense as getGroupExpenseHandler,
@@ -107,8 +114,15 @@ const routes: RouteHandler[] = [
   { path: "/api/v1/groups/:id", method: "DELETE", handler: deleteGroupHandler, protected: true },
 
   // Group members routes (protected)
-  { path: "/api/v1/groups/:id/members", method: "POST", handler: addMemberHandler, protected: true },
   { path: "/api/v1/groups/:id/members/:memberId", method: "DELETE", handler: removeMemberHandler, protected: true },
+
+  // Group invitation routes (protected)
+  { path: "/api/v1/groups/:id/invitations", method: "POST", handler: createInvitationHandler, protected: true },
+  { path: "/api/v1/groups/:id/invitations", method: "GET", handler: listGroupInvitationsHandler, protected: true },
+  { path: "/api/v1/groups/:id/invitations/:invId", method: "DELETE", handler: cancelInvitationHandler, protected: true },
+  { path: "/api/v1/invitations/me", method: "GET", handler: listMyInvitationsHandler, protected: true },
+  { path: "/api/v1/invitations/:invId/accept", method: "POST", handler: acceptInvitationHandler, protected: true },
+  { path: "/api/v1/invitations/:invId/decline", method: "POST", handler: declineInvitationHandler, protected: true },
 
   // Group expenses routes (protected)
   { path: "/api/v1/groups/:id/expenses", method: "GET", handler: getGroupExpenses, protected: true },

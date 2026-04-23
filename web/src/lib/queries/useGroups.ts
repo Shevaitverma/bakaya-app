@@ -61,16 +61,6 @@ export function useDeleteGroup() {
   });
 }
 
-export function useAddMember(groupId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (email: string) => groupsApi.addMember(groupId, email),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.groups.detail(groupId) });
-    },
-  });
-}
-
 export function useRemoveMember(groupId: string) {
   const qc = useQueryClient();
   return useMutation({

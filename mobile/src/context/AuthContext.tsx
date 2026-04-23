@@ -2,17 +2,22 @@
  * Authentication Context for managing auth state
  *
  * Provides login, register, googleLogin, logout, and token refresh.
+ *
+ * Token refresh is unified with the service-layer 401 retry: both paths
+ * go through `authedFetch.getOrStartRefresh()`, so a foreground-proactive
+ * refresh and a concurrent 401 inside a data fetch can never fire two
+ * /auth/refresh calls at once.
  */
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { authService } from '../services/authService';
 import { storage } from '../utils/storage';
+import { setOnSessionExpired, getOrStartRefresh } from '../lib/authedFetch';
 import type {
   User,
   LoginResponse,
   RegisterResponse,
   GoogleAuthResponse,
-  RefreshTokenResponse,
   AuthState,
 } from '../types/auth';
 
@@ -85,22 +90,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     loadSession();
   }, []);
 
+  // ---- logout (needs to be defined before the effect that uses it) ----
+
+  const logout = useCallback(async () => {
+    setUser(null);
+    setAccessToken(null);
+    setRefreshToken(null);
+    setError(null);
+
+    // Clear persisted session
+    await storage.clearAll();
+  }, []);
+
+  // ---- Register the global session-expired callback ----
+  //
+  // When `authedFetch` detects that the server rejected the refresh token
+  // (401/403 from /auth/refresh), it calls this — the ONLY path that
+  // surfaces a "session expired" UX to the user. Transient network / 5xx
+  // failures during refresh do NOT trigger this callback.
+
+  useEffect(() => {
+    setOnSessionExpired(async () => {
+      console.log('[AUTH] Session expired — refresh token rejected by server');
+      await logout();
+    });
+    return () => {
+      setOnSessionExpired(null);
+    };
+  }, [logout]);
+
   // ---- Token refresh ----
 
   /**
    * Attempt to refresh the session using the stored refresh token.
-   * Returns true on success, false otherwise (caller should redirect to login).
+   * Returns true on success, false otherwise.
+   *
+   * Uses the shared `getOrStartRefresh` so a proactive refresh (e.g. on
+   * foreground) and a concurrent 401-triggered refresh never race.
    */
   const refreshSession = useCallback(async (): Promise<boolean> => {
-    const currentRefresh = refreshTokenRef.current;
+    const currentRefresh = refreshTokenRef.current ?? (await storage.getRefreshToken());
     if (!currentRefresh) return false;
 
     try {
-      const response: RefreshTokenResponse = await authService.refreshTokens(currentRefresh);
-
-      if (response.success && response.data) {
-        const { user: updatedUser, accessToken: newAccess, refreshToken: newRefresh } = response.data;
-        await applySession(updatedUser, newAccess, newRefresh);
+      const outcome = await getOrStartRefresh();
+      if (outcome.ok) {
+        // The shared refresh already persisted the new tokens & user; pull
+        // them into React state so subsequent renders see the fresh values.
+        const [savedUser, savedAccess, savedRefresh] = await Promise.all([
+          storage.getUser(),
+          storage.getAccessToken(),
+          storage.getRefreshToken(),
+        ]);
+        if (savedUser && savedAccess && savedRefresh) {
+          setUser(savedUser);
+          setAccessToken(savedAccess);
+          setRefreshToken(savedRefresh);
+        }
         console.log('[AUTH] Token refreshed successfully');
         return true;
       }
@@ -109,7 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       console.error('[AUTH] Token refresh failed:', err);
       return false;
     }
-  }, [applySession]);
+  }, []);
 
   // ---- Auth actions ----
 
@@ -206,16 +252,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     [applySession]
   );
-
-  const logout = useCallback(async () => {
-    setUser(null);
-    setAccessToken(null);
-    setRefreshToken(null);
-    setError(null);
-
-    // Clear persisted session
-    await storage.clearAll();
-  }, []);
 
   const value: AuthContextType = {
     user,

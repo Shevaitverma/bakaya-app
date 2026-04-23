@@ -131,10 +131,6 @@ export const groupsApi = {
     return api.delete<{ deleted: boolean }>(`/api/v1/groups/${id}`);
   },
 
-  addMember(groupId: string, email: string): Promise<Group> {
-    return api.post<Group>(`/api/v1/groups/${groupId}/members`, { email });
-  },
-
   removeMember(groupId: string, memberId: string): Promise<{ removed: boolean }> {
     return api.delete<{ removed: boolean }>(`/api/v1/groups/${groupId}/members/${memberId}`);
   },

@@ -16,7 +16,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().default("bakaya-dev-jwt-secret-change-in-production"),
   JWT_REFRESH_SECRET: z.string().default("bakaya-dev-refresh-secret-change-in-production"),
   JWT_EXPIRES_IN: z.string().default("15m"),
-  JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
+  JWT_REFRESH_EXPIRES_IN: z.string().default("90d"),
 
   // Firebase
   FIREBASE_PROJECT_ID: z.string().default(""),

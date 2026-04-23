@@ -520,7 +520,7 @@ const AnalyticsScreen: React.FC = () => {
       <View style={styles.sectionCard}>
         <View style={styles.sectionCardHeader}>
           <Text style={styles.sectionCardTitle}>Spending by Category</Text>
-          <FontAwesome6 name="grid-2" size={14} color={Theme.colors.textTertiary} solid />
+          <FontAwesome6 name="table-cells-large" size={14} color={Theme.colors.textTertiary} solid />
         </View>
         {loadingCategories ? (
           <View style={styles.skeletonRows}>

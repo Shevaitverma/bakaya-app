@@ -2,11 +2,21 @@
  * Group type definitions
  */
 
+/**
+ * Populated user reference, as returned by the server.
+ * The server's `User.toJSON` strips `_id` and re-exposes it as `id`,
+ * so populated references always come through as `{ id, email, ... }`.
+ */
+export interface PopulatedUser {
+  id: string;
+  email: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
 export interface GroupMember {
-  userId: {
-    _id: string;
-    email: string;
-  };
+  userId: PopulatedUser;
   role: string;
   joinedAt: string;
 }
@@ -15,10 +25,7 @@ export interface GroupData {
   _id: string;
   name: string;
   description: string;
-  createdBy: {
-    _id: string;
-    email: string;
-  };
+  createdBy: PopulatedUser;
   members: GroupMember[];
   createdAt: string;
   updatedAt: string;
@@ -56,7 +63,7 @@ export interface GroupResponse {
 export interface GroupExpense {
   _id: string;
   groupId: string;
-  paidBy: { _id: string; email: string; name?: string; firstName?: string; lastName?: string };
+  paidBy: PopulatedUser;
   title: string;
   amount: number;
   category?: string;
@@ -101,8 +108,8 @@ export interface GroupBalancesResponse {
 export interface Settlement {
   _id: string;
   groupId: string;
-  paidBy: { _id: string; email: string; name?: string };
-  paidTo: { _id: string; email: string; name?: string };
+  paidBy: PopulatedUser;
+  paidTo: PopulatedUser;
   amount: number;
   notes?: string;
   createdAt: string;
@@ -158,4 +165,29 @@ export interface UpdateGroupExpenseRequest {
   category?: string;
   notes?: string;
   splitAmong?: { userId: string; amount: number }[];
+}
+
+/**
+ * Best-effort display name for a populated user.
+ * Order: name → "firstName lastName" → username-part-of-email → email.
+ */
+export function getPopulatedUserName(user: PopulatedUser | null | undefined): string {
+  if (!user) return '';
+  if (user.name) return user.name;
+  const combined = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+  if (combined) return combined;
+  if (user.email) {
+    const local = user.email.split('@')[0];
+    return local || user.email;
+  }
+  return '';
+}
+
+/**
+ * Single-character initial for a user's avatar.
+ * Prefers firstName / name over email.
+ */
+export function getPopulatedUserInitial(user: PopulatedUser | null | undefined): string {
+  const name = getPopulatedUserName(user);
+  return name ? name.charAt(0).toUpperCase() : '?';
 }

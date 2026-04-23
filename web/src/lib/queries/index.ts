@@ -5,6 +5,12 @@ export { useSummary, useByProfile, useByCategory, useBalance, useTrends } from "
 export { useExpenses, useExpense, useCreateExpense, useUpdateExpense, useDeleteExpense } from "./useExpenses";
 export {
   useGroups, useGroup, useGroupExpenses, useGroupBalances, useGroupSettlements,
-  useCreateGroup, useDeleteGroup, useAddMember, useRemoveMember,
+  useCreateGroup, useDeleteGroup, useRemoveMember,
   useCreateGroupExpense, useDeleteGroupExpense, useCreateSettlement, useDeleteSettlement,
 } from "./useGroups";
+export {
+  useMyInvitations, useGroupInvitations,
+  useSendInvitation, useCancelInvitation,
+  useAcceptInvitation, useDeclineInvitation,
+} from "./useInvitations";
+export type { GroupInvitation, InvitationStatus } from "@/lib/api/invitations";

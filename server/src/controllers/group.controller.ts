@@ -1,5 +1,5 @@
 import { getAuthUser } from "@/middleware/auth";
-import { createGroupSchema, updateGroupSchema, addMemberSchema, groupQuerySchema } from "@/schemas/group.schema";
+import { createGroupSchema, updateGroupSchema, groupQuerySchema } from "@/schemas/group.schema";
 import * as groupService from "@/services/group.service";
 import { successResponse, badRequestResponse, notFoundResponse, forbiddenResponse } from "@/utils/response";
 import { createPaginationMeta } from "@/utils/pagination";
@@ -111,35 +111,6 @@ export async function deleteGroup(req: Request, params?: Record<string, string>)
       return forbiddenResponse(error.message);
     }
     logger.error("Delete group error", { error });
-    throw error;
-  }
-}
-
-export async function addMember(req: Request, params?: Record<string, string>): Promise<Response> {
-  try {
-    const { userId } = getAuthUser(req);
-    const groupId = params?.id;
-    if (!groupId) return badRequestResponse("Group ID is required");
-
-    const body = await req.json();
-    const input = addMemberSchema.parse(body);
-
-    const group = await groupService.addMember(groupId, userId, input.email);
-    return successResponse(group);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return badRequestResponse("Invalid member data");
-    }
-    if (error instanceof Error) {
-      if (error.message === "Group not found") return notFoundResponse(error.message);
-      if (error.message === "Only admins can add members") return forbiddenResponse(error.message);
-      if (error.message === "User not found with that email") return notFoundResponse(error.message);
-      if (error.message === "User is already a member") return badRequestResponse(error.message);
-    }
-    if (error instanceof SyntaxError) {
-      return badRequestResponse("Invalid request body");
-    }
-    logger.error("Add member error", { error });
     throw error;
   }
 }

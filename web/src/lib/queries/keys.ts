@@ -1,5 +1,6 @@
 import type { AnalyticsQueryParams } from "@/lib/api/analytics";
 import type { ExpenseQueryParams } from "@/lib/api/expenses";
+import type { InvitationStatus } from "@/lib/api/invitations";
 
 export const queryKeys = {
   profiles: {
@@ -33,5 +34,12 @@ export const queryKeys = {
     expenses: (groupId: string) => ["groups", groupId, "expenses"] as const,
     balances: (groupId: string) => ["groups", groupId, "balances"] as const,
     settlements: (groupId: string) => ["groups", groupId, "settlements"] as const,
+  },
+
+  invitations: {
+    all: ["invitations"] as const,
+    mine: (status?: InvitationStatus) => ["invitations", "mine", status ?? null] as const,
+    forGroup: (groupId: string, status?: InvitationStatus) =>
+      ["invitations", "group", groupId, status ?? null] as const,
   },
 };

@@ -95,6 +95,24 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
     return member?.name || 'Select';
   };
 
+  /**
+   * Initial for the "Paid by" avatar.
+   * When the selected payer is the current user we want the first letter of
+   * their real name / email — NOT "Y" from the literal label "You".
+   */
+  const getPaidByInitial = (): string => {
+    if (paidBy === currentUserId) {
+      const source =
+        user?.name ||
+        [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() ||
+        user?.email ||
+        'You';
+      return source.charAt(0).toUpperCase();
+    }
+    const member = members.find((m) => m.userId === paidBy);
+    return (member?.name || 'M').charAt(0).toUpperCase();
+  };
+
   const validateForm = (): boolean => {
     const newErrors: { title?: string; amount?: string; category?: string; split?: string } = {};
 
@@ -313,8 +331,8 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={0}>
       <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
 
       {/* Header */}
@@ -339,9 +357,10 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + Theme.spacing.lg },
+          { paddingBottom: insets.bottom + Theme.spacing.xxxl },
         ]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}>
         <View style={styles.form}>
           {/* Title Input */}
@@ -417,9 +436,7 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
               activeOpacity={0.7}>
               <View style={styles.pickerSelected}>
                 <View style={styles.memberAvatar}>
-                  <Text style={styles.memberAvatarText}>
-                    {getPaidByName().charAt(0).toUpperCase()}
-                  </Text>
+                  <Text style={styles.memberAvatarText}>{getPaidByInitial()}</Text>
                 </View>
                 <Text style={styles.pickerSelectedText}>{getPaidByName()}</Text>
               </View>
@@ -434,47 +451,45 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
 
           {/* Split Between */}
           <View style={styles.fieldContainer}>
-            <View style={styles.splitLabelRow}>
-              <Text style={styles.fieldLabel}>Split between</Text>
-              <View style={styles.selectAllRow}>
-                <TouchableOpacity
+            <Text style={styles.fieldLabel}>Split between</Text>
+            <View style={styles.selectAllRow}>
+              <TouchableOpacity
+                style={[
+                  styles.selectAllButton,
+                  splitMembers.size === members.length && styles.selectAllButtonActive,
+                ]}
+                onPress={() => {
+                  setSplitMembers(new Set(members.map((m) => m.userId)));
+                  if (errors.split) setErrors({ ...errors, split: undefined });
+                }}
+                activeOpacity={0.7}>
+                <Text
                   style={[
-                    styles.selectAllButton,
-                    splitMembers.size === members.length && styles.selectAllButtonActive,
-                  ]}
-                  onPress={() => {
-                    setSplitMembers(new Set(members.map((m) => m.userId)));
-                    if (errors.split) setErrors({ ...errors, split: undefined });
-                  }}
-                  activeOpacity={0.7}>
-                  <Text
-                    style={[
-                      styles.selectAllButtonText,
-                      splitMembers.size === members.length && styles.selectAllButtonTextActive,
-                    ]}>
-                    Select All
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
+                    styles.selectAllButtonText,
+                    splitMembers.size === members.length && styles.selectAllButtonTextActive,
+                  ]}>
+                  Select All
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.selectAllButton,
+                  splitMembers.size === 0 && styles.selectAllButtonActive,
+                ]}
+                onPress={() => {
+                  setSplitMembers(new Set());
+                  setExactAmounts({});
+                  setPercentages({});
+                }}
+                activeOpacity={0.7}>
+                <Text
                   style={[
-                    styles.selectAllButton,
-                    splitMembers.size === 0 && styles.selectAllButtonActive,
-                  ]}
-                  onPress={() => {
-                    setSplitMembers(new Set());
-                    setExactAmounts({});
-                    setPercentages({});
-                  }}
-                  activeOpacity={0.7}>
-                  <Text
-                    style={[
-                      styles.selectAllButtonText,
-                      splitMembers.size === 0 && styles.selectAllButtonTextActive,
-                    ]}>
-                    Deselect All
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                    styles.selectAllButtonText,
+                    splitMembers.size === 0 && styles.selectAllButtonTextActive,
+                  ]}>
+                  Deselect All
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Split type tabs */}
@@ -637,16 +652,18 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
             })()}
 
             <View style={styles.splitMembersList}>
-              {members.map((member) => {
+              {members.map((member, index) => {
                 const isSelected = splitMembers.has(member.userId);
                 const isCurrentUser = member.userId === currentUserId;
                 const displayName = isCurrentUser ? 'You' : member.name;
+                const isLast = index === members.length - 1;
 
                 return (
                   <View key={member.userId}>
                     <TouchableOpacity
                       style={[
                         styles.splitMemberRow,
+                        isLast && styles.splitMemberRowLast,
                         isSelected && styles.splitMemberRowSelected,
                       ]}
                       onPress={() => toggleSplitMember(member.userId)}
@@ -866,7 +883,7 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
                             styles.paidByAvatarText,
                             isSelected && styles.paidByAvatarTextSelected,
                           ]}>
-                          {member.name.charAt(0).toUpperCase()}
+                          {(member.name || 'M').charAt(0).toUpperCase()}
                         </Text>
                       </View>
                       <Text
@@ -1047,15 +1064,10 @@ const styles = StyleSheet.create({
   },
 
   // Select All / Deselect All
-  splitLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Theme.spacing.xs,
-  },
   selectAllRow: {
     flexDirection: 'row',
     gap: Theme.spacing.xs,
+    marginBottom: Theme.spacing.sm,
   },
   selectAllButton: {
     paddingHorizontal: Theme.spacing.sm + 2,
@@ -1194,8 +1206,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Theme.spacing.md,
     paddingVertical: Theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#C8C8C8',
+  },
+  splitMemberRowLast: {
+    borderBottomWidth: 0,
   },
   splitMemberRowSelected: {
     backgroundColor: `${Theme.colors.primary}08`,

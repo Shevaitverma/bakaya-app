@@ -23,6 +23,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Theme } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { groupService } from '../../services/groupService';
+import { invitationService } from '../../services/invitationService';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import { formatCurrency } from '../../utils/currency';
 import type { HomeStackParamList } from '../../navigation/types';
@@ -31,7 +32,10 @@ import type {
   GroupExpense,
   GroupBalance,
   Settlement,
+  PopulatedUser,
 } from '../../types/group';
+import { getPopulatedUserName } from '../../types/group';
+import type { GroupInvitation } from '../../types/invitation';
 
 type GroupDetailScreenProps = NativeStackScreenProps<HomeStackParamList, 'GroupDetail'>;
 
@@ -71,11 +75,19 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
   const [expenseToDelete, setExpenseToDelete] = useState<{ id: string; title: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Add member state
+  // Invite member state
   const [showAddMember, setShowAddMember] = useState(false);
   const [memberEmail, setMemberEmail] = useState('');
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [addMemberError, setAddMemberError] = useState('');
+
+  // Pending invitations
+  const [pendingInvitations, setPendingInvitations] = useState<GroupInvitation[]>([]);
+
+  // Cancel invitation dialog
+  const [cancelInvitationDialogVisible, setCancelInvitationDialogVisible] = useState(false);
+  const [invitationToCancel, setInvitationToCancel] = useState<{ id: string; email: string } | null>(null);
+  const [cancelInvitationLoading, setCancelInvitationLoading] = useState(false);
 
   // Remove member dialog
   const [removeMemberDialogVisible, setRemoveMemberDialogVisible] = useState(false);
@@ -91,25 +103,42 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
   const [deleteGroupDialogVisible, setDeleteGroupDialogVisible] = useState(false);
   const [deleteGroupLoading, setDeleteGroupLoading] = useState(false);
 
-  // Map userId to a display name from group members
+  // Map userId to a display name from group members.
+  // Falls back to a generic "Unknown member" instead of echoing the raw ObjectId,
+  // which the user would otherwise see when a member is no longer populated.
   const getMemberName = useCallback(
     (userId: string): string => {
-      if (!group) return userId;
-      const member = group.members.find((m) => m.userId._id === userId);
+      if (!group) return 'Unknown member';
+      // Support both the correct populated shape ({ id, email, ... })
+      // and the legacy bare-ObjectId fallback (string or { _id }).
+      const member = group.members.find((m) => {
+        const mu: any = m.userId;
+        if (!mu) return false;
+        if (typeof mu === 'string') return mu === userId;
+        return mu.id === userId || mu._id === userId;
+      });
       if (member) {
-        return member.userId.email.split('@')[0] || member.userId.email;
+        return getPopulatedUserName(member.userId);
       }
-      return userId;
+      return 'Unknown member';
     },
     [group]
   );
 
   const getMembers = useCallback((): { userId: string; name: string }[] => {
     if (!group) return [];
-    return group.members.map((m) => ({
-      userId: m.userId._id,
-      name: m.userId.email.split('@')[0] || m.userId.email,
-    }));
+    return group.members
+      .map((m) => {
+        const mu: any = m.userId;
+        const userId: string | undefined =
+          typeof mu === 'string' ? mu : mu?.id ?? mu?._id;
+        if (!userId) return null;
+        return {
+          userId,
+          name: getPopulatedUserName(m.userId),
+        };
+      })
+      .filter((m): m is { userId: string; name: string } => m !== null);
   }, [group]);
 
   const lastFetchTime = useRef<number>(0);
@@ -120,11 +149,15 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
 
     try {
       setLoading(true);
-      const [groupRes, expensesRes, balancesRes, settlementsRes] = await Promise.all([
+      const [groupRes, expensesRes, balancesRes, settlementsRes, invitationsRes] = await Promise.all([
         groupService.getGroup(groupId, accessToken),
         groupService.getGroupExpenses(groupId, 1, 50, accessToken),
         groupService.getGroupBalances(groupId, accessToken),
         groupService.getSettlements(groupId, accessToken),
+        // Admin-only endpoint; swallow 403/401 silently so non-admins see nothing
+        invitationService
+          .listGroupInvitations(groupId, accessToken, 'pending')
+          .catch(() => null),
       ]);
 
       if (groupRes.success && groupRes.data) {
@@ -138,6 +171,11 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
       }
       if (settlementsRes.success && settlementsRes.data) {
         setSettlements(settlementsRes.data.settlements);
+      }
+      if (invitationsRes && invitationsRes.success && invitationsRes.data) {
+        setPendingInvitations(invitationsRes.data.invitations ?? []);
+      } else {
+        setPendingInvitations([]);
       }
       lastFetchTime.current = Date.now();
     } catch (err) {
@@ -231,27 +269,72 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
   const handleAddMember = async () => {
     if (!accessToken || isAddingMember || !memberEmail.trim()) return;
 
+    const trimmedEmail = memberEmail.trim();
     setIsAddingMember(true);
     setAddMemberError('');
 
     try {
-      const res = await groupService.addMember(groupId, memberEmail.trim(), accessToken);
-      if (res.success && res.data) {
-        setGroup(res.data);
+      const res = await invitationService.sendInvitation(groupId, trimmedEmail, accessToken);
+      if (res.success && res.data?.invitation) {
+        setPendingInvitations((prev) => [res.data.invitation, ...prev]);
       }
       setMemberEmail('');
       setShowAddMember(false);
+      Alert.alert(
+        'Invitation sent',
+        `We've sent an invitation to ${trimmedEmail}.`,
+        [{ text: 'OK' }]
+      );
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : 'Unable to add member. Please try again.';
+        err instanceof Error ? err.message : 'Unable to send invitation. Please try again.';
       setAddMemberError(errorMessage);
     } finally {
       setIsAddingMember(false);
     }
   };
 
+  const handleCancelInvitation = (invitationId: string, email: string) => {
+    setInvitationToCancel({ id: invitationId, email });
+    setCancelInvitationDialogVisible(true);
+  };
+
+  const handleConfirmCancelInvitation = async () => {
+    if (!accessToken || !invitationToCancel) return;
+
+    setCancelInvitationLoading(true);
+    try {
+      await invitationService.cancelInvitation(groupId, invitationToCancel.id, accessToken);
+      setPendingInvitations((prev) => prev.filter((i) => i._id !== invitationToCancel.id));
+      setCancelInvitationDialogVisible(false);
+      setInvitationToCancel(null);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to cancel invitation';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setCancelInvitationLoading(false);
+    }
+  };
+
+  const handleCancelCancelInvitation = () => {
+    if (!cancelInvitationLoading) {
+      setCancelInvitationDialogVisible(false);
+      setInvitationToCancel(null);
+    }
+  };
+
   // Check if current user is the group creator
-  const isGroupCreator = group?.createdBy._id === user?.id;
+  const isGroupCreator = group?.createdBy?.id === user?.id;
+
+  // Check if current user is an admin of the group (covers both creator and admin-role members)
+  const isGroupAdmin = useMemo(() => {
+    if (!group || !user?.id) return false;
+    if (group.createdBy?.id === user.id) return true;
+    return group.members.some(
+      (m) => m.userId?.id === user.id && m.role === 'admin'
+    );
+  }, [group, user?.id]);
 
   const handleRemoveMember = (memberId: string, memberName: string) => {
     setMemberToRemove({ id: memberId, name: memberName });
@@ -368,19 +451,15 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
     [expenses]
   );
 
-  const getSettlementUserName = (settlementUser: { _id: string; email: string; name?: string }): string => {
-    if (settlementUser.name) return settlementUser.name;
-    return settlementUser.email.split('@')[0] || settlementUser.email;
+  const getSettlementUserName = (settlementUser: PopulatedUser): string => {
+    return getPopulatedUserName(settlementUser);
   };
 
   const getPaidByName = (expense: GroupExpense): string => {
     if (expense.paidBy.firstName) {
       return expense.paidBy.firstName;
     }
-    if (expense.paidBy.name) {
-      return expense.paidBy.name;
-    }
-    return expense.paidBy.email.split('@')[0] || expense.paidBy.email;
+    return getPopulatedUserName(expense.paidBy);
   };
 
   // Calculate balance summary entries from the balances object
@@ -507,8 +586,42 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
   };
 
   const renderExpenseItem = ({ item }: { item: GroupExpense }) => {
-    const paidByName = getPaidByName(item);
-    const splitCount = item.splitAmong?.length ?? 0;
+    const payerId = item.paidBy?.id;
+    const isCurrentUserPayer = !!user?.id && payerId === user.id;
+    const payerLabel = isCurrentUserPayer ? 'You' : getPaidByName(item);
+
+    const userShare = user?.id
+      ? item.splitAmong?.find((s) => s.userId === user.id)?.amount ?? 0
+      : 0;
+    const youPaid = isCurrentUserPayer ? item.amount : 0;
+    const net = youPaid - userShare;
+    const involved = isCurrentUserPayer || userShare > 0;
+
+    let netLabel: string;
+    let netAmount: string;
+    let netColor: string;
+    let netSign: string;
+    if (!involved) {
+      netLabel = 'not involved';
+      netAmount = '';
+      netColor = Theme.colors.textTertiary;
+      netSign = '';
+    } else if (net > 0.01) {
+      netLabel = 'you lent';
+      netAmount = formatCurrency(net);
+      netColor = Theme.colors.success;
+      netSign = '+';
+    } else if (net < -0.01) {
+      netLabel = 'you owe';
+      netAmount = formatCurrency(Math.abs(net));
+      netColor = Theme.colors.error;
+      netSign = '−';
+    } else {
+      netLabel = 'settled';
+      netAmount = '';
+      netColor = Theme.colors.textSecondary;
+      netSign = '';
+    }
 
     return (
       <View style={styles.expenseCard}>
@@ -525,12 +638,25 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
             <Text style={styles.expenseTitle} numberOfLines={1}>
               {item.title}
             </Text>
-            <Text style={styles.expenseSubtext}>
-              {paidByName} paid {'\u00B7'} split {splitCount} {splitCount === 1 ? 'way' : 'ways'} {'\u00B7'} {formatDate(item.createdAt)}
+            <Text style={styles.expenseSubtext} numberOfLines={1}>
+              <Text style={styles.expensePayerName}>{payerLabel}</Text>
+              <Text> paid </Text>
+              <Text style={styles.expensePayerAmount}>{formatCurrency(item.amount)}</Text>
+            </Text>
+            <Text style={styles.expenseMeta} numberOfLines={1}>
+              {formatDate(item.createdAt)}
             </Text>
           </View>
           <View style={styles.expenseRight}>
-            <Text style={[styles.expenseAmount, { color: Theme.colors.error }]}>{formatCurrency(item.amount)}</Text>
+            {netAmount ? (
+              <Text style={[styles.expenseNetAmount, { color: netColor }]} numberOfLines={1}>
+                {netSign}
+                {netAmount}
+              </Text>
+            ) : null}
+            <Text style={[styles.expenseNetLabel, { color: netColor }]} numberOfLines={1}>
+              {netLabel}
+            </Text>
             <View style={styles.expenseActions}>
               <TouchableOpacity
                 style={styles.expenseActionButton}
@@ -789,7 +915,7 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
                 solid
               />
               <Text style={styles.addMemberButtonText}>
-                {showAddMember ? 'Cancel' : 'Add Member'}
+                {showAddMember ? 'Cancel' : 'Invite Member'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -825,7 +951,7 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
                   {isAddingMember ? (
                     <ActivityIndicator size="small" color={Theme.colors.white} />
                   ) : (
-                    <Text style={styles.addMemberSubmitButtonText}>Add</Text>
+                    <Text style={styles.addMemberSubmitButtonText}>Invite</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -835,12 +961,14 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
           {/* Members List */}
           {group?.members && group.members.length > 0 ? (
             <View style={styles.membersCard}>
-              {group.members.map((member) => {
-                const displayName = member.userId.email.split('@')[0] || member.userId.email;
+              {group.members.map((member, index) => {
+                const memberUserId = member.userId?.id ?? '';
+                const displayName = getPopulatedUserName(member.userId) || 'Member';
+                const email = member.userId?.email ?? '';
                 const isAdmin = member.role === 'admin';
 
                 return (
-                  <View key={member.userId._id} style={styles.memberRow}>
+                  <View key={memberUserId || `member-${index}`} style={styles.memberRow}>
                     <View style={[styles.memberAvatar, { backgroundColor: `${Theme.colors.primary}20` }]}>
                       <Text style={[styles.memberAvatarText, { color: Theme.colors.primary }]}>
                         {displayName.charAt(0).toUpperCase()}
@@ -848,7 +976,9 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
                     </View>
                     <View style={styles.memberInfo}>
                       <Text style={styles.memberName} numberOfLines={1}>{displayName}</Text>
-                      <Text style={styles.memberEmail} numberOfLines={1}>{member.userId.email}</Text>
+                      {email !== '' && (
+                        <Text style={styles.memberEmail} numberOfLines={1}>{email}</Text>
+                      )}
                     </View>
                     <View style={styles.memberActions}>
                       <View style={[styles.roleBadge, isAdmin ? styles.roleBadgeAdmin : styles.roleBadgeMember]}>
@@ -856,10 +986,10 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
                           {member.role}
                         </Text>
                       </View>
-                      {isGroupCreator && member.userId._id !== user?.id && (
+                      {isGroupCreator && memberUserId !== '' && memberUserId !== user?.id && (
                         <TouchableOpacity
                           style={styles.removeMemberButton}
-                          onPress={() => handleRemoveMember(member.userId._id, displayName)}
+                          onPress={() => handleRemoveMember(memberUserId, displayName)}
                           activeOpacity={0.7}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                           <FontAwesome6
@@ -887,6 +1017,52 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
             </View>
           )}
         </View>
+
+        {/* Pending Invitations Section (admin-only) */}
+        {isGroupAdmin && pendingInvitations.length > 0 && (
+          <View style={styles.pendingInvitationsSection}>
+            <Text style={styles.sectionTitle}>Pending Invitations</Text>
+            <View style={styles.pendingInvitationsCard}>
+              {pendingInvitations.map((inv) => (
+                <View key={inv._id} style={styles.pendingInvitationRow}>
+                  <View style={styles.pendingInvitationIconWrapper}>
+                    <FontAwesome6
+                      name="envelope"
+                      size={14}
+                      color={Theme.colors.warning}
+                      solid
+                    />
+                  </View>
+                  <View style={styles.pendingInvitationInfo}>
+                    <Text style={styles.pendingInvitationEmail} numberOfLines={1}>
+                      {inv.invitedEmail}
+                    </Text>
+                    <Text style={styles.pendingInvitationDate}>
+                      Invited {formatDate(inv.createdAt)}
+                    </Text>
+                  </View>
+                  <View style={styles.pendingInvitationRight}>
+                    <View style={styles.pendingBadge}>
+                      <Text style={styles.pendingBadgeText}>Pending</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.cancelInvitationButton}
+                      onPress={() => handleCancelInvitation(inv._id, inv.invitedEmail)}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <FontAwesome6
+                        name="trash-can"
+                        size={13}
+                        color={Theme.colors.error}
+                        solid
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Expenses Section Header */}
         <View style={styles.expensesSectionHeader}>
@@ -1098,6 +1274,23 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
         onConfirm={handleConfirmDeleteGroup}
         onCancel={handleCancelDeleteGroup}
         loading={deleteGroupLoading}
+        variant="danger"
+      />
+
+      {/* Cancel Invitation Confirmation Dialog */}
+      <ConfirmationDialog
+        visible={cancelInvitationDialogVisible}
+        title="Cancel Invitation"
+        message={
+          invitationToCancel
+            ? `Cancel the pending invitation to "${invitationToCancel.email}"?`
+            : ''
+        }
+        confirmText="Cancel Invitation"
+        cancelText="Keep"
+        onConfirm={handleConfirmCancelInvitation}
+        onCancel={handleCancelCancelInvitation}
+        loading={cancelInvitationLoading}
         variant="danger"
       />
     </View>
@@ -1625,6 +1818,72 @@ const styles = StyleSheet.create({
     fontFamily: Theme.typography.fontFamily,
   },
 
+  // Pending invitations section
+  pendingInvitationsSection: {
+    marginBottom: Theme.spacing.lg,
+  },
+  pendingInvitationsCard: {
+    backgroundColor: Theme.colors.cardBackground,
+    borderRadius: Theme.borderRadius.lg,
+    padding: Theme.spacing.md,
+    marginTop: Theme.spacing.sm,
+    ...Theme.shadows.small,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  pendingInvitationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Theme.spacing.sm,
+    gap: Theme.spacing.sm,
+  },
+  pendingInvitationIconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: Theme.borderRadius.round,
+    backgroundColor: `${Theme.colors.warning}20`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pendingInvitationInfo: {
+    flex: 1,
+  },
+  pendingInvitationEmail: {
+    fontSize: Theme.typography.fontSize.medium,
+    color: Theme.colors.textPrimary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.semibold,
+  },
+  pendingInvitationDate: {
+    fontSize: Theme.typography.fontSize.small,
+    color: Theme.colors.textSecondary,
+    fontFamily: Theme.typography.fontFamily,
+    marginTop: 1,
+  },
+  pendingInvitationRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Theme.spacing.sm,
+  },
+  pendingBadge: {
+    backgroundColor: `${Theme.colors.warning}15`,
+    paddingHorizontal: Theme.spacing.sm,
+    paddingVertical: Theme.spacing.xs,
+    borderRadius: Theme.borderRadius.round,
+  },
+  pendingBadgeText: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.warning,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.semibold,
+  },
+  cancelInvitationButton: {
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
   // Expenses section
   expensesSectionHeader: {
     flexDirection: 'row',
@@ -1675,10 +1934,26 @@ const styles = StyleSheet.create({
     color: Theme.colors.textSecondary,
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.regular,
+    marginTop: 2,
+  },
+  expensePayerName: {
+    color: Theme.colors.textPrimary,
+    fontWeight: Theme.typography.fontWeight.semibold,
+  },
+  expensePayerAmount: {
+    color: Theme.colors.textPrimary,
+    fontWeight: Theme.typography.fontWeight.semibold,
+  },
+  expenseMeta: {
+    fontSize: Theme.typography.fontSize.xs ?? 11,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily,
+    marginTop: 2,
   },
   expenseRight: {
     alignItems: 'flex-end',
-    gap: Theme.spacing.xs,
+    gap: 2,
+    minWidth: 84,
   },
   expenseAmount: {
     fontSize: Theme.typography.fontSize.large,
@@ -1686,6 +1961,19 @@ const styles = StyleSheet.create({
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.bold,
     letterSpacing: -0.3,
+  },
+  expenseNetAmount: {
+    fontSize: Theme.typography.fontSize.medium,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.bold,
+    letterSpacing: -0.2,
+  },
+  expenseNetLabel: {
+    fontSize: Theme.typography.fontSize.xs ?? 11,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.medium,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   expenseActions: {
     flexDirection: 'row',

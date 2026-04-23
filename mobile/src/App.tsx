@@ -14,6 +14,7 @@ import { queryClient } from './lib/queryClient';
 import { asyncStoragePersister } from './lib/persister';
 import { useAppStateRefresh } from './hooks/useAppStateRefresh';
 import { useOnlineManager } from './hooks/useOnlineManager';
+import { useProactiveRefresh } from './hooks/useProactiveRefresh';
 import { AuthProvider } from './context/AuthContext';
 import { RootNavigator } from './navigation/RootNavigator';
 import { Theme } from './constants/theme';
@@ -22,6 +23,9 @@ function AppContent() {
   // Wire up TanStack Query with React Native AppState + network
   useAppStateRefresh();
   useOnlineManager();
+  // Proactively refresh the access token when the app returns to
+  // foreground, so the first action after resume doesn't eat a 401.
+  useProactiveRefresh();
 
   return (
     <SafeAreaProvider>

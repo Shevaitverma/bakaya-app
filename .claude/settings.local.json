@@ -84,7 +84,12 @@
       "Bash(docker compose:*)",
       "Bash(set -a)",
       "Bash(source ./web/.env.local)",
-      "Bash(set +a)"
+      "Bash(set +a)",
+      "Bash(adb devices *)",
+      "Bash(npm start *)",
+      "Bash(npm run *)",
+      "Bash(sed -i '649,651d' \"E:/shevait-projects/bakaya-app/mobile/src/screens/Group/GroupDetailScreen.tsx\")",
+      "Bash(sed -n '645,655p' \"E:/shevait-projects/bakaya-app/mobile/src/screens/Group/GroupDetailScreen.tsx\")"
     ]
   }
 }

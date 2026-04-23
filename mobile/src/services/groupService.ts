@@ -1,8 +1,12 @@
 /**
- * Group service for API calls
+ * Group service for API calls.
+ *
+ * Uses the shared `authedFetch` wrapper — which handles 401 auto-refresh,
+ * refresh dedup, and session-expired escalation in one place.
  */
 
 import { API_CONFIG } from '../constants/api';
+import { authedFetch } from '../lib/authedFetch';
 import type {
   GroupsResponse,
   GroupResponse,
@@ -18,121 +22,27 @@ import type {
 } from '../types/group';
 
 class GroupService {
-  private baseUrl: string;
-
-  constructor() {
-    this.baseUrl = API_CONFIG.BASE_URL;
-  }
-
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
-
-    try {
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          ...API_CONFIG.HEADERS,
-          ...options.headers,
-        },
-      });
-
-      if (!response.ok) {
-        let errorData: any = {};
-        try {
-          const text = await response.text();
-          errorData = text ? JSON.parse(text) : {};
-        } catch (parseErr) {
-          console.error('[GROUP API] Error parsing error response:', parseErr);
-        }
-
-        // Handle 401 Unauthorized - token expired or invalid
-        if (response.status === 401) {
-          const error = new Error(errorData.error?.message || errorData.message || 'Your session has expired. Please log in again.');
-          (error as any).statusCode = 401;
-          throw error;
-        }
-
-        let errorMessage = '';
-        if (errorData.error?.message) {
-          errorMessage = errorData.error.message;
-        } else if (errorData.message) {
-          errorMessage = errorData.message;
-        } else if (typeof errorData.error === 'string') {
-          errorMessage = errorData.error;
-        } else {
-          errorMessage = `Request failed with status ${response.status}`;
-        }
-
-        throw new Error(errorMessage);
-      }
-
-      // Parse successful response
-      let jsonData: any;
-      try {
-        const responseText = await response.text();
-        jsonData = responseText ? JSON.parse(responseText) : {};
-      } catch (parseErr) {
-        console.error('[GROUP API] JSON parse error:', parseErr);
-        throw new Error('Invalid response format from server');
-      }
-
-      return jsonData;
-    } catch (err) {
-      // Handle network errors and other fetch failures
-      if (err instanceof TypeError && err.message.includes('fetch')) {
-        throw new Error('Network error: Unable to connect to the server. Please check your internet connection.');
-      }
-      if (err instanceof Error) {
-        throw err;
-      }
-      throw new Error('An unexpected error occurred during the request');
-    }
-  }
-
   async getGroups(
     page: number = 1,
     limit: number = 20,
     token: string
   ): Promise<GroupsResponse> {
     const endpoint = `${API_CONFIG.ENDPOINTS.GROUPS.LIST}?page=${page}&limit=${limit}`;
-
-    return this.request<GroupsResponse>(endpoint, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    return authedFetch<GroupsResponse>(endpoint, { method: 'GET', token });
   }
 
-  async createGroup(
-    data: CreateGroupRequest,
-    token: string
-  ): Promise<GroupResponse> {
-    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.LIST;
-
-    return this.request<GroupResponse>(endpoint, {
+  async createGroup(data: CreateGroupRequest, token: string): Promise<GroupResponse> {
+    return authedFetch<GroupResponse>(API_CONFIG.ENDPOINTS.GROUPS.LIST, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      token,
       body: JSON.stringify(data),
     });
   }
 
-  async getGroup(
-    id: string,
-    token: string
-  ): Promise<GroupResponse> {
-    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SINGLE(id);
-
-    return this.request<GroupResponse>(endpoint, {
+  async getGroup(id: string, token: string): Promise<GroupResponse> {
+    return authedFetch<GroupResponse>(API_CONFIG.ENDPOINTS.GROUPS.SINGLE(id), {
       method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      token,
     });
   }
 
@@ -143,13 +53,7 @@ class GroupService {
     token: string
   ): Promise<GroupExpensesResponse> {
     const endpoint = `${API_CONFIG.ENDPOINTS.GROUPS.EXPENSES(groupId)}?page=${page}&limit=${limit}`;
-
-    return this.request<GroupExpensesResponse>(endpoint, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    return authedFetch<GroupExpensesResponse>(endpoint, { method: 'GET', token });
   }
 
   async createGroupExpense(
@@ -157,13 +61,9 @@ class GroupService {
     data: CreateGroupExpenseRequest,
     token: string
   ): Promise<{ success: boolean; data: any; meta: { timestamp: string } }> {
-    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.EXPENSES(groupId);
-
-    return this.request<{ success: boolean; data: any; meta: { timestamp: string } }>(endpoint, {
+    return authedFetch(API_CONFIG.ENDPOINTS.GROUPS.EXPENSES(groupId), {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      token,
       body: JSON.stringify(data),
     });
   }
@@ -173,57 +73,23 @@ class GroupService {
     expenseId: string,
     token: string
   ): Promise<{ success: boolean; data: { message: string }; meta: { timestamp: string } }> {
-    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SINGLE_EXPENSE(groupId, expenseId);
-
-    return this.request<{ success: boolean; data: { message: string }; meta: { timestamp: string } }>(endpoint, {
+    return authedFetch(API_CONFIG.ENDPOINTS.GROUPS.SINGLE_EXPENSE(groupId, expenseId), {
       method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      token,
     });
   }
 
-  async getGroupBalances(
-    groupId: string,
-    token: string
-  ): Promise<GroupBalancesResponse> {
-    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.BALANCES(groupId);
-
-    return this.request<GroupBalancesResponse>(endpoint, {
+  async getGroupBalances(groupId: string, token: string): Promise<GroupBalancesResponse> {
+    return authedFetch<GroupBalancesResponse>(API_CONFIG.ENDPOINTS.GROUPS.BALANCES(groupId), {
       method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      token,
     });
   }
 
-  async getSettlements(
-    groupId: string,
-    token: string
-  ): Promise<SettlementsResponse> {
-    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SETTLEMENTS(groupId);
-
-    return this.request<SettlementsResponse>(endpoint, {
+  async getSettlements(groupId: string, token: string): Promise<SettlementsResponse> {
+    return authedFetch<SettlementsResponse>(API_CONFIG.ENDPOINTS.GROUPS.SETTLEMENTS(groupId), {
       method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-  }
-
-  async addMember(
-    groupId: string,
-    email: string,
-    token: string
-  ): Promise<GroupResponse> {
-    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.MEMBERS(groupId);
-
-    return this.request<GroupResponse>(endpoint, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ email }),
+      token,
     });
   }
 
@@ -232,29 +98,17 @@ class GroupService {
     data: CreateSettlementRequest,
     token: string
   ): Promise<{ success: boolean; data: any; meta: { timestamp: string } }> {
-    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SETTLEMENTS(groupId);
-
-    return this.request<{ success: boolean; data: any; meta: { timestamp: string } }>(endpoint, {
+    return authedFetch(API_CONFIG.ENDPOINTS.GROUPS.SETTLEMENTS(groupId), {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      token,
       body: JSON.stringify(data),
     });
   }
 
-  async updateGroup(
-    id: string,
-    data: UpdateGroupRequest,
-    token: string
-  ): Promise<GroupResponse> {
-    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SINGLE(id);
-
-    return this.request<GroupResponse>(endpoint, {
+  async updateGroup(id: string, data: UpdateGroupRequest, token: string): Promise<GroupResponse> {
+    return authedFetch<GroupResponse>(API_CONFIG.ENDPOINTS.GROUPS.SINGLE(id), {
       method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      token,
       body: JSON.stringify(data),
     });
   }
@@ -263,13 +117,9 @@ class GroupService {
     id: string,
     token: string
   ): Promise<{ success: boolean; data: { deleted: boolean }; meta: { timestamp: string } }> {
-    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SINGLE(id);
-
-    return this.request<{ success: boolean; data: { deleted: boolean }; meta: { timestamp: string } }>(endpoint, {
+    return authedFetch(API_CONFIG.ENDPOINTS.GROUPS.SINGLE(id), {
       method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      token,
     });
   }
 
@@ -278,13 +128,9 @@ class GroupService {
     memberId: string,
     token: string
   ): Promise<{ success: boolean; data: { removed: boolean }; meta: { timestamp: string } }> {
-    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SINGLE_MEMBER(groupId, memberId);
-
-    return this.request<{ success: boolean; data: { removed: boolean }; meta: { timestamp: string } }>(endpoint, {
+    return authedFetch(API_CONFIG.ENDPOINTS.GROUPS.SINGLE_MEMBER(groupId, memberId), {
       method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      token,
     });
   }
 
@@ -293,13 +139,9 @@ class GroupService {
     expenseId: string,
     token: string
   ): Promise<{ success: boolean; data: GroupExpense; meta: { timestamp: string } }> {
-    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SINGLE_EXPENSE(groupId, expenseId);
-
-    return this.request<{ success: boolean; data: GroupExpense; meta: { timestamp: string } }>(endpoint, {
+    return authedFetch(API_CONFIG.ENDPOINTS.GROUPS.SINGLE_EXPENSE(groupId, expenseId), {
       method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      token,
     });
   }
 
@@ -309,13 +151,9 @@ class GroupService {
     data: UpdateGroupExpenseRequest,
     token: string
   ): Promise<{ success: boolean; data: GroupExpense; meta: { timestamp: string } }> {
-    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SINGLE_EXPENSE(groupId, expenseId);
-
-    return this.request<{ success: boolean; data: GroupExpense; meta: { timestamp: string } }>(endpoint, {
+    return authedFetch(API_CONFIG.ENDPOINTS.GROUPS.SINGLE_EXPENSE(groupId, expenseId), {
       method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      token,
       body: JSON.stringify(data),
     });
   }
@@ -325,13 +163,9 @@ class GroupService {
     settlementId: string,
     token: string
   ): Promise<{ success: boolean; data: { deleted: boolean }; meta: { timestamp: string } }> {
-    const endpoint = API_CONFIG.ENDPOINTS.GROUPS.SINGLE_SETTLEMENT(groupId, settlementId);
-
-    return this.request<{ success: boolean; data: { deleted: boolean }; meta: { timestamp: string } }>(endpoint, {
+    return authedFetch(API_CONFIG.ENDPOINTS.GROUPS.SINGLE_SETTLEMENT(groupId, settlementId), {
       method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      token,
     });
   }
 }

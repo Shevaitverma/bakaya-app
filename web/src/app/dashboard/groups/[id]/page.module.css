@@ -1,7 +1,6 @@
 /* ============================================
    Group Detail Page Styles
-   Mirrors Expenses page layout with members,
-   balances, settlements
+   Mobile-first redesign mirroring the mobile app
    ============================================ */
 
 /* --- Page Shell --- */
@@ -13,80 +12,70 @@
   overflow-x: hidden;
 }
 
-/* --- Header --- */
+/* --- Pink Header (full bleed) --- */
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 32px 32px 60px;
+  gap: 12px;
+  padding: 28px 32px 56px;
   background: #D81B60;
+  color: #FFFFFF;
 }
 
 .backBtn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  color: #fff;
-  font-size: var(--font-size-xl);
-  background: none;
+  width: 36px;
+  height: 36px;
+  color: #FFFFFF;
+  background: transparent;
   border: none;
-  border-radius: 12px;
-  transition: background 200ms ease;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 180ms ease;
+  padding: 0;
 }
 
 .backBtn:hover {
   background: rgba(255, 255, 255, 0.15);
 }
 
-.headerCenter {
-  text-align: center;
-  flex: 1;
-}
-
 .headerTitle {
-  font-size: 32px;
-  font-weight: 800;
+  flex: 1;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
   color: #FFFFFF;
-  letter-spacing: -0.5px;
-}
-
-.totalRow {
-  margin-top: var(--spacing-xs);
-}
-
-.totalLabel {
-  font-size: var(--font-size-md);
-  color: #fff;
-  opacity: 0.9;
-  margin-bottom: var(--spacing-xs);
-}
-
-.totalValue {
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-bold);
-  color: #fff;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.2px;
+  margin: 0;
+  line-height: 1.2;
 }
 
 .headerPlaceholder {
-  width: 40px;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
 }
 
-/* --- Content --- */
+/* --- Content Sheet (overlaps header) --- */
 .content {
   flex: 1;
-  padding: 28px 32px 60px;
+  width: 100%;
+  max-width: 920px;
+  margin: -28px auto 0;
+  padding: 28px 32px 80px;
+  background: #F5F5F5;
   border-top-left-radius: 24px;
   border-top-right-radius: 24px;
-  margin-top: -28px;
-  background: #F5F5F5;
+  position: relative;
+  z-index: 1;
 }
 
 /* --- Section --- */
 .section {
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: 28px;
   animation: fadeSlideUp 0.35s ease both;
 }
 
@@ -96,536 +85,475 @@
 .section:nth-child(4) { animation-delay: 0.18s; }
 .section:nth-child(5) { animation-delay: 0.24s; }
 
-.section + .section {
-  margin-top: 16px;
-}
-
 .sectionHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--spacing-md);
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .sectionTitle {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  margin-bottom: var(--spacing-md);
+  font-size: 20px;
+  font-weight: 800;
+  color: #111827;
+  margin: 0;
+  letter-spacing: -0.2px;
 }
 
-.sectionHeader .sectionTitle {
-  margin-bottom: 0;
+/* --- Generic Card --- */
+.card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-/* --- Balances Section --- */
-.balanceList {
+/* --- Pill Button (pink) --- */
+.pillBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #D81B60;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.pillBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(216, 27, 96, 0.3);
+  background: #C2185B;
+}
+
+.pillBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* --- Ghost Button --- */
+.ghostBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: transparent;
+  color: #6B7280;
+  border: 1px solid #E5E7EB;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease, border-color 180ms ease;
+}
+
+.ghostBtn:hover:not(:disabled) {
+  background: #F9FAFB;
+  color: #111827;
+  border-color: #D1D5DB;
+}
+
+.ghostBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* --- Danger Button --- */
+.dangerBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #EF4444;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.dangerBtn:hover:not(:disabled) {
+  background: #DC2626;
+  transform: translateY(-1px);
+}
+
+.dangerBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* --- Icon Button (small, inline on rows) --- */
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  color: #9CA3AF;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 160ms ease, background 160ms ease;
+  padding: 0;
+}
+
+.iconBtn:hover:not(:disabled) {
+  color: #EF4444;
+  background: #FEF2F2;
+}
+
+.iconBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --- Empty States --- */
+.emptyState {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.balanceEmpty {
-  padding: 20px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 8px;
   text-align: center;
-  background: #FFFFFF;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
-.balanceEmptyText {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-md);
+.emptyIcon {
+  color: #D1D5DB;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.balanceCard {
+.emptyPrimary {
+  font-size: 15px;
+  font-weight: 500;
+  color: #6B7280;
+  margin: 0;
+}
+
+.emptySecondary {
+  font-size: 13px;
+  color: #9CA3AF;
+  line-height: 1.5;
+  max-width: 320px;
+  margin: 0;
+}
+
+/* --- Inline Messages --- */
+.inlineError {
+  color: #B91C1C;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.inlineSuccess {
+  color: #15803D;
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+/* --- Generic Row List --- */
+.rowList {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-md);
-  padding: 16px 20px;
-  background: #FFFFFF;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-left: 3px solid transparent;
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  transition: transform 200ms ease, box-shadow 200ms ease;
-  animation: cardEntrance 0.35s ease both;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid #F3F4F6;
 }
 
-.balanceCard:nth-child(1) { animation-delay: 0s; }
-.balanceCard:nth-child(2) { animation-delay: 0.05s; }
-.balanceCard:nth-child(3) { animation-delay: 0.1s; }
-.balanceCard:nth-child(4) { animation-delay: 0.15s; }
-.balanceCard:nth-child(5) { animation-delay: 0.2s; }
-
-.balanceCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+.row.rowLast,
+.row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
-.balanceInfo {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
+.row:first-child {
+  padding-top: 0;
+}
+
+.rowMain {
   flex: 1;
   min-width: 0;
 }
 
-.balanceIndicator {
-  width: 4px;
-  height: 36px;
-  border-radius: 2px;
+.rowTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 2px 0;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowSubtitle {
+  font-size: 13px;
+  color: #9CA3AF;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #9CA3AF;
+  flex-wrap: wrap;
+}
+
+/* --- Avatars --- */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 16px;
+  font-weight: 700;
   flex-shrink: 0;
 }
 
-.balanceIndicatorPositive {
-  background: #22c55e;
+.avatarSquare {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  flex-shrink: 0;
 }
 
-.balanceIndicatorNegative {
+/* --- Role Badge --- */
+.roleBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.roleBadgeAdmin {
+  background: #FCE4EC;
+  color: #D81B60;
+}
+
+.roleBadgeMember {
+  background: #F3F4F6;
+  color: #6B7280;
+}
+
+/* --- Balances --- */
+.balanceList {
+  display: flex;
+  flex-direction: column;
+}
+
+.balanceRow {
+  padding: 14px 0;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.balanceRow:first-child {
+  padding-top: 0;
+}
+
+.balanceRow.rowLast,
+.balanceRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.balanceRowTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.balanceMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.balanceName {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 2px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.balanceGets {
+  font-size: 13px;
+  font-weight: 600;
+  color: #16A34A;
+  margin: 0;
+}
+
+.balanceOwes {
+  font-size: 13px;
+  font-weight: 600;
+  color: #EF4444;
+  margin: 0;
+}
+
+.balanceSettled {
+  font-size: 13px;
+  font-weight: 500;
+  color: #9CA3AF;
+  margin: 0;
+}
+
+.progressTrack {
+  width: 100%;
+  height: 6px;
+  background: #F3F4F6;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 300ms ease;
+}
+
+.progressPositive {
+  background: #16A34A;
+}
+
+.progressNegative {
   background: #EF4444;
 }
 
-.balanceText {
-  font-size: var(--font-size-md);
-  color: var(--color-text-primary);
-  line-height: 1.4;
-}
-
-.balanceAmount {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: -0.3px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.balanceAmountPositive {
-  color: #22c55e;
-}
-
-.balanceAmountNegative {
-  color: #EF4444;
-}
-
-/* Green color variant for settle button (uses global btn-outline-accent) */
-.settleBtnGreen {
-  color: #22c55e;
-  border-color: #22c55e;
-}
-
-.settleBtnGreen:hover {
-  background: rgba(34, 197, 94, 0.08);
-  border-color: #22c55e;
-}
-
-/* --- Settle Up Inline Form --- */
-.settleForm {
-  margin-top: var(--spacing-md);
-  padding: 20px;
-  background: #FFFFFF;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-}
-
+/* --- Settle Form --- */
 .settleFormTitle {
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  margin-bottom: var(--spacing-md);
-}
-
-.settleFormError {
-  color: #EF4444;
-  background: #fef2f2;
-  padding: 0.75rem 1rem;
-  border-radius: 12px;
-  font-size: 0.875rem;
-  margin-bottom: var(--spacing-md);
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 14px 0;
 }
 
 .settleFormFields {
   display: flex;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-}
-
-@media (max-width: 768px) {
-  .settleFormFields {
-    flex-direction: column;
-  }
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
 .settleField {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: 6px;
   flex: 1;
 }
 
 .settleLabel {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7280;
 }
 
-.settleInput {
+.textInput {
   width: 100%;
-  height: 48px;
-  padding: 0 16px;
-  font-size: 16px;
-  color: var(--color-text-primary);
-  background: #F0F3FF;
-  border: none;
-  border-radius: 12px;
-  transition: outline 200ms ease;
+  height: 44px;
+  padding: 0 14px;
+  font-size: 15px;
+  color: #111827;
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
   box-sizing: border-box;
+  flex: 1;
 }
 
-.settleInput::placeholder {
-  color: var(--color-text-tertiary);
+.textInput::placeholder {
+  color: #9CA3AF;
 }
 
-.settleInput:focus {
-  outline: 2px solid rgba(233, 30, 99, 0.4);
-  outline-offset: 0;
+.textInput:focus {
+  outline: none;
+  border-color: #D81B60;
+  box-shadow: 0 0 0 3px rgba(216, 27, 96, 0.12);
 }
 
 .settleFormActions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--spacing-sm);
+  gap: 10px;
 }
 
+/* --- Add Member Form --- */
+.addMemberForm {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #F3F4F6;
+}
 
-/* --- Settlements Section --- */
-.settlementList {
+.addMemberRow {
   display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: 10px;
 }
 
-.settlementCard {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: var(--spacing-md);
-  padding: 16px 20px;
-  background: #FFFFFF;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  transition: transform 200ms ease, box-shadow 200ms ease;
-  animation: cardEntrance 0.35s ease both;
-}
-
-.settlementCard:nth-child(1) { animation-delay: 0s; }
-.settlementCard:nth-child(2) { animation-delay: 0.05s; }
-.settlementCard:nth-child(3) { animation-delay: 0.1s; }
-.settlementCard:nth-child(4) { animation-delay: 0.15s; }
-.settlementCard:nth-child(5) { animation-delay: 0.2s; }
-
-.settlementCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-}
-
-.settlementIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: rgba(34, 197, 94, 0.1);
-  font-size: 1.2rem;
+/* --- Settlements --- */
+.settlementAmount {
+  font-size: 15px;
+  font-weight: 700;
+  color: #16A34A;
+  white-space: nowrap;
   flex-shrink: 0;
-}
-
-.settlementInfo {
-  min-width: 0;
-}
-
-.settlementText {
-  font-size: var(--font-size-md);
-  color: var(--color-text-primary);
-  margin-bottom: 2px;
-}
-
-.settlementMeta {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
-  flex-wrap: wrap;
 }
 
 .settlementNotes {
   font-style: italic;
 }
 
-.settlementAmount {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  color: #22c55e;
-  letter-spacing: -0.4px;
-  white-space: nowrap;
-}
-
-/* --- Add Member --- */
-
-.addMemberForm {
-  margin-bottom: var(--spacing-md);
-}
-
-.addMemberRow {
-  display: flex;
-  gap: var(--spacing-sm);
-}
-
-.addMemberInput {
-  flex: 1;
-  height: 48px;
-  padding: 0 16px;
-  font-size: 16px;
-  color: var(--color-text-primary);
-  background: #F0F3FF;
-  border: none;
-  border-radius: 12px;
-  transition: outline 200ms ease;
-  box-sizing: border-box;
-}
-
-.addMemberInput::placeholder {
-  color: var(--color-text-tertiary);
-}
-
-.addMemberInput:focus {
-  outline: 2px solid rgba(233, 30, 99, 0.4);
-  outline-offset: 0;
-}
-
-.addMemberSubmit {
-  padding: 0 20px;
-  height: 48px;
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: #fff;
-  background: linear-gradient(135deg, #D81B60, #E91E63);
-  border: none;
-  border-radius: 9999px;
-  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
-  cursor: pointer;
-  transition: transform 200ms ease, box-shadow 200ms ease;
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-}
-
-.addMemberSubmit:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(233, 30, 99, 0.4);
-}
-
-.addMemberSubmit:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* --- Member List --- */
-.memberList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.memberCard {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  padding: 16px 20px;
-  background: #FFFFFF;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  transition: background 0.2s ease, transform 0.15s ease, box-shadow 200ms ease;
-  animation: cardEntrance 0.35s ease both;
-}
-
-.memberCard:nth-child(1) { animation-delay: 0s; }
-.memberCard:nth-child(2) { animation-delay: 0.05s; }
-.memberCard:nth-child(3) { animation-delay: 0.1s; }
-.memberCard:nth-child(4) { animation-delay: 0.15s; }
-.memberCard:nth-child(5) { animation-delay: 0.2s; }
-
-.memberCard:active {
-  transform: scale(0.98);
-}
-
-.memberCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-}
-
-.memberAvatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #D81B60, #E91E63);
-  color: #fff;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  flex-shrink: 0;
-}
-
-.memberInfo {
-  flex: 1;
-  min-width: 0;
-}
-
-.memberName {
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.memberEmail {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.roleBadge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 10px;
-  border-radius: 9999px;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  flex-shrink: 0;
-  text-transform: capitalize;
-  transition: background 0.2s ease, transform 0.15s ease;
-}
-
-.roleBadge:active {
-  transform: scale(0.95);
-}
-
-.roleBadgeAdmin {
-  background: rgba(233, 30, 99, 0.08);
-  color: #E91E63;
-}
-
-.roleBadgeMember {
-  background: #F0F3FF;
-  color: var(--color-text-secondary);
-}
-
-/* --- Expense List (table-like) --- */
-.expenseList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-/* --- Expense Card --- */
-.expenseCard {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  align-items: center;
-  gap: var(--spacing-md);
-  padding: 16px 20px;
-  background: #FFFFFF;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  transition: transform 200ms ease, box-shadow 200ms ease;
-  animation: rowSlideIn 0.3s ease both;
-  position: relative;
-}
-
-.expenseCard:nth-child(1) { animation-delay: 0ms; }
-.expenseCard:nth-child(2) { animation-delay: 0.04s; }
-.expenseCard:nth-child(3) { animation-delay: 0.08s; }
-.expenseCard:nth-child(4) { animation-delay: 0.12s; }
-.expenseCard:nth-child(5) { animation-delay: 0.16s; }
-.expenseCard:nth-child(6) { animation-delay: 0.2s; }
-.expenseCard:nth-child(7) { animation-delay: 0.24s; }
-.expenseCard:nth-child(8) { animation-delay: 0.28s; }
-
-.expenseCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-}
-
-@media (max-width: 768px) {
-  .expenseCard {
-    grid-template-columns: auto 1fr auto;
-    gap: var(--spacing-sm);
-  }
-  .expenseDelete {
-    grid-column: 1 / -1;
-    justify-self: end;
-  }
-}
-
-.categoryIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--color-light-grey, #F0F3FF);
-  font-size: 1.1rem;
-  flex-shrink: 0;
-}
-
-.expenseInfo {
-  min-width: 0;
-}
-
-.expenseTitle {
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  margin-bottom: 2px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.expenseMeta {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
-  flex-wrap: wrap;
-}
-
+/* --- Expenses --- */
 .expenseCategory {
   display: inline-flex;
   align-items: center;
   padding: 2px 8px;
-  background: rgba(233, 30, 99, 0.08);
-  color: #E91E63;
-  border-radius: 9999px;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
+  background: #FCE4EC;
+  color: #D81B60;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .paidBy {
@@ -633,60 +561,83 @@
 }
 
 .expenseAmount {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  color: #EF4444;
-  letter-spacing: -0.4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* --- Expense Row (mirrors mobile renderExpenseItem) --- */
+.expenseRow {
+  align-items: flex-start;
+}
+
+.expensePayerLine {
+  font-size: 13px;
+  color: #6B7280;
+  margin: 2px 0 2px 0;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.expenseDelete {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  color: var(--color-text-tertiary);
-  background: none;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  font-size: var(--font-size-lg);
-  transition: color 200ms ease, background 200ms ease, border-color 200ms ease;
+.expensePayerLine strong {
+  color: #111827;
+  font-weight: 700;
 }
 
-.expenseDelete:hover {
-  color: #EF4444;
-  background: rgba(239, 68, 68, 0.06);
-  border-color: rgba(239, 68, 68, 0.15);
+.expenseMeta {
+  font-size: 12px;
+  color: #9CA3AF;
+  margin: 0;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* --- Empty State --- */
-.empty {
+.expenseRight {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-3xl) var(--spacing-lg);
-  text-align: center;
-  gap: var(--spacing-md);
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+  min-width: 72px;
 }
 
-.emptyIcon {
-  font-size: 3rem;
-  color: var(--color-text-tertiary);
+.expenseRight .iconBtn {
+  margin-top: 4px;
 }
 
-.emptyTitle {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-secondary);
+.expenseNetAmount {
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
-.emptySubtitle {
-  font-size: var(--font-size-md);
-  color: var(--color-text-tertiary);
+.expenseNetLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
+.expenseNetPositive {
+  color: #16A34A;
+}
+
+.expenseNetNegative {
+  color: #EF4444;
+}
+
+.expenseNetNeutral {
+  color: #9CA3AF;
+}
 
 /* --- Confirm Dialog Overlay --- */
 .dialogOverlay {
@@ -697,275 +648,142 @@
   justify-content: center;
   background: rgba(0, 0, 0, 0.45);
   z-index: 200;
+  padding: 16px;
   animation: fadeIn 200ms ease both;
 }
 
 .dialog {
-  width: 90%;
-  max-width: 400px;
+  width: 100%;
+  max-width: 420px;
   background: #FFFFFF;
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 24px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  animation: fadeSlideUp 0.25s ease both;
 }
 
 .dialogTitle {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  margin-bottom: var(--spacing-sm);
+  font-size: 20px;
+  font-weight: 800;
+  color: #111827;
+  margin: 0 0 8px 0;
 }
 
 .dialogMessage {
-  font-size: var(--font-size-md);
-  color: var(--color-text-secondary);
-  line-height: var(--line-height-relaxed);
-  margin-bottom: var(--spacing-lg);
+  font-size: 14px;
+  color: #6B7280;
+  line-height: 1.5;
+  margin: 0 0 20px 0;
 }
 
 .dialogActions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--spacing-sm);
+  gap: 10px;
 }
 
-
+/* --- Animations --- */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @keyframes fadeSlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes rowSlideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes cardEntrance {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* --- Mobile Responsive (comprehensive) --- */
+/* --- Mobile Responsive --- */
 @media (max-width: 768px) {
   .header {
-    padding: 24px 20px 52px;
+    padding: 20px 16px 48px;
   }
 
   .headerTitle {
     font-size: 20px;
   }
 
-  .totalValue {
-    font-size: 1.5rem;
-  }
-
-  .backBtn {
-    width: 44px;
-    height: 44px;
-  }
-
-  /* Content area */
   .content {
-    padding: 24px 20px;
+    padding: 20px 20px 80px;
+    margin-top: -24px;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
   }
 
-  /* Section titles */
+  .section {
+    margin-bottom: 24px;
+  }
+
   .sectionTitle {
     font-size: 18px;
-    font-weight: 600;
   }
 
-  .sectionHeader {
-    flex-wrap: wrap;
-    gap: 8px;
+  .card {
+    padding: 18px;
+    border-radius: 14px;
   }
 
-  /* Balances: stack vertically, full width cards */
-  .balanceList {
+  .pillBtn {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .ghostBtn,
+  .dangerBtn {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .settleFormFields {
     flex-direction: column;
-    gap: 10px;
-  }
-
-  .balanceCard {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 16px;
-    border-radius: 16px;
-  }
-
-  .balanceInfo {
-    width: 100%;
-  }
-
-  .balanceText {
-    font-size: 0.9375rem;
-  }
-
-  .balanceAmount {
-    font-size: 1rem;
-  }
-
-
-  /* Settle up form: full width fields */
-  .settleForm {
-    padding: 16px;
-    border-radius: 16px;
-  }
-
-  .settleInput {
-    width: 100%;
-    min-height: 44px;
-    height: 48px;
-    padding: 0 16px;
-    font-size: 16px;
-    border-radius: 12px;
-    box-sizing: border-box;
+    gap: 12px;
   }
 
   .settleFormActions {
-    flex-direction: column;
-    gap: 8px;
+    flex-direction: column-reverse;
   }
 
-
-  /* Settlement cards: full width */
-  .settlementCard {
-    grid-template-columns: auto 1fr auto;
-    gap: 10px;
-    padding: 16px;
-    border-radius: 16px;
-  }
-
-  .settlementText {
-    font-size: 0.875rem;
-  }
-
-  .settlementAmount {
-    font-size: 1rem;
-  }
-
-  /* Members section */
-
-  .addMemberForm {
+  .settleFormActions .pillBtn,
+  .settleFormActions .ghostBtn {
     width: 100%;
+    justify-content: center;
   }
 
   .addMemberRow {
     flex-direction: column;
-    gap: 8px;
-  }
-
-  .addMemberInput {
-    width: 100%;
-    min-height: 44px;
-    height: 48px;
-    padding: 0 16px;
-    font-size: 16px;
-    border-radius: 12px;
-    box-sizing: border-box;
-  }
-
-  .addMemberSubmit {
-    width: 100%;
-    min-height: 44px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.9375rem;
-    border-radius: 9999px;
-  }
-
-  /* Member cards */
-  .memberCard {
-    padding: 16px;
-    border-radius: 16px;
     gap: 10px;
   }
 
-  .memberAvatar {
-    width: 36px;
-    height: 36px;
-  }
-
-  .memberName {
-    font-size: 0.9375rem;
-  }
-
-  /* Expense cards: full width with clear info */
-  .expenseInfo {
-    min-width: 0;
-  }
-
-  .expenseTitle {
-    font-size: 0.9375rem;
-    white-space: normal;
-    word-break: break-word;
-  }
-
-  .expenseMeta {
-    flex-wrap: wrap;
-    gap: 4px;
-    font-size: 0.75rem;
-  }
-
-  .paidBy {
+  .addMemberRow .pillBtn {
     width: 100%;
+    justify-content: center;
   }
 
-  .expenseAmount {
-    font-size: 1rem;
+  .row {
+    gap: 12px;
+    padding: 12px 0;
   }
 
-  .expenseDelete {
-    width: 44px;
-    height: 44px;
+  .rowTitle {
+    font-size: 14px;
   }
 
+  .rowSubtitle {
+    font-size: 12px;
+  }
 
-  /* Delete dialog */
   .dialog {
-    width: calc(100% - 32px);
     padding: 20px;
-    border-radius: 12px;
   }
 
   .dialogActions {
-    flex-direction: column;
-    gap: 8px;
+    flex-direction: column-reverse;
   }
 
-
-  /* Empty states */
-  .empty {
-    padding: 2rem 1rem;
+  .dialogActions .pillBtn,
+  .dialogActions .ghostBtn,
+  .dialogActions .dangerBtn {
+    width: 100%;
+    justify-content: center;
   }
 }
