@@ -10,9 +10,11 @@
  */
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authService } from '../services/authService';
 import { storage } from '../utils/storage';
 import { setOnSessionExpired, getOrStartRefresh } from '../lib/authedFetch';
+import { queryClient } from '../lib/queryClient';
 import type {
   User,
   LoginResponse,
@@ -100,6 +102,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // Clear persisted session
     await storage.clearAll();
+    // logic-bug-hunt BUG-05 High: also clear the TanStack query cache + the
+    // AsyncStorage persister key so the next user on this device never sees
+    // the previous user's data.
+    try {
+      queryClient.clear();
+    } catch (err) {
+      // If clear() throws (very rare — TanStack's clear is sync), the next
+      // user on the device could briefly see cached data from the previous
+      // session. Surface this in logs instead of silently swallowing.
+      console.warn('[AUTH] queryClient.clear() failed on logout', err);
+    }
+    try {
+      await AsyncStorage.removeItem('BAKAYA_QUERY_CACHE');
+    } catch (err) {
+      console.warn('[AUTH] Failed to remove persisted query cache on logout', err);
+    }
   }, []);
 
   // ---- Register the global session-expired callback ----

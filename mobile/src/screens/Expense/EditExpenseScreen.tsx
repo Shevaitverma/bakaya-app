@@ -42,6 +42,10 @@ export const EditExpenseScreen: React.FC<EditExpenseScreenProps> = ({ navigation
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
+  // logic-bug-hunt BUG-04 High: preserve expense.type and expense.source so
+  // editing an income record doesn't silently force it into "expense" shape.
+  const [type, setType] = useState<'income' | 'expense'>('expense');
+  const [source, setSource] = useState('');
   const [notes, setNotes] = useState('');
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -74,6 +78,8 @@ export const EditExpenseScreen: React.FC<EditExpenseScreenProps> = ({ navigation
           setTitle(expense.title);
           setAmount(String(expense.amount));
           setCategory(expense.category ?? '');
+          setType(expense.type ?? 'expense');
+          setSource(expense.source ?? '');
           setNotes(expense.notes ?? '');
           setSelectedProfileId(expense.profileId ?? '');
         } else {
@@ -119,7 +125,12 @@ export const EditExpenseScreen: React.FC<EditExpenseScreenProps> = ({ navigation
       }
     }
 
-    if (!category.trim()) {
+    // logic-bug-hunt BUG-04 High: income uses source, expense uses category
+    if (type === 'income') {
+      if (!source.trim()) {
+        newErrors.category = 'Source is required';
+      }
+    } else if (!category.trim()) {
       newErrors.category = 'Category is required';
     }
 
@@ -139,13 +150,28 @@ export const EditExpenseScreen: React.FC<EditExpenseScreenProps> = ({ navigation
 
     try {
       setLoading(true);
-      const expenseData = {
+      // logic-bug-hunt BUG-04 High: send type + source/category correctly so
+      // income records aren't silently turned into expenses.
+      const expenseData: {
+        title: string;
+        amount: number;
+        type: 'income' | 'expense';
+        category?: string;
+        source?: string;
+        notes?: string;
+        profileId?: string;
+      } = {
         title: title.trim(),
         amount: parseFloat(amount),
-        category: category.trim(),
+        type,
         notes: notes.trim() || undefined,
         profileId: selectedProfileId || undefined,
       };
+      if (type === 'income') {
+        expenseData.source = source.trim();
+      } else {
+        expenseData.category = category.trim();
+      }
 
       const response = await expenseService.updateExpense(expenseId, expenseData, accessToken);
 
@@ -301,37 +327,51 @@ export const EditExpenseScreen: React.FC<EditExpenseScreenProps> = ({ navigation
             keyboardType="decimal-pad"
           />
 
-          {/* Category Picker */}
-          <View style={styles.categoryContainer}>
-            <Text style={styles.categoryLabel}>Category</Text>
-            <TouchableOpacity
-              style={[
-                styles.categoryPicker,
-                errors.category && styles.categoryPickerError,
-              ]}
-              onPress={() => setShowCategoryModal(true)}
-              activeOpacity={0.7}>
-              {category ? (
-                <View style={styles.categorySelected}>
-                  <View style={[styles.categoryEmojiCircle, selectedCat?.color ? { backgroundColor: selectedCat.color + '20' } : undefined]}>
-                    <Text style={styles.categoryEmoji}>{selectedCat?.emoji || '📦'}</Text>
+          {/* logic-bug-hunt BUG-04 High: income records show Source (not Category) */}
+          {type === 'income' ? (
+            <Input
+              label="Source"
+              placeholder="e.g. Salary, Freelance"
+              value={source}
+              onChangeText={(text) => {
+                setSource(text);
+                if (errors.category) setErrors({ ...errors, category: undefined });
+              }}
+              error={errors.category}
+              autoCapitalize="words"
+            />
+          ) : (
+            <View style={styles.categoryContainer}>
+              <Text style={styles.categoryLabel}>Category</Text>
+              <TouchableOpacity
+                style={[
+                  styles.categoryPicker,
+                  errors.category && styles.categoryPickerError,
+                ]}
+                onPress={() => setShowCategoryModal(true)}
+                activeOpacity={0.7}>
+                {category ? (
+                  <View style={styles.categorySelected}>
+                    <View style={[styles.categoryEmojiCircle, selectedCat?.color ? { backgroundColor: selectedCat.color + '20' } : undefined]}>
+                      <Text style={styles.categoryEmoji}>{selectedCat?.emoji || '📦'}</Text>
+                    </View>
+                    <Text style={styles.categorySelectedText}>{category}</Text>
                   </View>
-                  <Text style={styles.categorySelectedText}>{category}</Text>
-                </View>
-              ) : (
-                <Text style={styles.categoryPlaceholder}>Select category</Text>
+                ) : (
+                  <Text style={styles.categoryPlaceholder}>Select category</Text>
+                )}
+                <FontAwesome6
+                  name="chevron-down"
+                  size={16}
+                  color={Theme.colors.textSecondary}
+                  solid
+                />
+              </TouchableOpacity>
+              {errors.category && (
+                <Text style={styles.categoryErrorText}>{errors.category}</Text>
               )}
-              <FontAwesome6
-                name="chevron-down"
-                size={16}
-                color={Theme.colors.textSecondary}
-                solid
-              />
-            </TouchableOpacity>
-            {errors.category && (
-              <Text style={styles.categoryErrorText}>{errors.category}</Text>
-            )}
-          </View>
+            </View>
+          )}
 
           {/* Notes Input */}
           <Input

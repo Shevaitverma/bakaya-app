@@ -67,7 +67,8 @@ export async function findExpensesByUser(
     Expense.find(filter)
       .sort({ createdAt: -1 })
       .skip((options.page - 1) * options.limit)
-      .limit(options.limit),
+      .limit(options.limit)
+      .lean(),
     Expense.countDocuments(filter),
     Expense.aggregate([
       { $match: { ...filter, type: "income" } },
@@ -92,7 +93,12 @@ export async function findExpensesByUser(
   };
 }
 
-export async function exportExpensesCSV(
+// Hard cap on rows returned in a single CSV export. Even with streaming, an
+// uncapped export lets one user issue a request that scans the entire
+// collection — protect with a sane upper bound.
+export const CSV_EXPORT_HARD_LIMIT = 50_000;
+
+export function streamExpensesForCSV(
   userId: string,
   options: {
     type?: string;
@@ -129,7 +135,10 @@ export async function exportExpensesCSV(
 
   return Expense.find(filter)
     .sort({ createdAt: -1 })
-    .populate("profileId", "name");
+    .limit(CSV_EXPORT_HARD_LIMIT)
+    .populate("profileId", "name")
+    .lean()
+    .cursor();
 }
 
 export async function updateExpense(

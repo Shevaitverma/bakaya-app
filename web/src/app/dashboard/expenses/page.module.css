@@ -34,7 +34,7 @@
 /* --- Page Shell --- */
 .page {
   min-height: 100dvh;
-  background: #F5F5F5;
+  background: var(--color-surface-alt);
   display: flex;
   flex-direction: column;
 }
@@ -45,7 +45,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 32px 32px 60px;
-  background: #D81B60;
+  background: var(--color-primary);
   border-radius: 0;
 }
 
@@ -74,9 +74,9 @@
 
 .headerTitle {
   font-family: 'Plus Jakarta Sans', var(--font-inter), system-ui, -apple-system, sans-serif;
-  font-size: 32px;
-  font-weight: 800;
-  color: #FFFFFF;
+  font-size: var(--font-size-display);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-white);
   letter-spacing: -0.5px;
 }
 
@@ -106,9 +106,9 @@
 /* --- Content Sheet --- */
 .contentSheet {
   flex: 1;
-  background: #F5F5F5;
-  border-top-left-radius: 24px;
-  border-top-right-radius: 24px;
+  background: var(--color-surface-alt);
+  border-top-left-radius: var(--radius-2xl);
+  border-top-right-radius: var(--radius-2xl);
   margin-top: -28px;
   position: relative;
   z-index: 1;
@@ -154,7 +154,7 @@
 
 .summaryItemBalance {
   border-color: rgba(20, 184, 166, 0.2);
-  box-shadow: 0 -3px 0 0 #14b8a6 inset, 0 2px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 -3px 0 0 var(--color-teal) inset, 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
 .summaryLabel {
@@ -231,9 +231,9 @@
 
 .typeFilterBtn.typeFilterBtnActive,
 .typeFilterBtn.typeFilterBtnActive:hover {
-  background: linear-gradient(135deg, #D81B60, #E91E63);
+  background: linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-end));
   border-color: transparent;
-  color: #fff;
+  color: var(--color-white);
   font-weight: 600;
   box-shadow: 0 3px 10px rgba(216, 27, 96, 0.3);
 }
@@ -266,7 +266,7 @@
   height: 44px;
   padding: 0 var(--spacing-md) 0 2.5rem;
   font-size: var(--font-size-md);
-  background: #F0F0F0;
+  background: var(--color-input-bg);
   border: 1.5px solid transparent;
   border-radius: 12px;
   color: var(--color-text-primary);
@@ -310,7 +310,7 @@
   font-size: 16px;
   font-weight: var(--font-weight-bold);
   font-variant-numeric: tabular-nums;
-  color: #10B981;
+  color: var(--color-success);
   letter-spacing: -0.3px;
   white-space: nowrap;
 }
@@ -388,7 +388,7 @@
 /* --- Content --- */
 .content {
   padding: 28px 32px;
-  background: #F5F5F5;
+  background: var(--color-surface-alt);
 }
 
 /* --- Expense List --- */
@@ -532,7 +532,7 @@
   font-size: 16px;
   font-weight: var(--font-weight-bold);
   font-variant-numeric: tabular-nums;
-  color: #EF4444;
+  color: var(--color-error);
   letter-spacing: -0.3px;
   white-space: nowrap;
 }
@@ -578,8 +578,7 @@
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  z-index: 200;
+  z-index: var(--z-overlay);
   animation: fadeIn 200ms ease both;
 }
 
@@ -625,7 +624,7 @@
   }
 
   .headerTitle {
-    font-size: 20px;
+    font-size: var(--font-size-2xl);
   }
 
   .totalLabel {

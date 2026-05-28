@@ -27,9 +27,9 @@ html {
   --font-headline: var(--font-jakarta), 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-body: var(--font-inter), 'Inter', system-ui, sans-serif;
 
-  /* Primary palette */
-  --color-primary: #E91E63;
-  --color-primary-dark: #D81B60;
+  /* Primary palette — mobile anchor: primary = #D81B60 */
+  --color-primary: #D81B60;
+  --color-primary-dark: #AD1457;
   --color-primary-light: #F48FB1;
   --color-gradient-start: #D81B60;
   --color-gradient-end: #E91E63;
@@ -57,19 +57,19 @@ html {
   --color-income: #10B981;
   --color-expense: #E91E63;
 
-  /* Surface & card */
-  --color-surface: #F9F9FF;
+  /* Surface & card — mobile anchor surface = #FAFAFA */
+  --color-surface: #FAFAFA;
   --color-surface-container-low: #F0F3FF;
   --color-card: #FFFFFF;
   --color-card-elevated: #FFFFFF;
-  --color-input-bg: #F0F3FF;
+  --color-input-bg: #F9FAFB;
 
   /* Glassmorphism */
   --color-glass-bg: rgba(255, 255, 255, 0.25);
   --color-glass-border: rgba(255, 255, 255, 0.18);
 
-  /* Text colors */
-  --color-text-primary: #1A1A2E;
+  /* Text colors — mobile anchor text-primary = #111827 */
+  --color-text-primary: #111827;
   --color-text-secondary: #6B7280;
   --color-text-tertiary: #9CA3AF;
   --color-text-on-primary: #FFFFFF;
@@ -113,10 +113,10 @@ html {
   --radius-2xl: 24px;
   --radius-round: 9999px;
 
-  /* Shadows */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  /* Shadows — aligned to mobile Shadows tokens */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.10);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.12);
   --shadow-glass: 0 8px 24px rgba(0, 0, 0, 0.15);
 
   /* Transitions */
@@ -127,6 +127,19 @@ html {
   /* Layout */
   --max-width: 1200px;
   --header-height: 64px;
+
+  /* --- Extended tokens (web additions) --- */
+  --color-primary-tint: rgba(216, 27, 96, 0.08);
+  --color-primary-tint-strong: rgba(216, 27, 96, 0.15);
+  --color-success-dark: #059669;
+  --color-success-tint: rgba(16, 185, 129, 0.10);
+  --color-error-dark: #DC2626;
+  --color-error-tint: rgba(239, 68, 68, 0.10);
+  --color-surface-alt: #F5F5F5;
+  --color-teal: #14B8A6;
+  --focus-ring: 0 0 0 3px rgba(216, 27, 96, 0.12);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --z-overlay: 200;
 }
 
 /* --- Base Styles --- */
@@ -326,22 +339,22 @@ button:active, [role="button"]:active {
   font-weight: 600;
   font-family: inherit;
   color: #fff;
-  background: linear-gradient(135deg, #D81B60, #E91E63);
+  background: linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-end));
   border: none;
   border-radius: 9999px;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(233, 30, 99, 0.3);
+  box-shadow: 0 4px 14px rgba(216, 27, 96, 0.30);
   transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
   text-decoration: none;
   white-space: nowrap;
 }
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(233, 30, 99, 0.4);
+  box-shadow: 0 6px 20px rgba(216, 27, 96, 0.40);
 }
 .btn-primary:active {
   transform: scale(0.98);
-  box-shadow: 0 2px 8px rgba(233, 30, 99, 0.25);
+  box-shadow: 0 2px 8px rgba(216, 27, 96, 0.25);
 }
 .btn-primary:disabled, .btn-primary[aria-disabled="true"] {
   opacity: 0.6;
@@ -489,11 +502,11 @@ button:active, [role="button"]:active {
   font-weight: 600;
   font-family: inherit;
   color: #fff;
-  background: linear-gradient(135deg, #D81B60, #E91E63);
+  background: linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-end));
   border: none;
   border-radius: 9999px;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(233, 30, 99, 0.35);
+  box-shadow: 0 4px 16px rgba(216, 27, 96, 0.35);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   text-decoration: none;
   white-space: nowrap;
@@ -504,7 +517,7 @@ button:active, [role="button"]:active {
 }
 .btn-fab:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(233, 30, 99, 0.4);
+  box-shadow: 0 8px 24px rgba(216, 27, 96, 0.40);
 }
 .btn-fab:active {
   transform: scale(0.95);

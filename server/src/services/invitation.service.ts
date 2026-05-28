@@ -49,13 +49,22 @@ export async function createInvitation(
   });
   if (existingPending) throw new Error("A pending invitation already exists for this user");
 
-  const invitation = await GroupInvitation.create({
-    groupId: group._id,
-    invitedBy: new mongoose.Types.ObjectId(inviterUserId),
-    invitedEmail: normalizedEmail,
-    invitedUserId: invitedUser._id,
-    message,
-  });
+  // logic-bug-hunt BUG-12 High: map E11000 race to friendly error instead of 500
+  let invitation;
+  try {
+    invitation = await GroupInvitation.create({
+      groupId: group._id,
+      invitedBy: new mongoose.Types.ObjectId(inviterUserId),
+      invitedEmail: normalizedEmail,
+      invitedUserId: invitedUser._id,
+      message,
+    });
+  } catch (err: any) {
+    if (err?.code === 11000) {
+      throw new Error("A pending invitation already exists for this user");
+    }
+    throw err;
+  }
 
   const populated = await GroupInvitation.findById(invitation._id).populate(
     INVITATION_POPULATE as any

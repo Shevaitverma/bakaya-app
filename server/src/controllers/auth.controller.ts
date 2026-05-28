@@ -3,6 +3,7 @@ import { Device } from "@/models/Device";
 import { getAuthUser } from "@/middleware/auth";
 import { registerSchema, loginSchema, googleAuthSchema, refreshTokenSchema } from "@/schemas/auth.schema";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "@/utils/jwt";
+import { revokeRefreshTokensForUser } from "@/utils/tokenRevocation";
 import { successResponse, badRequestResponse, unauthorizedResponse } from "@/utils/response";
 import { logger } from "@/utils/logger";
 import { env } from "@/config/env";
@@ -19,18 +20,24 @@ const JWKS_CACHE_DURATION = 3600_000; // 1 hour
 
 async function fetchJWKSData(): Promise<JSONWebKeySet> {
   // Try curl first (faster on Windows where Bun fetch is slow)
+  const proc = Bun.spawn(["curl", "-s", "--max-time", "10", GOOGLE_JWKS_URL], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
   try {
-    const proc = Bun.spawn(["curl", "-s", "--max-time", "10", GOOGLE_JWKS_URL], {
-      stdout: "pipe",
-      stderr: "pipe",
-    });
     const text = await new Response(proc.stdout).text();
     const exitCode = await proc.exited;
     if (exitCode === 0 && text) {
       return JSON.parse(text) as JSONWebKeySet;
     }
   } catch {
-    // curl not available, fall through to fetch
+    // curl not available or parse failed, fall through to fetch
+  } finally {
+    // Ensure the child process is reaped even if parsing throws or curl
+    // hangs past --max-time — prevents zombie processes on Linux.
+    if (proc.exitCode === null) {
+      try { proc.kill(); } catch {}
+    }
   }
 
   // Fallback to Bun fetch (works fine on Linux/production)
@@ -382,6 +389,11 @@ export async function logout(req: Request): Promise<Response> {
 
     // Invalidate all devices for this user
     await Device.updateMany({ userId }, { isActive: false });
+
+    // Revoke any outstanding refresh tokens for this user — without this,
+    // a stolen refresh token issued before logout stays valid until natural
+    // expiry. See utils/tokenRevocation.ts for the iat-based check.
+    revokeRefreshTokensForUser(userId);
 
     logger.info("User logged out", { userId });
     return successResponse({ message: "Logged out successfully" });

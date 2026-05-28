@@ -2,7 +2,7 @@
  * TanStack Query client with mobile-optimized defaults.
  *
  * - staleTime 5min: prevents refetch on tab switch within 5 minutes
- * - gcTime 30min: keeps cache in memory even after unmount
+ * - gcTime 10min: keeps cache in memory after unmount, then evicts to cap RAM
  * - Global 401 handler: triggers auth failure callback
  * - No retry on 401/404
  */
@@ -39,7 +39,7 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5,      // 5 minutes
-      gcTime: 1000 * 60 * 30,         // 30 minutes
+      gcTime: 1000 * 60 * 10,         // 10 minutes
       retry: (failureCount, error) => {
         const apiError = error as ApiError;
         if (apiError.statusCode === 401) return false;

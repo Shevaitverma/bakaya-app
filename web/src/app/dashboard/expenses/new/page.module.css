@@ -26,13 +26,13 @@
 /* --- Page Shell --- */
 .page {
   min-height: 100dvh;
-  background: #F5F5F5;
+  background: var(--color-surface-alt);
   display: flex;
   flex-direction: column;
 }
 
 .pageIncome {
-  background: #059669;
+  background: var(--color-success-dark);
 }
 
 /* --- Header --- */
@@ -41,15 +41,15 @@
   align-items: center;
   justify-content: space-between;
   padding: 32px 32px 60px;
-  background: #D81B60;
+  background: var(--color-primary);
   border-radius: 0;
 }
 
 .headerTitle {
   font-family: 'Plus Jakarta Sans', var(--font-inter), system-ui, -apple-system, sans-serif;
-  font-size: 32px;
-  font-weight: 800;
-  color: #FFFFFF;
+  font-size: var(--font-size-display);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-white);
   letter-spacing: -0.5px;
 }
 
@@ -59,14 +59,14 @@
 
 /* --- Header Income variant --- */
 .headerIncome {
-  background: linear-gradient(135deg, #059669, #10B981);
+  background: linear-gradient(135deg, var(--color-success-dark), var(--color-success));
   border-radius: 0;
 }
 
 /* --- Type Toggle (segmented pill) --- */
 .typeToggle {
   display: flex;
-  background: #F0F3FF;
+  background: var(--color-input-bg);
   border-radius: var(--radius-round);
   padding: 3px;
   gap: 0;
@@ -82,7 +82,7 @@
   background: transparent;
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-medium);
-  color: #9CA3AF;
+  color: var(--color-text-tertiary);
   cursor: pointer;
   transition: all 200ms ease;
   text-align: center;
@@ -100,7 +100,7 @@
 }
 
 .typeBtnActiveIncome {
-  background: linear-gradient(135deg, #059669, #10B981);
+  background: linear-gradient(135deg, var(--color-success-dark), var(--color-success));
   color: var(--color-text-on-primary);
   font-weight: var(--font-weight-semibold);
   box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
@@ -108,7 +108,7 @@
 
 /* --- Submit Button Income variant --- */
 .submitBtnIncome {
-  background: linear-gradient(135deg, #059669, #10B981);
+  background: linear-gradient(135deg, var(--color-success-dark), var(--color-success));
   box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
 }
 
@@ -120,9 +120,9 @@
 .formContainer {
   flex: 1;
   padding: 28px 32px 60px;
-  background: #F5F5F5;
-  border-top-left-radius: 24px;
-  border-top-right-radius: 24px;
+  background: var(--color-surface-alt);
+  border-top-left-radius: var(--radius-2xl);
+  border-top-right-radius: var(--radius-2xl);
   margin-top: -28px;
   position: relative;
   z-index: 1;
@@ -154,7 +154,7 @@
 .label {
   font-size: 14px;
   font-weight: var(--font-weight-semibold);
-  color: #1A1A2E;
+  color: var(--color-text-primary);
 }
 
 .input {
@@ -162,10 +162,10 @@
   height: 48px;
   padding: 0 var(--spacing-md);
   font-size: var(--font-size-md);
-  color: #1A1A2E;
-  background: #F0F3FF;
+  color: var(--color-text-primary);
+  background: var(--color-input-bg);
   border: 1.5px solid transparent;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   transition: border-color 200ms ease, box-shadow 200ms ease;
 }
 
@@ -175,8 +175,8 @@
 
 .input:focus {
   outline: none;
-  border-color: rgba(216, 27, 96, 0.25);
-  box-shadow: 0 0 0 3px rgba(216, 27, 96, 0.08);
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
 }
 
 .inputError {
@@ -208,10 +208,10 @@
   height: 48px;
   padding: 0 var(--spacing-md);
   font-size: var(--font-size-md);
-  color: #1A1A2E;
-  background: #F0F3FF;
+  color: var(--color-text-primary);
+  background: var(--color-input-bg);
   border: 1.5px solid transparent;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   text-align: left;
   transition: border-color 200ms ease, box-shadow 200ms ease;
@@ -254,9 +254,9 @@
   right: 0;
   max-height: 320px;
   overflow-y: auto;
-  background: #FFFFFF;
+  background: var(--color-white);
   border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   z-index: 100;
   padding: var(--spacing-sm);
@@ -273,17 +273,17 @@
   width: 100%;
   padding: var(--spacing-sm);
   font-size: var(--font-size-md);
-  color: #1A1A2E;
+  color: var(--color-text-primary);
   background: none;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: background 200ms ease;
   text-align: left;
 }
 
 .categoryItem:hover {
-  background: #F0F3FF;
+  background: var(--color-input-bg);
 }
 
 .categoryItemSelected {
@@ -303,7 +303,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #F0F3FF;
+  background: var(--color-input-bg);
   font-size: 1rem;
   flex-shrink: 0;
 }
@@ -348,12 +348,12 @@
   gap: 6px;
   padding: 0 var(--spacing-md);
   height: 36px;
-  background: #FFFFFF;
+  background: var(--color-white);
   border: 1.5px solid rgba(0, 0, 0, 0.08);
   border-radius: 9999px;
   font-size: 14px;
   font-weight: var(--font-weight-medium);
-  color: #1A1A2E;
+  color: var(--color-text-primary);
   white-space: nowrap;
   flex-shrink: 0;
   cursor: pointer;
@@ -365,9 +365,9 @@
 }
 
 .profileChipActive {
-  background: rgba(233, 30, 99, 0.08);
-  border-color: #E91E63;
-  color: #E91E63;
+  background: var(--color-primary-tint);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
   font-weight: var(--font-weight-semibold);
 }
 
@@ -397,7 +397,7 @@
   }
 
   .headerTitle {
-    font-size: 24px;
+    font-size: var(--font-size-2xl);
   }
 
   .formContainer {

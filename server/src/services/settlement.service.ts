@@ -1,9 +1,44 @@
 import { Settlement } from "@/models/Settlement";
 import { Group } from "@/models/Group";
+import { GroupExpense } from "@/models/GroupExpense";
 import type { CreateSettlementInput } from "@/schemas/settlement.schema";
 import { createPaginationMeta } from "@/utils/pagination";
 import mongoose from "mongoose";
 import { logger } from "@/utils/logger";
+
+// math-audit #2.13 Critical: compute what paidBy currently owes paidTo so we can
+// reject settlements larger than the outstanding pairwise balance.
+async function computePairwiseOwed(
+  groupId: string,
+  paidBy: string,
+  paidTo: string
+): Promise<number> {
+  const groupObjectId = new mongoose.Types.ObjectId(groupId);
+  const [expenses, settlements] = await Promise.all([
+    GroupExpense.find({ groupId: groupObjectId }),
+    Settlement.find({ groupId: groupObjectId }),
+  ]);
+
+  const balances: Record<string, number> = {};
+  for (const expense of expenses) {
+    const payerId = expense.paidBy.toString();
+    balances[payerId] = (balances[payerId] || 0) + expense.amount;
+    for (const split of expense.splitAmong) {
+      const debtor = split.userId.toString();
+      balances[debtor] = (balances[debtor] || 0) - split.amount;
+    }
+  }
+  for (const s of settlements) {
+    balances[s.paidBy.toString()] = (balances[s.paidBy.toString()] || 0) + s.amount;
+    balances[s.paidTo.toString()] = (balances[s.paidTo.toString()] || 0) - s.amount;
+  }
+
+  const debtorNet = balances[paidBy] || 0; // negative ⇒ owes money
+  const creditorNet = balances[paidTo] || 0; // positive ⇒ is owed
+  // Pairwise owed is bounded by min(|debtorNet|, creditorNet) when both signs align.
+  if (debtorNet >= 0 || creditorNet <= 0) return 0;
+  return Math.min(Math.abs(debtorNet), creditorNet);
+}
 
 export async function createSettlement(
   groupId: string,
@@ -24,6 +59,14 @@ export async function createSettlement(
 
   if (input.paidBy === input.paidTo) {
     throw new Error("paidBy and paidTo cannot be the same user");
+  }
+
+  // math-audit #2.13 Critical: reject overpayment — cap at current pairwise owed.
+  const owed = await computePairwiseOwed(groupId, input.paidBy, input.paidTo);
+  if (input.amount - owed > 0.01) {
+    throw new Error(
+      `Settlement amount (${input.amount}) exceeds the outstanding balance (${owed.toFixed(2)})`
+    );
   }
 
   const settlement = await Settlement.create({

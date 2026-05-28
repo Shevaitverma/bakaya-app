@@ -61,10 +61,12 @@ const SettleUpScreen: React.FC<SettleUpScreenProps> = ({ navigation, route }) =>
     const debtors: { userId: string; amount: number }[] = [];
     const creditors: { userId: string; amount: number }[] = [];
 
+    // math-audit #2.8 High: use the same ±0.01 tolerance as every other surface
+    // so FP drift around zero doesn't produce ghost settle-up rows.
     Object.entries(balances).forEach(([userId, amount]) => {
-      if (amount < 0) {
+      if (amount < -0.01) {
         debtors.push({ userId, amount: Math.abs(amount) });
-      } else if (amount > 0) {
+      } else if (amount > 0.01) {
         creditors.push({ userId, amount });
       }
     });

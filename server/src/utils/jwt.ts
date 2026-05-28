@@ -1,9 +1,11 @@
 import { SignJWT, jwtVerify } from "jose";
 import { env } from "@/config/env";
+import { isRefreshTokenRevoked } from "@/utils/tokenRevocation";
 
 export interface JwtPayload {
   userId: string;
   email: string;
+  iat?: number;
 }
 
 const accessSecret = new TextEncoder().encode(env.JWT_SECRET);
@@ -36,5 +38,9 @@ export async function verifyAccessToken(token: string): Promise<JwtPayload> {
 
 export async function verifyRefreshToken(token: string): Promise<JwtPayload> {
   const { payload } = await jwtVerify(token, refreshSecret);
-  return payload as unknown as JwtPayload;
+  const result = payload as unknown as JwtPayload;
+  if (isRefreshTokenRevoked(result.userId, result.iat)) {
+    throw new Error("Refresh token has been revoked");
+  }
+  return result;
 }

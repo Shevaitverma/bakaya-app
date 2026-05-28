@@ -370,6 +370,34 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
     }
   };
 
+  // ux-audit BUG-M4 High: "Leave group" was missing entirely. A non-creator
+  // member can now leave via the server's existing removeMember(self) path.
+  const handleLeaveGroup = () => {
+    if (!user?.id) return;
+    Alert.alert(
+      'Leave group',
+      'Leave this group? Any outstanding balances will need to be resolved separately.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: async () => {
+            if (!accessToken || !user?.id) return;
+            try {
+              await groupService.removeMember(groupId, user.id, accessToken);
+              navigation.goBack();
+            } catch (err) {
+              const msg =
+                err instanceof Error ? err.message : 'Failed to leave group';
+              Alert.alert('Error', msg);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleDeleteSettlement = (settlementId: string, description: string) => {
     setSettlementToDelete({ id: settlementId, description });
     setDeleteSettlementDialogVisible(true);
@@ -1015,6 +1043,29 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
               />
               <Text style={styles.emptyMembersText}>No members yet</Text>
             </View>
+          )}
+
+          {/* ux-audit BUG-M4 High: surface Leave group for non-creator members */}
+          {!isGroupCreator && user?.id && group?.members.some((m) => m.userId?.id === user.id) && (
+            <TouchableOpacity
+              onPress={handleLeaveGroup}
+              activeOpacity={0.7}
+              style={{
+                marginTop: Theme.spacing.md,
+                paddingVertical: Theme.spacing.sm,
+                alignSelf: 'flex-end',
+              }}
+            >
+              <Text
+                style={{
+                  color: Theme.colors.error,
+                  fontFamily: Theme.typography.fontFamily,
+                  fontWeight: Theme.typography.fontWeight.semibold,
+                }}
+              >
+                Leave group
+              </Text>
+            </TouchableOpacity>
           )}
         </View>
 

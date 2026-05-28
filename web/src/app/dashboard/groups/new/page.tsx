@@ -39,11 +39,19 @@ export default function CreateGroupPage() {
     setErrors({});
 
     try {
-      await createGroup.mutateAsync({
+      // ux-audit BUG-W1 High: post-create navigation used to jump to
+      // /dashboard; land the user inside the new group instead.
+      const created = await createGroup.mutateAsync({
         name: name.trim(),
         description: description.trim() || undefined,
       });
-      routerRef.current.push("/dashboard");
+      const newId = (created as { _id?: string; id?: string })?._id
+        ?? (created as { _id?: string; id?: string })?.id;
+      if (newId) {
+        routerRef.current.push(`/dashboard/groups/${newId}`);
+      } else {
+        routerRef.current.push("/dashboard/groups");
+      }
     } catch (error) {
       if (error instanceof ApiError) {
         setErrors({ server: error.message });
@@ -59,7 +67,8 @@ export default function CreateGroupPage() {
       <header className={styles.header}>
         <button
           className="btn-back"
-          onClick={() => router.push("/dashboard")}
+          // ux-audit BUG-W1 High: back should return to Groups list, not root dashboard
+          onClick={() => router.push("/dashboard/groups")}
           aria-label="Go back"
         >
           &larr;

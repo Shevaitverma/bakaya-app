@@ -3,6 +3,8 @@ import { Profile } from "@/models/Profile";
 import { Expense } from "@/models/Expense";
 import { Group } from "@/models/Group";
 import { Settlement } from "@/models/Settlement";
+import { GroupExpense } from "@/models/GroupExpense";
+import { GroupInvitation } from "@/models/GroupInvitation";
 import type {
   CreateUserInput,
   UpdateUserInput,
@@ -53,12 +55,20 @@ export class UserService {
   async delete(id: string): Promise<boolean> {
     const result = await User.findByIdAndDelete(id);
     if (result) {
-      // Cascade delete associated data
+      // logic-bug-hunt BUG-07 High: previous cascade left GroupExpense & GroupInvitation
+      // referencing the deleted user as paidBy/splitAmong/invitedBy/invitedUserId,
+      // causing ghost balances. Now also removes those records.
       await Promise.all([
         Profile.deleteMany({ userId: id }),
         Expense.deleteMany({ userId: id }),
         Settlement.deleteMany({ $or: [{ paidBy: id }, { paidTo: id }] }),
         Group.updateMany({ "members.userId": id }, { $pull: { members: { userId: id } } }),
+        GroupExpense.deleteMany({
+          $or: [{ paidBy: id }, { "splitAmong.userId": id }],
+        }),
+        GroupInvitation.deleteMany({
+          $or: [{ invitedBy: id }, { invitedUserId: id }],
+        }),
       ]);
       logger.info("User deleted with associated data", { userId: id });
       return true;

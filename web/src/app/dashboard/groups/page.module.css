@@ -6,7 +6,7 @@
 /* --- Page Shell --- */
 .page {
   min-height: 100dvh;
-  background: #F5F5F5;
+  background: var(--color-surface-alt);
   display: flex;
   flex-direction: column;
 }
@@ -17,13 +17,13 @@
   justify-content: space-between;
   align-items: center;
   padding: 32px 32px 60px;
-  background: #D81B60;
+  background: var(--color-primary);
 }
 
 .headerTitle {
-  font-size: 32px;
-  font-weight: 800;
-  color: #FFFFFF;
+  font-size: var(--font-size-display);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-white);
   letter-spacing: -0.5px;
 }
 
@@ -32,8 +32,8 @@
   align-items: center;
   gap: 6px;
   padding: 10px 20px;
-  background: #FFFFFF;
-  color: #D81B60;
+  background: var(--color-white);
+  color: var(--color-primary);
   border-radius: 999px;
   text-decoration: none;
   font-weight: 700;
@@ -57,9 +57,9 @@
 .content {
   flex: 1;
   padding: 28px 32px 60px;
-  background: #F5F5F5;
-  border-top-left-radius: 24px;
-  border-top-right-radius: 24px;
+  background: var(--color-surface-alt);
+  border-top-left-radius: var(--radius-2xl);
+  border-top-right-radius: var(--radius-2xl);
   margin-top: -28px;
 }
 
@@ -78,13 +78,13 @@
 .emptyTitle {
   font-size: 20px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-primary);
   margin-bottom: 8px;
 }
 
 .emptySubtitle {
   font-size: 15px;
-  color: #9CA3AF;
+  color: var(--color-text-tertiary);
   margin-bottom: 24px;
   max-width: 320px;
   margin-left: auto;
@@ -97,9 +97,9 @@
   align-items: center;
   justify-content: center;
   padding: 14px 32px;
-  background: #D81B60;
-  color: #FFFFFF;
-  border-radius: 16px;
+  background: var(--color-primary);
+  color: var(--color-white);
+  border-radius: var(--radius-lg);
   text-decoration: none;
   font-weight: 600;
   font-size: 15px;
@@ -126,9 +126,9 @@
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: #FFFFFF;
-  border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  background: var(--color-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
   text-decoration: none;
   color: inherit;
   transition: transform 180ms ease, box-shadow 180ms ease;
@@ -154,7 +154,8 @@
   width: 56px;
   height: 56px;
   border-radius: 14px;
-  background: #EEF2FF;
+  background: var(--color-primary-tint);
+  color: var(--color-primary);
   flex-shrink: 0;
 }
 
@@ -169,7 +170,7 @@
 .groupName {
   font-weight: 700;
   font-size: 16px;
-  color: #111827;
+  color: var(--color-text-primary);
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -178,7 +179,7 @@
 
 .groupDescription {
   font-size: 13px;
-  color: #9CA3AF;
+  color: var(--color-text-tertiary);
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -201,14 +202,14 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #D81B60;
-  color: #FFFFFF;
+  background: var(--color-primary);
+  color: var(--color-white);
   font-size: 11px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #FFFFFF;
+  border: 2px solid var(--color-white);
   margin-left: -8px;
 }
 
@@ -218,7 +219,7 @@
 
 .memberCount {
   font-size: 13px;
-  color: #9CA3AF;
+  color: var(--color-text-tertiary);
 }
 
 .chevron {
@@ -236,7 +237,7 @@
   }
 
   .headerTitle {
-    font-size: 24px;
+    font-size: var(--font-size-2xl);
   }
 
   .content {

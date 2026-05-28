@@ -191,6 +191,16 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
       const pctTotal = getPercentageTotal();
       if (Math.abs(pctTotal - 100) > 0.01) {
         newErrors.split = `Percentages must add up to 100%. Currently ${pctTotal.toFixed(1)}% allocated.`;
+      } else {
+        // math-audit #2.9 High: every selected member must have >0%
+        const splitMemberIdsLocal = Array.from(splitMembers);
+        const hasEmptyPct = splitMemberIdsLocal.some((uid) => {
+          const pct = parseFloat(percentages[uid] || '0');
+          return isNaN(pct) || pct <= 0;
+        });
+        if (hasEmptyPct) {
+          newErrors.split = 'Every selected member needs a percentage greater than 0%.';
+        }
       }
     }
 
@@ -235,7 +245,8 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
       const remainder = Math.round((amountNum - baseAmount * splitCount) * 100) / 100;
       splitAmong = splitMemberIds.map((userId, i) => ({
         userId,
-        amount: i === 0 ? baseAmount + remainder : baseAmount,
+        // math-audit #2.3 High: round baseAmount+remainder to avoid FP drift
+        amount: i === 0 ? Math.round((baseAmount + remainder) * 100) / 100 : baseAmount,
       }));
     }
 
@@ -249,6 +260,9 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
           amount: amountNum,
           category: category.trim(),
           notes: notes.trim() || undefined,
+          // logic-bug-hunt BUG-03 / ux-audit BUG-M6 High: include paidBy so edits
+          // can actually change who paid. Server schema now accepts it.
+          paidBy,
           splitAmong,
         },
         accessToken
@@ -638,15 +652,17 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
 
                 return (
                   <View key={member.userId}>
-                    <TouchableOpacity
+                    {/* ux-audit BUG-M2 High: same tap-target fix as Add screen. */}
+                    <View
                       style={[
                         styles.splitMemberRow,
                         isLast && styles.splitMemberRowLast,
                         isSelected && styles.splitMemberRowSelected,
-                      ]}
-                      onPress={() => toggleSplitMember(member.userId)}
-                      activeOpacity={0.7}>
-                      <View style={styles.splitMemberInfo}>
+                      ]}>
+                      <TouchableOpacity
+                        style={styles.splitMemberInfo}
+                        onPress={() => toggleSplitMember(member.userId)}
+                        activeOpacity={0.7}>
                         <View
                           style={[
                             styles.checkbox,
@@ -668,7 +684,7 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
                           ]}>
                           {displayName}
                         </Text>
-                      </View>
+                      </TouchableOpacity>
 
                       {/* Equal mode: show per-person amount */}
                       {splitType === 'equal' &&
@@ -713,7 +729,7 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
                           )}
                         </View>
                       )}
-                    </TouchableOpacity>
+                    </View>
                   </View>
                 );
               })}

@@ -19,17 +19,32 @@ export async function createGroupExpense(
   );
   if (!isMember) throw new Error("Not a member of this group");
 
+  // math-audit #2.11 High: block expense creation in single-member groups (paidBy == splitAmong self)
+  if (group.members.length < 2) {
+    throw new Error("Cannot create group expenses in a single-member group");
+  }
+
   // Default: split equally among all members if splitAmong not provided
   let splitAmong = input.splitAmong;
   if (!splitAmong || splitAmong.length === 0) {
     const n = group.members.length;
+    // math-audit #2.2 High: reject auto-split when per-member share would round to 0
+    if (input.amount / n < 0.01) {
+      throw new Error("Expense amount is too small to split");
+    }
     const baseAmount = Math.floor((input.amount / n) * 100) / 100;
     const remainder = Math.round((input.amount - baseAmount * n) * 100) / 100;
     splitAmong = group.members.map((m, i) => ({
       userId: m.userId.toString(),
-      amount: i === 0 ? baseAmount + remainder : baseAmount,
+      // math-audit #2.3 High: round baseAmount+remainder to avoid FP drift
+      amount: i === 0 ? Math.round((baseAmount + remainder) * 100) / 100 : baseAmount,
     }));
   } else {
+    // math-audit #2.10 High: reject duplicate userIds in splitAmong
+    const uniqueUserIds = new Set(splitAmong.map((s) => s.userId));
+    if (uniqueUserIds.size !== splitAmong.length) {
+      throw new Error("Duplicate users in splitAmong are not allowed");
+    }
     // Validate splitAmong users are group members
     const memberIds = new Set(group.members.map((m) => m.userId.toString()));
     for (const split of splitAmong) {
@@ -69,7 +84,8 @@ export async function findGroupExpenses(
       .populate("paidBy", "email firstName lastName name")
       .sort({ createdAt: -1 })
       .skip((options.page - 1) * options.limit)
-      .limit(options.limit),
+      .limit(options.limit)
+      .lean(),
     GroupExpense.countDocuments(filter),
     GroupExpense.aggregate([
       { $match: filter },
@@ -117,16 +133,47 @@ export async function updateGroupExpense(
   });
   if (!expense) return null;
 
-  // If amount changed and splitAmong not provided, recalculate equal split
+  // math-audit #2.5 Critical: only expense creator (paidBy) or group admin may update
+  const isExpenseCreator = expense.paidBy.toString() === userId;
+  const isAdmin = group.members.some(
+    (m) => m.userId.toString() === userId && m.role === "admin"
+  );
+  if (!isExpenseCreator && !isAdmin) {
+    throw new Error("Only the expense creator or a group admin can update this expense");
+  }
+
+  // logic-bug-hunt BUG-03 High: if paidBy is changing, verify the new payer is a group member
+  if (input.paidBy) {
+    const memberIds = new Set(group.members.map((m) => m.userId.toString()));
+    if (!memberIds.has(input.paidBy)) {
+      throw new Error(`User ${input.paidBy} is not a member of this group`);
+    }
+  }
+
+  // If amount changed and splitAmong not provided, re-split across the EXISTING
+  // splitAmong members (math-audit #2.4 Critical: previously re-split across all group members).
   if (input.amount !== undefined && !input.splitAmong) {
-    const n = group.members.length;
+    const currentParticipants = expense.splitAmong.map((s) => s.userId.toString());
+    const n = currentParticipants.length || group.members.length;
+    if (input.amount / n < 0.01) {
+      throw new Error("Expense amount is too small to split");
+    }
     const baseAmount = Math.floor((input.amount / n) * 100) / 100;
     const remainder = Math.round((input.amount - baseAmount * n) * 100) / 100;
-    input.splitAmong = group.members.map((m, i) => ({
-      userId: m.userId.toString(),
-      amount: i === 0 ? baseAmount + remainder : baseAmount,
+    const participants = currentParticipants.length > 0
+      ? currentParticipants
+      : group.members.map((m) => m.userId.toString());
+    input.splitAmong = participants.map((uid, i) => ({
+      userId: uid,
+      // math-audit #2.3 High: round baseAmount+remainder to avoid FP drift
+      amount: i === 0 ? Math.round((baseAmount + remainder) * 100) / 100 : baseAmount,
     }));
   } else if (input.splitAmong) {
+    // math-audit #2.10 High: reject duplicate userIds in splitAmong
+    const uniqueUserIds = new Set(input.splitAmong.map((s) => s.userId));
+    if (uniqueUserIds.size !== input.splitAmong.length) {
+      throw new Error("Duplicate users in splitAmong are not allowed");
+    }
     // Validate splitAmong users are group members
     const memberIds = new Set(group.members.map((m) => m.userId.toString()));
     for (const split of input.splitAmong) {
@@ -157,44 +204,77 @@ export async function deleteGroupExpense(
   expenseId: string,
   userId: string
 ) {
+  // logic-bug-hunt BUG-06 High: admins should be able to delete any expense;
+  // and distinguish "not found" from "forbidden" for better client error mapping.
+  const group = await Group.findById(groupId);
+  if (!group) throw new Error("Group not found");
+
+  const expense = await GroupExpense.findOne({
+    _id: expenseId,
+    groupId: new mongoose.Types.ObjectId(groupId),
+  });
+  if (!expense) return null;
+
+  const isExpenseCreator = expense.paidBy.toString() === userId;
+  const isAdmin = group.members.some(
+    (m) => m.userId.toString() === userId && m.role === "admin"
+  );
+  if (!isExpenseCreator && !isAdmin) {
+    throw new Error("Only the expense creator or a group admin can delete this expense");
+  }
+
   return GroupExpense.findOneAndDelete({
     _id: expenseId,
     groupId: new mongoose.Types.ObjectId(groupId),
-    paidBy: userId,
   });
 }
 
 export async function getGroupBalances(groupId: string) {
   const groupObjectId = new mongoose.Types.ObjectId(groupId);
+  const match = { groupId: groupObjectId };
 
-  const [expenses, settlements] = await Promise.all([
-    GroupExpense.find({ groupId: groupObjectId }),
-    Settlement.find({ groupId: groupObjectId }),
+  // All aggregations return at most N rows (N = distinct users in the group),
+  // not one row per expense — memory footprint is independent of expense count.
+  const [paidTotals, splitTotals, settlementTotals] = await Promise.all([
+    // Credits: amount each user paid as the expense payer
+    GroupExpense.aggregate<{ _id: mongoose.Types.ObjectId; total: number }>([
+      { $match: match },
+      { $group: { _id: "$paidBy", total: { $sum: "$amount" } } },
+    ]),
+    // Debits: amount each user owes from being in splitAmong
+    GroupExpense.aggregate<{ _id: mongoose.Types.ObjectId; total: number }>([
+      { $match: match },
+      { $unwind: "$splitAmong" },
+      { $group: { _id: "$splitAmong.userId", total: { $sum: "$splitAmong.amount" } } },
+    ]),
+    // Settlements: payer's debt decreases, receiver's credit decreases
+    Settlement.aggregate<{
+      paid: Array<{ _id: mongoose.Types.ObjectId; total: number }>;
+      received: Array<{ _id: mongoose.Types.ObjectId; total: number }>;
+    }>([
+      { $match: match },
+      {
+        $facet: {
+          paid: [{ $group: { _id: "$paidBy", total: { $sum: "$amount" } } }],
+          received: [{ $group: { _id: "$paidTo", total: { $sum: "$amount" } } }],
+        },
+      },
+    ]),
   ]);
 
-  // Calculate how much each person paid and how much they owe
   const balances: Record<string, number> = {};
+  const add = (userId: mongoose.Types.ObjectId, delta: number) => {
+    const key = userId.toString();
+    balances[key] = (balances[key] || 0) + delta;
+  };
 
-  for (const expense of expenses) {
-    const payerId = expense.paidBy.toString();
-    // Payer gets credit for the full amount
-    balances[payerId] = (balances[payerId] || 0) + expense.amount;
+  for (const row of paidTotals) add(row._id, row.total);
+  for (const row of splitTotals) add(row._id, -row.total);
 
-    // Each person in splitAmong owes their share
-    for (const split of expense.splitAmong) {
-      const debtor = split.userId.toString();
-      balances[debtor] = (balances[debtor] || 0) - split.amount;
-    }
-  }
-
-  // Factor in settlements
-  for (const settlement of settlements) {
-    const paidById = settlement.paidBy.toString();
-    const paidToId = settlement.paidTo.toString();
-    // The payer reduces their debt (or increases their credit)
-    balances[paidById] = (balances[paidById] || 0) + settlement.amount;
-    // The receiver's credit is reduced (they received what was owed)
-    balances[paidToId] = (balances[paidToId] || 0) - settlement.amount;
+  const settlement = settlementTotals[0];
+  if (settlement) {
+    for (const row of settlement.paid) add(row._id, row.total);
+    for (const row of settlement.received) add(row._id, -row.total);
   }
 
   return balances;

@@ -2,7 +2,7 @@
  * Profiles Screen - Manage user profiles
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -45,6 +45,13 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
   const [totalsLoading, setTotalsLoading] = useState(false);
   const [pendingInvitationCount, setPendingInvitationCount] = useState<number>(0);
   const lastFetchTime = useRef<number>(0);
+  const deleteLoadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (deleteLoadingTimeoutRef.current) clearTimeout(deleteLoadingTimeoutRef.current);
+    };
+  }, []);
 
   const fetchPendingInvitationCount = useCallback(async () => {
     if (!accessToken) return;
@@ -144,8 +151,10 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
     setDeleteDialogVisible(true);
     setDeleteLoading(true);
 
-    setTimeout(() => {
+    if (deleteLoadingTimeoutRef.current) clearTimeout(deleteLoadingTimeoutRef.current);
+    deleteLoadingTimeoutRef.current = setTimeout(() => {
       setDeleteLoading(false);
+      deleteLoadingTimeoutRef.current = null;
     }, 100);
   };
 

@@ -76,6 +76,8 @@ export async function createSettlement(req: Request, params?: Record<string, str
       if (error.message === "paidBy user is not a member of this group") return forbiddenResponse(error.message);
       if (error.message === "paidTo user is not a member of this group") return forbiddenResponse(error.message);
       if (error.message === "paidBy and paidTo cannot be the same user") return badRequestResponse(error.message);
+      // math-audit #2.13 Critical: overpay rejection
+      if (error.message.startsWith("Settlement amount")) return badRequestResponse(error.message);
     }
     if (error instanceof SyntaxError) {
       return badRequestResponse("Invalid request body");

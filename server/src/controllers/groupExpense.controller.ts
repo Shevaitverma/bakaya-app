@@ -56,9 +56,23 @@ export async function createGroupExpense(req: Request, params?: Record<string, s
     const body = await req.json();
     const input = createGroupExpenseSchema.parse(body);
 
-    // Use client-provided paidBy if present, otherwise default to authenticated user.
-    // The service validates that paidBy is a member of the group.
-    const paidBy = input.paidBy || userId;
+    // Validate group membership first (both to block non-members and to reuse for admin check)
+    const membershipError = await validateGroupMembership(groupId, userId);
+    if (membershipError) return membershipError;
+
+    // logic-bug-hunt BUG-11 High: reject impersonation — only the authenticated user
+    // (or group admins explicitly logging on behalf) can be set as paidBy.
+    let paidBy = input.paidBy || userId;
+    if (paidBy !== userId) {
+      const group = await groupService.findGroupById(groupId);
+      const isAdmin = !!group?.members.some(
+        (m: any) =>
+          ((m.userId?._id || m.userId)?.toString() === userId) && m.role === "admin"
+      );
+      if (!isAdmin) {
+        return forbiddenResponse("You can only create expenses you paid for");
+      }
+    }
 
     const expense = await groupExpenseService.createGroupExpense(groupId, paidBy, input);
 
@@ -70,6 +84,16 @@ export async function createGroupExpense(req: Request, params?: Record<string, s
     if (error instanceof Error) {
       if (error.message === "Group not found") return notFoundResponse(error.message);
       if (error.message === "Not a member of this group") return forbiddenResponse(error.message);
+      // math-audit #2.10/#2.11/#2.2 High surfaced as 400
+      if (
+        error.message.startsWith("Duplicate users") ||
+        error.message.startsWith("Cannot create group expenses") ||
+        error.message.startsWith("Expense amount is too small") ||
+        error.message.startsWith("Split amounts") ||
+        error.message.includes("is not a member of this group")
+      ) {
+        return badRequestResponse(error.message);
+      }
     }
     if (error instanceof SyntaxError) {
       return badRequestResponse("Invalid request body");
@@ -123,6 +147,18 @@ export async function updateGroupExpense(req: Request, params?: Record<string, s
     if (error instanceof Error) {
       if (error.message === "Group not found") return notFoundResponse(error.message);
       if (error.message === "Not a member of this group") return forbiddenResponse(error.message);
+      // math-audit #2.5 Critical: expense creator/admin check
+      if (error.message === "Only the expense creator or a group admin can update this expense") {
+        return forbiddenResponse(error.message);
+      }
+      if (
+        error.message.startsWith("Duplicate users") ||
+        error.message.startsWith("Expense amount is too small") ||
+        error.message.startsWith("Split amounts") ||
+        error.message.includes("is not a member of this group")
+      ) {
+        return badRequestResponse(error.message);
+      }
     }
     if (error instanceof SyntaxError) {
       return badRequestResponse("Invalid request body");
@@ -149,6 +185,13 @@ export async function deleteGroupExpense(req: Request, params?: Record<string, s
 
     return successResponse({ deleted: true });
   } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "Group not found") return notFoundResponse(error.message);
+      // logic-bug-hunt BUG-06 High: return 403 vs 404 distinctly
+      if (error.message === "Only the expense creator or a group admin can delete this expense") {
+        return forbiddenResponse(error.message);
+      }
+    }
     logger.error("Delete group expense error", { error });
     throw error;
   }

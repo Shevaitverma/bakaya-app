@@ -38,6 +38,9 @@ export default function ProfilesPage() {
   const handleLogout = async () => {
     await authApi.logout();
     clearAllAuth();
+    // logic-bug-hunt BUG-05 High: clear TanStack cache so the next user signed
+    // in on this browser doesn't briefly see the previous user's data.
+    queryClient.clear();
     router.push("/login");
   };
 

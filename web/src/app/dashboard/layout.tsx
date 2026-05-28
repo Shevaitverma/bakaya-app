@@ -6,6 +6,7 @@ import Link from "next/link";
 import { clearAllAuth, getToken, setOnSessionExpired } from "@/lib/api-client";
 import { useProactiveRefresh } from "@/lib/use-proactive-refresh";
 import { useMyInvitations } from "@/lib/queries";
+import { useQueryClient } from "@tanstack/react-query";
 import styles from "./layout.module.css";
 
 interface NavItem {
@@ -106,6 +107,9 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [user, setUser] = useState<StoredUser | null>(null);
+  const queryClient = useQueryClient();
+  const queryClientRef = useRef(queryClient);
+  queryClientRef.current = queryClient;
 
   // Proactively refresh the access token when the tab becomes visible, so the
   // user never waits for a 401→refresh round-trip on return.
@@ -138,6 +142,11 @@ export default function DashboardLayout({
     // expired session (refresh token rejected) can redirect to /login.
     // This replaces the per-page clearAllAuth+redirect pattern.
     setOnSessionExpired(() => {
+      // logic-bug-hunt BUG-05 High: drop cached per-user data before redirect
+      // so the next user who signs in doesn't briefly see the previous user's.
+      try {
+        queryClientRef.current.clear();
+      } catch {}
       routerRef.current.push("/login");
     });
 

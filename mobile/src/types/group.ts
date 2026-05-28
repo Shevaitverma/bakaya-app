@@ -164,6 +164,8 @@ export interface UpdateGroupExpenseRequest {
   amount?: number;
   category?: string;
   notes?: string;
+  // logic-bug-hunt BUG-03 High: allow edits to change the payer
+  paidBy?: string;
   splitAmong?: { userId: string; amount: number }[];
 }
 

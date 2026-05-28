@@ -13,16 +13,41 @@ const authRateLimitStore = new Map<string, RateLimitEntry>();
 const AUTH_RATE_LIMIT_MAX = 10;
 const AUTH_RATE_LIMIT_WINDOW_MS = 60000;
 
-// Clean up expired entries periodically
+// Hard cap on store size — protects against unbounded growth from rotating
+// JWTs / per-request unique IPs when expiration cleanup can't keep up.
+const MAX_STORE_ENTRIES = 10_000;
+
+function pruneStore(store: Map<string, RateLimitEntry>, now: number) {
+  for (const [key, entry] of store.entries()) {
+    if (entry.resetAt < now) store.delete(key);
+  }
+  // If still oversized, evict the entries with the soonest resetAt
+  // (i.e. closest to expiry — least useful to keep).
+  if (store.size > MAX_STORE_ENTRIES) {
+    const overflow = store.size - MAX_STORE_ENTRIES;
+    const sorted = Array.from(store.entries()).sort(
+      (a, b) => a[1].resetAt - b[1].resetAt
+    );
+    for (let i = 0; i < overflow; i++) {
+      const entry = sorted[i];
+      if (entry) store.delete(entry[0]);
+    }
+  }
+}
+
+// Clean up expired / oversized entries periodically
 setInterval(() => {
   const now = Date.now();
-  for (const [key, entry] of rateLimitStore.entries()) {
-    if (entry.resetAt < now) rateLimitStore.delete(key);
-  }
-  for (const [key, entry] of authRateLimitStore.entries()) {
-    if (entry.resetAt < now) authRateLimitStore.delete(key);
-  }
+  pruneStore(rateLimitStore, now);
+  pruneStore(authRateLimitStore, now);
 }, 60000);
+
+function getRateLimitKey(req: Request): string {
+  const authHeader = req.headers.get("authorization");
+  return authHeader
+    ? `user:${authHeader.slice(-16)}`
+    : `ip:${getClientIP(req)}`;
+}
 
 export function getClientIP(req: Request): string {
   // Only trust proxy headers if TRUST_PROXY is enabled
@@ -75,16 +100,13 @@ export function checkRateLimit(req: Request): Response | null {
   // Use Authorization token (per-user) if available, otherwise fall back to IP.
   // This prevents all clients from sharing a single "unknown" bucket when
   // TRUST_PROXY is not set (e.g. local development).
-  const authHeader = req.headers.get("authorization");
-  const key = authHeader
-    ? `user:${authHeader.slice(-16)}`   // last 16 chars of token as key
-    : `ip:${getClientIP(req)}`;
-  return checkLimit(rateLimitStore, key, env.RATE_LIMIT_MAX, env.RATE_LIMIT_WINDOW_MS);
+  return checkLimit(rateLimitStore, getRateLimitKey(req), env.RATE_LIMIT_MAX, env.RATE_LIMIT_WINDOW_MS);
 }
 
 export function getRateLimitHeaders(req: Request): Record<string, string> {
-  const clientIP = getClientIP(req);
-  const entry = rateLimitStore.get(clientIP);
+  // Must use the same key derivation as checkRateLimit, or headers will
+  // report against a different bucket than the one actually enforced.
+  const entry = rateLimitStore.get(getRateLimitKey(req));
   const maxRequests = env.RATE_LIMIT_MAX;
 
   const remaining = entry ? Math.max(0, maxRequests - entry.count) : maxRequests;

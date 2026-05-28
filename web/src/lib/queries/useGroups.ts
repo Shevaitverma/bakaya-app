@@ -1,5 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { groupsApi, type CreateGroupInput, type CreateGroupExpenseInput, type CreateSettlementInput } from "@/lib/api/groups";
+import {
+  groupsApi,
+  type CreateGroupInput,
+  type CreateGroupExpenseInput,
+  type CreateSettlementInput,
+  type UpdateGroupExpenseInput,
+} from "@/lib/api/groups";
 import { queryKeys } from "./keys";
 
 export function useGroups(params?: { page?: number; limit?: number }) {
@@ -76,6 +82,27 @@ export function useCreateGroupExpense(groupId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateGroupExpenseInput) => groupsApi.createExpense(groupId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.groups.expenses(groupId) });
+      qc.invalidateQueries({ queryKey: queryKeys.groups.balances(groupId) });
+    },
+  });
+}
+
+// ux-audit BUG-W5 Critical: provide fetch + update mutation for the web edit route
+export function useGroupExpense(groupId: string, expenseId: string) {
+  return useQuery({
+    queryKey: [...queryKeys.groups.expenses(groupId), expenseId] as const,
+    queryFn: () => groupsApi.getExpense(groupId, expenseId),
+    enabled: !!groupId && !!expenseId,
+  });
+}
+
+export function useUpdateGroupExpense(groupId: string, expenseId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateGroupExpenseInput) =>
+      groupsApi.updateExpense(groupId, expenseId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.groups.expenses(groupId) });
       qc.invalidateQueries({ queryKey: queryKeys.groups.balances(groupId) });

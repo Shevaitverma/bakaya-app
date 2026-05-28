@@ -147,6 +147,17 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
       const pctTotal = getPercentageTotal();
       if (Math.abs(pctTotal - 100) > 0.01) {
         newErrors.split = `Percentages must add up to 100%. Currently ${pctTotal.toFixed(1)}% allocated.`;
+      } else {
+        // math-audit #2.9 High: every selected member must carry a positive percentage,
+        // otherwise their amount becomes 0 and the server rejects with a cryptic error.
+        const splitMemberIdsLocal = Array.from(splitMembers);
+        const hasEmptyPct = splitMemberIdsLocal.some((uid) => {
+          const pct = parseFloat(percentages[uid] || '0');
+          return isNaN(pct) || pct <= 0;
+        });
+        if (hasEmptyPct) {
+          newErrors.split = 'Every selected member needs a percentage greater than 0%.';
+        }
       }
     }
 
@@ -191,7 +202,8 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
       const remainder = Math.round((amountNum - baseAmount * splitCount) * 100) / 100;
       splitAmong = splitMemberIds.map((userId, i) => ({
         userId,
-        amount: i === 0 ? baseAmount + remainder : baseAmount,
+        // math-audit #2.3 High: round baseAmount+remainder to avoid 0.01 FP drift
+        amount: i === 0 ? Math.round((baseAmount + remainder) * 100) / 100 : baseAmount,
       }));
     }
 
@@ -660,15 +672,20 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
 
                 return (
                   <View key={member.userId}>
-                    <TouchableOpacity
+                    {/* ux-audit BUG-M2 High: split the row into a tap-to-toggle
+                        subregion (checkbox + name) and sibling inputs, so
+                        tapping the amount/percent TextInput no longer toggles
+                        the member off via the parent TouchableOpacity. */}
+                    <View
                       style={[
                         styles.splitMemberRow,
                         isLast && styles.splitMemberRowLast,
                         isSelected && styles.splitMemberRowSelected,
-                      ]}
-                      onPress={() => toggleSplitMember(member.userId)}
-                      activeOpacity={0.7}>
-                      <View style={styles.splitMemberInfo}>
+                      ]}>
+                      <TouchableOpacity
+                        style={styles.splitMemberInfo}
+                        onPress={() => toggleSplitMember(member.userId)}
+                        activeOpacity={0.7}>
                         <View
                           style={[
                             styles.checkbox,
@@ -690,7 +707,7 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
                           ]}>
                           {displayName}
                         </Text>
-                      </View>
+                      </TouchableOpacity>
 
                       {/* Equal mode: show per-person amount */}
                       {splitType === 'equal' &&
@@ -735,7 +752,7 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
                           )}
                         </View>
                       )}
-                    </TouchableOpacity>
+                    </View>
                   </View>
                 );
               })}

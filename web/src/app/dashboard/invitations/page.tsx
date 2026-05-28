@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError } from "@/lib/api-client";
 import {
@@ -29,6 +29,13 @@ export default function InvitationsPage() {
   const [actionError, setActionError] = useState("");
   const [successBanner, setSuccessBanner] = useState("");
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+    };
+  }, []);
 
   const handleAccept = async (invitationId: string) => {
     if (acceptMutation.isPending || declineMutation.isPending) return;
@@ -40,8 +47,10 @@ export default function InvitationsPage() {
       const groupId = result?.group?._id;
       setSuccessBanner(`Joined ${groupName}! Redirecting...`);
       if (groupId) {
-        window.setTimeout(() => {
+        if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+        redirectTimeoutRef.current = setTimeout(() => {
           router.push(`/dashboard/groups/${groupId}`);
+          redirectTimeoutRef.current = null;
         }, 900);
       }
     } catch (error) {

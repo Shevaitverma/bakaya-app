@@ -1,6 +1,7 @@
 import { Group } from "@/models/Group";
 import { GroupExpense } from "@/models/GroupExpense";
 import { Settlement } from "@/models/Settlement";
+import { GroupInvitation } from "@/models/GroupInvitation";
 import type { CreateGroupInput, UpdateGroupInput } from "@/schemas/group.schema";
 import mongoose from "mongoose";
 import { logger } from "@/utils/logger";
@@ -52,10 +53,11 @@ export async function deleteGroup(groupId: string, userId: string) {
     throw new Error("Only the creator can delete the group");
   }
 
-  // Cascade delete associated data
+  // logic-bug-hunt BUG-08 High: cascade invitations so orphans don't linger
   await Promise.all([
     GroupExpense.deleteMany({ groupId }),
     Settlement.deleteMany({ groupId }),
+    GroupInvitation.deleteMany({ groupId }),
     Group.findByIdAndDelete(groupId),
   ]);
   logger.info("Group deleted with associated data", { groupId });
@@ -98,7 +100,8 @@ export async function findGroupsByMember(
       .populate("members.userId", "email firstName lastName name")
       .sort({ createdAt: -1 })
       .skip((options.page - 1) * options.limit)
-      .limit(options.limit),
+      .limit(options.limit)
+      .lean(),
     Group.countDocuments(filter),
   ]);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { formatDate } from "@/utils/format";
@@ -18,6 +18,8 @@ import {
   useSendInvitation,
   useGroupInvitations,
   useCancelInvitation,
+  useRemoveMember,
+  useDeleteGroup,
 } from "@/lib/queries";
 import { Skeleton } from "@/components/Skeleton";
 import styles from "./page.module.css";
@@ -210,6 +212,8 @@ function IconEnvelope({ size = 20 }: { size?: number }) {
 
 export default function GroupDetailPage() {
   const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const params = useParams();
   const groupId = params.id as string;
 
@@ -230,6 +234,12 @@ export default function GroupDetailPage() {
   const sendInvitationMutation = useSendInvitation(groupId);
   const cancelInvitationMutation = useCancelInvitation(groupId);
   const createSettlementMutation = useCreateSettlement(groupId);
+  // ux-audit BUG-W2 Critical: the remove-member button was a no-op; wire it up.
+  const removeMemberMutation = useRemoveMember(groupId);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  // ux-audit BUG-W7 High: admin could not delete group / member could not leave
+  // group on web. Add lightweight mutations + handlers to cover both cases.
+  const deleteGroupMutation = useDeleteGroup();
 
   // Pending invitations (for admin-only display)
   const { data: pendingInvitationsData } = useGroupInvitations(groupId, "pending");
@@ -367,6 +377,69 @@ export default function GroupDetailPage() {
         window.alert(error.message);
       } else {
         window.alert("Unable to cancel invitation. Please try again.");
+      }
+    }
+  };
+
+  // ux-audit BUG-W2 Critical: wire remove-member button so admins can actually
+  // remove members on web. Previously this was a no-op affordance.
+  const handleRemoveMember = async (memberId: string, memberName: string) => {
+    if (removeMemberMutation.isPending) return;
+    const ok = window.confirm(
+      `Remove ${memberName} from this group? Any balance they have will need to be resolved separately.`
+    );
+    if (!ok) return;
+    try {
+      setRemovingMemberId(memberId);
+      await removeMemberMutation.mutateAsync(memberId);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        window.alert(error.message);
+      } else {
+        window.alert("Unable to remove member. Please try again.");
+      }
+    } finally {
+      setRemovingMemberId(null);
+    }
+  };
+
+  // ux-audit BUG-W7 High: Leave group for any member; reuses removeMember(self).
+  const handleLeaveGroup = async () => {
+    if (!currentUserId || removeMemberMutation.isPending) return;
+    const ok = window.confirm(
+      "Leave this group? Any outstanding balances will need to be resolved separately."
+    );
+    if (!ok) return;
+    try {
+      setRemovingMemberId(currentUserId);
+      await removeMemberMutation.mutateAsync(currentUserId);
+      routerRef.current.push("/dashboard/groups");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        window.alert(error.message);
+      } else {
+        window.alert("Unable to leave group. Please try again.");
+      }
+    } finally {
+      setRemovingMemberId(null);
+    }
+  };
+
+  // ux-audit BUG-W7 High: Delete group (creator only, matching server policy).
+  const handleDeleteGroup = async () => {
+    if (deleteGroupMutation.isPending) return;
+    const ok = window.confirm(
+      "Permanently delete this group and all its expenses, settlements, and invitations? This cannot be undone."
+    );
+    if (!ok) return;
+    try {
+      await deleteGroupMutation.mutateAsync(groupId);
+      routerRef.current.push("/dashboard/groups");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        window.alert(error.message);
+      } else {
+        window.alert("Unable to delete group. Please try again.");
       }
     }
   };
@@ -884,9 +957,15 @@ export default function GroupDetailPage() {
                             className={styles.iconBtn}
                             aria-label={`Remove ${name}`}
                             title="Remove member"
-                            // Preserve existing behavior: no remove handler was
-                            // wired up in the original file. Keeping the UI
-                            // affordance visible to admins as restyled icon.
+                            // ux-audit BUG-W2 Critical: wire onClick so clicking
+                            // actually removes the member.
+                            onClick={() =>
+                              handleRemoveMember(member.userId.id, name)
+                            }
+                            disabled={
+                              removeMemberMutation.isPending &&
+                              removingMemberId === member.userId.id
+                            }
                           >
                             <IconTrash size={16} />
                           </button>
@@ -906,6 +985,50 @@ export default function GroupDetailPage() {
                 </div>
               </div>
             </section>
+
+            {/* ---------- Group actions (ux-audit BUG-W7 High) ---------- */}
+            {group && currentUserId && (
+              <section className={styles.section}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "0.75rem",
+                    justifyContent: "flex-end",
+                  }}
+                >
+                  {group.members.some(
+                    (m) => m.userId.id === currentUserId
+                  ) &&
+                    group.createdBy.id !== currentUserId && (
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={handleLeaveGroup}
+                        disabled={removeMemberMutation.isPending}
+                      >
+                        Leave group
+                      </button>
+                    )}
+                  {group.createdBy.id === currentUserId && (
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={handleDeleteGroup}
+                      disabled={deleteGroupMutation.isPending}
+                      style={{
+                        color: "var(--color-error, #ef4444)",
+                        borderColor: "var(--color-error, #ef4444)",
+                      }}
+                    >
+                      {deleteGroupMutation.isPending
+                        ? "Deleting..."
+                        : "Delete group"}
+                    </button>
+                  )}
+                </div>
+              </section>
+            )}
 
             {/* ---------- Pending Invitations Section (admin-only) ---------- */}
             {isCurrentUserAdmin && pendingInvitations.length > 0 && (
@@ -1095,15 +1218,39 @@ export default function GroupDetailPage() {
                               {netLabel}
                             </span>
                             {expense.paidBy.id === currentUserId && (
-                              <button
-                                type="button"
-                                className={styles.iconBtn}
-                                onClick={() => handleDelete(expense)}
-                                aria-label={`Delete ${expense.title}`}
-                                title="Delete expense"
-                              >
-                                <IconTrash size={16} />
-                              </button>
+                              <>
+                                {/* ux-audit BUG-W5 Critical: entry point to the new edit route */}
+                                <Link
+                                  href={`/dashboard/groups/${groupId}/expenses/${expense._id}/edit`}
+                                  className={styles.iconBtn}
+                                  aria-label={`Edit ${expense.title}`}
+                                  title="Edit expense"
+                                >
+                                  <svg
+                                    width={16}
+                                    height={16}
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    aria-hidden
+                                  >
+                                    <path d="M12 20h9" />
+                                    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />
+                                  </svg>
+                                </Link>
+                                <button
+                                  type="button"
+                                  className={styles.iconBtn}
+                                  onClick={() => handleDelete(expense)}
+                                  aria-label={`Delete ${expense.title}`}
+                                  title="Delete expense"
+                                >
+                                  <IconTrash size={16} />
+                                </button>
+                              </>
                             )}
                           </div>
                         </div>

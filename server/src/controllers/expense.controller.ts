@@ -163,7 +163,7 @@ export async function exportExpensesCSVHandler(req: Request): Promise<Response> 
     const url = new URL(req.url);
     const query = expenseQuerySchema.parse(Object.fromEntries(url.searchParams));
 
-    const expenses = await expenseService.exportExpensesCSV(userId, {
+    const cursor = expenseService.streamExpensesForCSV(userId, {
       type: query.type,
       category: query.category,
       profileId: query.profileId,
@@ -171,26 +171,46 @@ export async function exportExpensesCSVHandler(req: Request): Promise<Response> 
       endDate: query.endDate,
     });
 
-    const csvHeaders = "Date,Type,Title,Amount,Category,Source,Profile,Notes";
-    const csvRows = expenses.map((e) => {
-      const date = toISTDateStr(e.createdAt);
-      const type = e.type || "expense";
-      const title = csvEscape(e.title);
-      const amount = e.amount;
-      const category = csvEscape(e.category || "");
-      const source = csvEscape(e.source || "");
-      const profile = csvEscape(
-        (e.profileId && typeof e.profileId === "object" && "name" in e.profileId)
-          ? (e.profileId as unknown as { name: string }).name
-          : ""
-      );
-      const notes = csvEscape(e.notes || "");
-      return `${date},${type},${title},${amount},${category},${source},${profile},${notes}`;
+    const csvHeaders = "Date,Type,Title,Amount,Category,Source,Profile,Notes\n";
+    const encoder = new TextEncoder();
+
+    // Stream rows as they're read from MongoDB — server never buffers the full
+    // result set, and the client starts receiving bytes before the query
+    // finishes. Hard-capped at CSV_EXPORT_HARD_LIMIT in the service.
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          controller.enqueue(encoder.encode(csvHeaders));
+          for await (const e of cursor) {
+            const date = toISTDateStr(e.createdAt);
+            const type = e.type || "expense";
+            const title = csvEscape(e.title);
+            const amount = e.amount;
+            const category = csvEscape(e.category || "");
+            const source = csvEscape(e.source || "");
+            const profile = csvEscape(
+              (e.profileId && typeof e.profileId === "object" && "name" in e.profileId)
+                ? (e.profileId as unknown as { name: string }).name
+                : ""
+            );
+            const notes = csvEscape(e.notes || "");
+            const row = `${date},${type},${title},${amount},${category},${source},${profile},${notes}\n`;
+            controller.enqueue(encoder.encode(row));
+          }
+          controller.close();
+        } catch (err) {
+          logger.error("CSV export stream error", { error: err });
+          controller.error(err);
+        } finally {
+          try { await cursor.close(); } catch {}
+        }
+      },
+      async cancel() {
+        try { await cursor.close(); } catch {}
+      },
     });
 
-    const csv = [csvHeaders, ...csvRows].join("\n");
-
-    return new Response(csv, {
+    return new Response(stream, {
       status: 200,
       headers: {
         "Content-Type": "text/csv",
