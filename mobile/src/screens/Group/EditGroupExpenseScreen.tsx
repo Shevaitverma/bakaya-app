@@ -192,7 +192,7 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
       if (Math.abs(pctTotal - 100) > 0.01) {
         newErrors.split = `Percentages must add up to 100%. Currently ${pctTotal.toFixed(1)}% allocated.`;
       } else {
-        // math-audit #2.9 High: every selected member must have >0%
+        // A 0% member would get a 0 split, which the server rejects.
         const splitMemberIdsLocal = Array.from(splitMembers);
         const hasEmptyPct = splitMemberIdsLocal.some((uid) => {
           const pct = parseFloat(percentages[uid] || '0');
@@ -245,7 +245,7 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
       const remainder = Math.round((amountNum - baseAmount * splitCount) * 100) / 100;
       splitAmong = splitMemberIds.map((userId, i) => ({
         userId,
-        // math-audit #2.3 High: round baseAmount+remainder to avoid FP drift
+        // round to avoid FP drift
         amount: i === 0 ? Math.round((baseAmount + remainder) * 100) / 100 : baseAmount,
       }));
     }
@@ -260,8 +260,6 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
           amount: amountNum,
           category: category.trim(),
           notes: notes.trim() || undefined,
-          // logic-bug-hunt BUG-03 / ux-audit BUG-M6 High: include paidBy so edits
-          // can actually change who paid. Server schema now accepts it.
           paidBy,
           splitAmong,
         },
@@ -652,7 +650,8 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
 
                 return (
                   <View key={member.userId}>
-                    {/* ux-audit BUG-M2 High: same tap-target fix as Add screen. */}
+                    {/* Only checkbox + name toggle membership; the sibling
+                        inputs must stay tappable without toggling. */}
                     <View
                       style={[
                         styles.splitMemberRow,

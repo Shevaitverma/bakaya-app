@@ -19,28 +19,6 @@ let jwksCachedAt = 0;
 const JWKS_CACHE_DURATION = 3600_000; // 1 hour
 
 async function fetchJWKSData(): Promise<JSONWebKeySet> {
-  // Try curl first (faster on Windows where Bun fetch is slow)
-  const proc = Bun.spawn(["curl", "-s", "--max-time", "10", GOOGLE_JWKS_URL], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  try {
-    const text = await new Response(proc.stdout).text();
-    const exitCode = await proc.exited;
-    if (exitCode === 0 && text) {
-      return JSON.parse(text) as JSONWebKeySet;
-    }
-  } catch {
-    // curl not available or parse failed, fall through to fetch
-  } finally {
-    // Ensure the child process is reaped even if parsing throws or curl
-    // hangs past --max-time — prevents zombie processes on Linux.
-    if (proc.exitCode === null) {
-      try { proc.kill(); } catch {}
-    }
-  }
-
-  // Fallback to Bun fetch (works fine on Linux/production)
   const res = await fetch(GOOGLE_JWKS_URL);
   return await res.json() as JSONWebKeySet;
 }

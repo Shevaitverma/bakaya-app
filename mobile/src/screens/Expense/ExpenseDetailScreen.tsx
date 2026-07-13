@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -146,15 +146,6 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
   // screen within a short window (30 seconds).
   const lastFetchTimeRef = useRef<number>(0);
   const STALE_THRESHOLD_MS = 30_000; // 30 seconds
-
-  const deleteLoadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (deleteLoadingTimeoutRef.current) clearTimeout(deleteLoadingTimeoutRef.current);
-      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    };
-  }, []);
 
   // CSV export state
   const [exporting, setExporting] = useState(false);
@@ -439,10 +430,8 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
     setDeleteDialogVisible(true);
     setDeleteLoading(true);
 
-    if (deleteLoadingTimeoutRef.current) clearTimeout(deleteLoadingTimeoutRef.current);
-    deleteLoadingTimeoutRef.current = setTimeout(() => {
+    setTimeout(() => {
       setDeleteLoading(false);
-      deleteLoadingTimeoutRef.current = null;
     }, 100);
   };
 

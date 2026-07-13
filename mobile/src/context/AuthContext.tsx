@@ -100,24 +100,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setRefreshToken(null);
     setError(null);
 
-    // Clear persisted session
+    // Clear persisted session, the query cache, and its AsyncStorage persister
+    // key so the next user on this device never sees the previous user's data.
     await storage.clearAll();
-    // logic-bug-hunt BUG-05 High: also clear the TanStack query cache + the
-    // AsyncStorage persister key so the next user on this device never sees
-    // the previous user's data.
-    try {
-      queryClient.clear();
-    } catch (err) {
-      // If clear() throws (very rare — TanStack's clear is sync), the next
-      // user on the device could briefly see cached data from the previous
-      // session. Surface this in logs instead of silently swallowing.
-      console.warn('[AUTH] queryClient.clear() failed on logout', err);
-    }
-    try {
-      await AsyncStorage.removeItem('BAKAYA_QUERY_CACHE');
-    } catch (err) {
-      console.warn('[AUTH] Failed to remove persisted query cache on logout', err);
-    }
+    queryClient.clear();
+    await AsyncStorage.removeItem('BAKAYA_QUERY_CACHE').catch(() => {});
   }, []);
 
   // ---- Register the global session-expired callback ----

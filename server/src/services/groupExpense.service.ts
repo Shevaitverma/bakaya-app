@@ -19,7 +19,6 @@ export async function createGroupExpense(
   );
   if (!isMember) throw new Error("Not a member of this group");
 
-  // math-audit #2.11 High: block expense creation in single-member groups (paidBy == splitAmong self)
   if (group.members.length < 2) {
     throw new Error("Cannot create group expenses in a single-member group");
   }
@@ -28,7 +27,6 @@ export async function createGroupExpense(
   let splitAmong = input.splitAmong;
   if (!splitAmong || splitAmong.length === 0) {
     const n = group.members.length;
-    // math-audit #2.2 High: reject auto-split when per-member share would round to 0
     if (input.amount / n < 0.01) {
       throw new Error("Expense amount is too small to split");
     }
@@ -36,11 +34,10 @@ export async function createGroupExpense(
     const remainder = Math.round((input.amount - baseAmount * n) * 100) / 100;
     splitAmong = group.members.map((m, i) => ({
       userId: m.userId.toString(),
-      // math-audit #2.3 High: round baseAmount+remainder to avoid FP drift
+      // round to avoid FP drift
       amount: i === 0 ? Math.round((baseAmount + remainder) * 100) / 100 : baseAmount,
     }));
   } else {
-    // math-audit #2.10 High: reject duplicate userIds in splitAmong
     const uniqueUserIds = new Set(splitAmong.map((s) => s.userId));
     if (uniqueUserIds.size !== splitAmong.length) {
       throw new Error("Duplicate users in splitAmong are not allowed");
@@ -133,7 +130,6 @@ export async function updateGroupExpense(
   });
   if (!expense) return null;
 
-  // math-audit #2.5 Critical: only expense creator (paidBy) or group admin may update
   const isExpenseCreator = expense.paidBy.toString() === userId;
   const isAdmin = group.members.some(
     (m) => m.userId.toString() === userId && m.role === "admin"
@@ -142,7 +138,6 @@ export async function updateGroupExpense(
     throw new Error("Only the expense creator or a group admin can update this expense");
   }
 
-  // logic-bug-hunt BUG-03 High: if paidBy is changing, verify the new payer is a group member
   if (input.paidBy) {
     const memberIds = new Set(group.members.map((m) => m.userId.toString()));
     if (!memberIds.has(input.paidBy)) {
@@ -150,8 +145,8 @@ export async function updateGroupExpense(
     }
   }
 
-  // If amount changed and splitAmong not provided, re-split across the EXISTING
-  // splitAmong members (math-audit #2.4 Critical: previously re-split across all group members).
+  // If amount changed and splitAmong not provided, re-split across the
+  // EXISTING participants, not all group members.
   if (input.amount !== undefined && !input.splitAmong) {
     const currentParticipants = expense.splitAmong.map((s) => s.userId.toString());
     const n = currentParticipants.length || group.members.length;
@@ -165,11 +160,10 @@ export async function updateGroupExpense(
       : group.members.map((m) => m.userId.toString());
     input.splitAmong = participants.map((uid, i) => ({
       userId: uid,
-      // math-audit #2.3 High: round baseAmount+remainder to avoid FP drift
+      // round to avoid FP drift
       amount: i === 0 ? Math.round((baseAmount + remainder) * 100) / 100 : baseAmount,
     }));
   } else if (input.splitAmong) {
-    // math-audit #2.10 High: reject duplicate userIds in splitAmong
     const uniqueUserIds = new Set(input.splitAmong.map((s) => s.userId));
     if (uniqueUserIds.size !== input.splitAmong.length) {
       throw new Error("Duplicate users in splitAmong are not allowed");
@@ -204,8 +198,6 @@ export async function deleteGroupExpense(
   expenseId: string,
   userId: string
 ) {
-  // logic-bug-hunt BUG-06 High: admins should be able to delete any expense;
-  // and distinguish "not found" from "forbidden" for better client error mapping.
   const group = await Group.findById(groupId);
   if (!group) throw new Error("Group not found");
 

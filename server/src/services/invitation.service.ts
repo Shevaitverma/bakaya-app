@@ -49,7 +49,7 @@ export async function createInvitation(
   });
   if (existingPending) throw new Error("A pending invitation already exists for this user");
 
-  // logic-bug-hunt BUG-12 High: map E11000 race to friendly error instead of 500
+  // A concurrent duplicate insert surfaces as E11000; map it to the same friendly error
   let invitation;
   try {
     invitation = await GroupInvitation.create({

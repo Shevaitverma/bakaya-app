@@ -89,7 +89,6 @@ export function useCreateGroupExpense(groupId: string) {
   });
 }
 
-// ux-audit BUG-W5 Critical: provide fetch + update mutation for the web edit route
 export function useGroupExpense(groupId: string, expenseId: string) {
   return useQuery({
     queryKey: [...queryKeys.groups.expenses(groupId), expenseId] as const,

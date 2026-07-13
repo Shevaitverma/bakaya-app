@@ -49,10 +49,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       newErrors.email = 'Email is invalid';
     }
 
-    // logic-bug-hunt BUG-10 High: login should not impose a length check tighter
-    // than the server (which accepts anything the password comparator accepts)
-    // nor looser than the register policy — both produce confusing 401s. Only
-    // require non-empty here; server is authoritative.
+    // Only require non-empty; the server is authoritative on password rules.
     if (!password.trim()) {
       newErrors.password = 'Password is required';
     }

@@ -17,7 +17,6 @@ export const updateGroupExpenseSchema = z.object({
   amount: z.number().positive("Amount must be positive").optional(),
   category: z.string().max(50).optional(),
   notes: z.string().max(500).optional(),
-  // logic-bug-hunt BUG-03 High: accept paidBy on update so edits can change payer
   paidBy: z.string().min(1).optional(),
   splitAmong: z.array(z.object({
     userId: z.string().min(1),

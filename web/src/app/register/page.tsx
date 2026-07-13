@@ -140,9 +140,7 @@ export default function RegisterPage() {
       router.push("/login");
     } catch (error) {
       if (error instanceof ApiError) {
-        // logic-bug-hunt BUG-09 High: server returns "Email already registered";
-        // match any already-exists/already-registered phrasing so the banner
-        // becomes a field-level error again.
+        // Server phrasing varies ("already registered" / "already exists").
         if (/already\s*(registered|exists)/i.test(error.message)) {
           setErrors({ email: "This email is already registered" });
         } else if (error.code === "VALIDATION_ERROR") {

@@ -15,24 +15,14 @@ const AUTH_RATE_LIMIT_WINDOW_MS = 60000;
 
 // Hard cap on store size — protects against unbounded growth from rotating
 // JWTs / per-request unique IPs when expiration cleanup can't keep up.
+// Losing counters on overflow is harmless, so just reset the store.
 const MAX_STORE_ENTRIES = 10_000;
 
 function pruneStore(store: Map<string, RateLimitEntry>, now: number) {
   for (const [key, entry] of store.entries()) {
     if (entry.resetAt < now) store.delete(key);
   }
-  // If still oversized, evict the entries with the soonest resetAt
-  // (i.e. closest to expiry — least useful to keep).
-  if (store.size > MAX_STORE_ENTRIES) {
-    const overflow = store.size - MAX_STORE_ENTRIES;
-    const sorted = Array.from(store.entries()).sort(
-      (a, b) => a[1].resetAt - b[1].resetAt
-    );
-    for (let i = 0; i < overflow; i++) {
-      const entry = sorted[i];
-      if (entry) store.delete(entry[0]);
-    }
-  }
+  if (store.size > MAX_STORE_ENTRIES) store.clear();
 }
 
 // Clean up expired / oversized entries periodically

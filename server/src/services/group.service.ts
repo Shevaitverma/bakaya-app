@@ -53,7 +53,7 @@ export async function deleteGroup(groupId: string, userId: string) {
     throw new Error("Only the creator can delete the group");
   }
 
-  // logic-bug-hunt BUG-08 High: cascade invitations so orphans don't linger
+  // Cascade delete associated data, including pending invitations
   await Promise.all([
     GroupExpense.deleteMany({ groupId }),
     Settlement.deleteMany({ groupId }),

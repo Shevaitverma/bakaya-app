@@ -370,8 +370,7 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
     }
   };
 
-  // ux-audit BUG-M4 High: "Leave group" was missing entirely. A non-creator
-  // member can now leave via the server's existing removeMember(self) path.
+  // Leaving reuses the server's removeMember(self) path.
   const handleLeaveGroup = () => {
     if (!user?.id) return;
     Alert.alert(
@@ -1045,7 +1044,6 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
             </View>
           )}
 
-          {/* ux-audit BUG-M4 High: surface Leave group for non-creator members */}
           {!isGroupCreator && user?.id && group?.members.some((m) => m.userId?.id === user.id) && (
             <TouchableOpacity
               onPress={handleLeaveGroup}

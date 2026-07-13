@@ -27,24 +27,12 @@ const revocations = new Map<string, RevocationEntry>();
 // Tokens have a finite expiry; once the longest possible refresh token would
 // have expired naturally, the revocation entry is no longer needed.
 const ENTRY_TTL_MS = 45 * 24 * 60 * 60 * 1000; // 45 days
-const MAX_ENTRIES = 10_000;
 
 setInterval(() => {
   const now = Date.now();
   for (const [userId, entry] of revocations.entries()) {
     if (now - entry.setAt > ENTRY_TTL_MS) {
       revocations.delete(userId);
-    }
-  }
-  // Safety cap — if somehow entries pile up, drop the oldest.
-  if (revocations.size > MAX_ENTRIES) {
-    const overflow = revocations.size - MAX_ENTRIES;
-    const sorted = Array.from(revocations.entries()).sort(
-      (a, b) => a[1].setAt - b[1].setAt
-    );
-    for (let i = 0; i < overflow; i++) {
-      const entry = sorted[i];
-      if (entry) revocations.delete(entry[0]);
     }
   }
 }, 60 * 60 * 1000).unref?.();

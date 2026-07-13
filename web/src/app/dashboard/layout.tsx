@@ -142,8 +142,8 @@ export default function DashboardLayout({
     // expired session (refresh token rejected) can redirect to /login.
     // This replaces the per-page clearAllAuth+redirect pattern.
     setOnSessionExpired(() => {
-      // logic-bug-hunt BUG-05 High: drop cached per-user data before redirect
-      // so the next user who signs in doesn't briefly see the previous user's.
+      // Drop cached per-user data before redirect so the next sign-in
+      // doesn't briefly see it.
       try {
         queryClientRef.current.clear();
       } catch {}

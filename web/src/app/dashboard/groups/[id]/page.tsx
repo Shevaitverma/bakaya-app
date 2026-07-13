@@ -234,11 +234,8 @@ export default function GroupDetailPage() {
   const sendInvitationMutation = useSendInvitation(groupId);
   const cancelInvitationMutation = useCancelInvitation(groupId);
   const createSettlementMutation = useCreateSettlement(groupId);
-  // ux-audit BUG-W2 Critical: the remove-member button was a no-op; wire it up.
   const removeMemberMutation = useRemoveMember(groupId);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
-  // ux-audit BUG-W7 High: admin could not delete group / member could not leave
-  // group on web. Add lightweight mutations + handlers to cover both cases.
   const deleteGroupMutation = useDeleteGroup();
 
   // Pending invitations (for admin-only display)
@@ -381,8 +378,6 @@ export default function GroupDetailPage() {
     }
   };
 
-  // ux-audit BUG-W2 Critical: wire remove-member button so admins can actually
-  // remove members on web. Previously this was a no-op affordance.
   const handleRemoveMember = async (memberId: string, memberName: string) => {
     if (removeMemberMutation.isPending) return;
     const ok = window.confirm(
@@ -403,7 +398,7 @@ export default function GroupDetailPage() {
     }
   };
 
-  // ux-audit BUG-W7 High: Leave group for any member; reuses removeMember(self).
+  // Leaving reuses removeMember(self).
   const handleLeaveGroup = async () => {
     if (!currentUserId || removeMemberMutation.isPending) return;
     const ok = window.confirm(
@@ -425,7 +420,7 @@ export default function GroupDetailPage() {
     }
   };
 
-  // ux-audit BUG-W7 High: Delete group (creator only, matching server policy).
+  // Delete group (creator only, matching server policy).
   const handleDeleteGroup = async () => {
     if (deleteGroupMutation.isPending) return;
     const ok = window.confirm(
@@ -957,8 +952,6 @@ export default function GroupDetailPage() {
                             className={styles.iconBtn}
                             aria-label={`Remove ${name}`}
                             title="Remove member"
-                            // ux-audit BUG-W2 Critical: wire onClick so clicking
-                            // actually removes the member.
                             onClick={() =>
                               handleRemoveMember(member.userId.id, name)
                             }
@@ -986,7 +979,7 @@ export default function GroupDetailPage() {
               </div>
             </section>
 
-            {/* ---------- Group actions (ux-audit BUG-W7 High) ---------- */}
+            {/* ---------- Group actions ---------- */}
             {group && currentUserId && (
               <section className={styles.section}>
                 <div
@@ -1219,7 +1212,6 @@ export default function GroupDetailPage() {
                             </span>
                             {expense.paidBy.id === currentUserId && (
                               <>
-                                {/* ux-audit BUG-W5 Critical: entry point to the new edit route */}
                                 <Link
                                   href={`/dashboard/groups/${groupId}/expenses/${expense._id}/edit`}
                                   className={styles.iconBtn}

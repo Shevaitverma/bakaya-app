@@ -31,7 +31,6 @@ export async function createInvitationHandler(
       input.email,
       input.message
     );
-    // logic-bug-hunt BUG-02 Critical: clients expect { invitation }, not bare doc
     return successResponse({ invitation }, undefined, 201);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -74,7 +73,6 @@ export async function listGroupInvitationsHandler(
       userId,
       query
     );
-    // logic-bug-hunt BUG-01 Critical: clients expect { invitations } envelope
     return successResponse({ invitations });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -105,7 +103,6 @@ export async function cancelInvitationHandler(
       invId,
       userId
     );
-    // logic-bug-hunt BUG-02 Critical: clients expect { invitation }
     return successResponse({ invitation });
   } catch (error) {
     if (error instanceof Error) {
@@ -130,7 +127,6 @@ export async function listMyInvitationsHandler(req: Request): Promise<Response> 
     );
 
     const invitations = await invitationService.listMyInvitations(userId, query);
-    // logic-bug-hunt BUG-01 Critical: clients expect { invitations } envelope
     return successResponse({ invitations });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -175,7 +171,6 @@ export async function declineInvitationHandler(
     if (!invId) return badRequestResponse("Invitation ID is required");
 
     const invitation = await invitationService.declineInvitation(invId, userId);
-    // logic-bug-hunt BUG-02 Critical: clients expect { invitation }
     return successResponse({ invitation });
   } catch (error) {
     if (error instanceof Error) {

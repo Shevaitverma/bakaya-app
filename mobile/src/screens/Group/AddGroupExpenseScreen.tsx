@@ -148,8 +148,7 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
       if (Math.abs(pctTotal - 100) > 0.01) {
         newErrors.split = `Percentages must add up to 100%. Currently ${pctTotal.toFixed(1)}% allocated.`;
       } else {
-        // math-audit #2.9 High: every selected member must carry a positive percentage,
-        // otherwise their amount becomes 0 and the server rejects with a cryptic error.
+        // A 0% member would get a 0 split, which the server rejects.
         const splitMemberIdsLocal = Array.from(splitMembers);
         const hasEmptyPct = splitMemberIdsLocal.some((uid) => {
           const pct = parseFloat(percentages[uid] || '0');
@@ -202,7 +201,7 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
       const remainder = Math.round((amountNum - baseAmount * splitCount) * 100) / 100;
       splitAmong = splitMemberIds.map((userId, i) => ({
         userId,
-        // math-audit #2.3 High: round baseAmount+remainder to avoid 0.01 FP drift
+        // round to avoid FP drift
         amount: i === 0 ? Math.round((baseAmount + remainder) * 100) / 100 : baseAmount,
       }));
     }
@@ -672,10 +671,9 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
 
                 return (
                   <View key={member.userId}>
-                    {/* ux-audit BUG-M2 High: split the row into a tap-to-toggle
-                        subregion (checkbox + name) and sibling inputs, so
-                        tapping the amount/percent TextInput no longer toggles
-                        the member off via the parent TouchableOpacity. */}
+                    {/* Only checkbox + name toggle membership; the sibling
+                        amount/percent inputs must stay tappable without
+                        toggling the member off. */}
                     <View
                       style={[
                         styles.splitMemberRow,

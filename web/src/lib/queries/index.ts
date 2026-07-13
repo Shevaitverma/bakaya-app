@@ -7,7 +7,6 @@ export {
   useGroups, useGroup, useGroupExpenses, useGroupBalances, useGroupSettlements,
   useCreateGroup, useDeleteGroup, useRemoveMember,
   useCreateGroupExpense, useDeleteGroupExpense, useCreateSettlement, useDeleteSettlement,
-  // ux-audit BUG-W5 Critical: edit group-expense route hooks
   useGroupExpense, useUpdateGroupExpense,
 } from "./useGroups";
 export {

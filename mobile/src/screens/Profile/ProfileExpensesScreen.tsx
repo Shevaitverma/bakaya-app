@@ -2,7 +2,7 @@
  * Profile Expenses Screen - Shows all expenses for a specific profile
  */
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -66,13 +66,6 @@ const ProfileExpensesScreen: React.FC<ProfileExpensesScreenProps> = ({ route, na
   const [expenseToDelete, setExpenseToDelete] = useState<{ id: string; title: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const lastFetchTime = useRef<number>(0);
-  const deleteLoadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (deleteLoadingTimeoutRef.current) clearTimeout(deleteLoadingTimeoutRef.current);
-    };
-  }, []);
 
   const fetchCategories = useCallback(async () => {
     if (!accessToken) return;
@@ -202,10 +195,8 @@ const ProfileExpensesScreen: React.FC<ProfileExpensesScreenProps> = ({ route, na
     setDeleteLoading(true);
 
     // Small delay to ensure smooth UI transition, then show dialog content
-    if (deleteLoadingTimeoutRef.current) clearTimeout(deleteLoadingTimeoutRef.current);
-    deleteLoadingTimeoutRef.current = setTimeout(() => {
+    setTimeout(() => {
       setDeleteLoading(false);
-      deleteLoadingTimeoutRef.current = null;
     }, 100);
   };
 

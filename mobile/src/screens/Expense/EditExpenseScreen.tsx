@@ -42,8 +42,6 @@ export const EditExpenseScreen: React.FC<EditExpenseScreenProps> = ({ navigation
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
-  // logic-bug-hunt BUG-04 High: preserve expense.type and expense.source so
-  // editing an income record doesn't silently force it into "expense" shape.
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [source, setSource] = useState('');
   const [notes, setNotes] = useState('');
@@ -125,7 +123,7 @@ export const EditExpenseScreen: React.FC<EditExpenseScreenProps> = ({ navigation
       }
     }
 
-    // logic-bug-hunt BUG-04 High: income uses source, expense uses category
+    // Income uses source; expense uses category
     if (type === 'income') {
       if (!source.trim()) {
         newErrors.category = 'Source is required';
@@ -150,28 +148,16 @@ export const EditExpenseScreen: React.FC<EditExpenseScreenProps> = ({ navigation
 
     try {
       setLoading(true);
-      // logic-bug-hunt BUG-04 High: send type + source/category correctly so
-      // income records aren't silently turned into expenses.
-      const expenseData: {
-        title: string;
-        amount: number;
-        type: 'income' | 'expense';
-        category?: string;
-        source?: string;
-        notes?: string;
-        profileId?: string;
-      } = {
+      // Income uses source, expense uses category — sending both would let a
+      // stale field survive the edit.
+      const expenseData = {
         title: title.trim(),
         amount: parseFloat(amount),
         type,
         notes: notes.trim() || undefined,
         profileId: selectedProfileId || undefined,
+        ...(type === 'income' ? { source: source.trim() } : { category: category.trim() }),
       };
-      if (type === 'income') {
-        expenseData.source = source.trim();
-      } else {
-        expenseData.category = category.trim();
-      }
 
       const response = await expenseService.updateExpense(expenseId, expenseData, accessToken);
 
@@ -327,7 +313,6 @@ export const EditExpenseScreen: React.FC<EditExpenseScreenProps> = ({ navigation
             keyboardType="decimal-pad"
           />
 
-          {/* logic-bug-hunt BUG-04 High: income records show Source (not Category) */}
           {type === 'income' ? (
             <Input
               label="Source"

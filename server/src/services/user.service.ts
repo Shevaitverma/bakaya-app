@@ -55,9 +55,8 @@ export class UserService {
   async delete(id: string): Promise<boolean> {
     const result = await User.findByIdAndDelete(id);
     if (result) {
-      // logic-bug-hunt BUG-07 High: previous cascade left GroupExpense & GroupInvitation
-      // referencing the deleted user as paidBy/splitAmong/invitedBy/invitedUserId,
-      // causing ghost balances. Now also removes those records.
+      // Cascade delete associated data — including group expenses and
+      // invitations referencing the user, or balances attribute money to a ghost.
       await Promise.all([
         Profile.deleteMany({ userId: id }),
         Expense.deleteMany({ userId: id }),

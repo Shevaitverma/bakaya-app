@@ -90,7 +90,6 @@ export interface CreateGroupExpenseInput {
   splitAmong?: GroupExpenseSplit[];
 }
 
-// ux-audit BUG-W5 Critical: shape for the new edit-group-expense flow
 export interface UpdateGroupExpenseInput {
   title?: string;
   amount?: number;
@@ -157,7 +156,6 @@ export const groupsApi = {
     return api.post<GroupExpense>(`/api/v1/groups/${groupId}/expenses`, data);
   },
 
-  // ux-audit BUG-W5 Critical: get + update endpoints for web edit-expense route
   getExpense(groupId: string, expenseId: string): Promise<GroupExpense> {
     return api.get<GroupExpense>(`/api/v1/groups/${groupId}/expenses/${expenseId}`);
   },
