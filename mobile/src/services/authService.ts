@@ -9,6 +9,7 @@
  */
 
 import { API_CONFIG } from '../constants/api';
+import { timedFetch } from '../lib/authedFetch';
 import { getDeviceInfoAsync } from '../utils/device';
 import type {
   LoginRequest,
@@ -36,13 +37,13 @@ class AuthService {
     console.log('[AUTH API] Fetching:', url);
 
     try {
-      const response = await fetch(url, {
+      const response = await timedFetch(url, {
         ...options,
         headers: {
           ...API_CONFIG.HEADERS,
           ...options.headers,
         },
-      });
+      }, 15000);
 
       if (!response.ok) {
         console.log('[AUTH API] Error response status:', response.status, response.statusText);
@@ -105,7 +106,10 @@ class AuthService {
 
       return jsonData;
     } catch (err) {
-      if (err instanceof TypeError && err.message.includes('fetch')) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new Error('Request timeout: The server took too long to respond. Please try again.');
+      }
+      if (err instanceof TypeError) {
         throw new Error('Network error: Unable to connect to the server. Please check your internet connection.');
       }
       if (err instanceof Error) {
@@ -130,8 +134,8 @@ class AuthService {
   /**
    * POST /auth/login
    *
-   * Sends device info (persistent deviceId, os, osVersion) and FCM token
-   * so the server can upsert the device record.
+   * Sends device info (persistent deviceId, os, osVersion) so the server
+   * can upsert the device record.
    */
   async login(email: string, password: string): Promise<LoginResponse> {
     const deviceInfo = await getDeviceInfoAsync();
@@ -142,7 +146,6 @@ class AuthService {
       deviceId: deviceInfo.deviceId,
       os: deviceInfo.os,
       osVersion: deviceInfo.osVersion,
-      fcmToken: API_CONFIG.FCM_TOKEN,
     };
 
     return this.request<LoginResponse>(API_CONFIG.ENDPOINTS.AUTH.LOGIN, {
@@ -164,7 +167,6 @@ class AuthService {
       deviceId: deviceInfo.deviceId,
       os: deviceInfo.os,
       osVersion: deviceInfo.osVersion,
-      fcmToken: API_CONFIG.FCM_TOKEN,
     };
 
     console.log('[AUTH API] Sending Google credential to server');
@@ -187,6 +189,29 @@ class AuthService {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+  }
+
+  /**
+   * POST /auth/logout
+   *
+   * Best-effort server-side logout (deactivates devices, revokes refresh
+   * tokens). Never throws — local logout must proceed regardless. Uses
+   * timedFetch directly: authedFetch would recurse into its 401/refresh
+   * path with a token we're about to discard.
+   */
+  async logout(accessToken: string): Promise<void> {
+    try {
+      await timedFetch(
+        `${this.baseUrl}${API_CONFIG.ENDPOINTS.AUTH.LOGOUT}`,
+        {
+          method: 'POST',
+          headers: { ...API_CONFIG.HEADERS, Authorization: `Bearer ${accessToken}` },
+        },
+        15000,
+      );
+    } catch (err) {
+      console.warn('[AUTH API] Server logout failed (ignoring)', err);
+    }
   }
 }
 

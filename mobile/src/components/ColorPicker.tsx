@@ -12,6 +12,17 @@ import {
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { Theme } from '../constants/theme';
 
+export const PROFILE_COLORS = [
+  '#D81B60',
+  '#1E88E5',
+  '#43A047',
+  '#FB8C00',
+  '#8E24AA',
+  '#00ACC1',
+  '#F4511E',
+  '#6D4C41',
+];
+
 const DEFAULT_COLORS = [
   '#D81B60', '#E53935', '#F4511E', '#FB8C00', '#FFB300',
   '#FDD835', '#7CB342', '#43A047', '#00897B', '#00ACC1',

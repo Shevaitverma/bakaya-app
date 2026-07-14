@@ -155,7 +155,7 @@ export const EditExpenseScreen: React.FC<EditExpenseScreenProps> = ({ navigation
         amount: parseFloat(amount),
         type,
         notes: notes.trim() || undefined,
-        profileId: selectedProfileId || undefined,
+        profileId: type === 'income' ? undefined : (selectedProfileId || undefined),
         ...(type === 'income' ? { source: source.trim() } : { category: category.trim() }),
       };
 
@@ -238,7 +238,7 @@ export const EditExpenseScreen: React.FC<EditExpenseScreenProps> = ({ navigation
         showsVerticalScrollIndicator={false}>
         <View style={styles.form}>
           {/* Profile Selector */}
-          {profiles.length > 0 && (
+          {type !== 'income' && profiles.length > 0 && (
             <View style={styles.profileContainer}>
               <Text style={styles.profileLabel}>Profile</Text>
               <ScrollView

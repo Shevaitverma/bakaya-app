@@ -7,6 +7,7 @@
 
 import { API_CONFIG } from '../constants/api';
 import { authedFetch } from '../lib/authedFetch';
+import { markDataChanged } from '../lib/staleness';
 import type {
   PersonalExpensesResponse,
   SingleExpenseResponse,
@@ -72,11 +73,13 @@ class ExpenseService {
     token: string
   ): Promise<CreateExpenseResponse> {
     const endpoint = API_CONFIG.ENDPOINTS.EXPENSES.PERSONAL_EXPENSES;
-    return authedFetch<CreateExpenseResponse>(endpoint, {
+    const res = await authedFetch<CreateExpenseResponse>(endpoint, {
       method: 'POST',
       token,
       body: JSON.stringify(expenseData),
     });
+    markDataChanged();
+    return res;
   }
 
   /**
@@ -88,11 +91,13 @@ class ExpenseService {
     token: string
   ): Promise<UpdateExpenseResponse> {
     const endpoint = API_CONFIG.ENDPOINTS.EXPENSES.SINGLE_EXPENSE(expenseId);
-    return authedFetch<UpdateExpenseResponse>(endpoint, {
+    const res = await authedFetch<UpdateExpenseResponse>(endpoint, {
       method: 'PUT',
       token,
       body: JSON.stringify(expenseData),
     });
+    markDataChanged();
+    return res;
   }
 
   /**
@@ -103,9 +108,37 @@ class ExpenseService {
     token: string
   ): Promise<DeleteExpenseResponse> {
     const endpoint = API_CONFIG.ENDPOINTS.EXPENSES.SINGLE_EXPENSE(expenseId);
-    return authedFetch<DeleteExpenseResponse>(endpoint, {
+    const res = await authedFetch<DeleteExpenseResponse>(endpoint, {
       method: 'DELETE',
       token,
+    });
+    markDataChanged();
+    return res;
+  }
+
+  /**
+   * GET /personal-expenses/export
+   * Server-generated CSV honoring the same filters as the list endpoint.
+   */
+  async exportCSV(
+    token: string,
+    filters?: Omit<ExpenseQueryParams, 'page' | 'limit'>
+  ): Promise<string> {
+    const params = new URLSearchParams();
+    if (filters?.profileId) params.set('profileId', filters.profileId);
+    if (filters?.category) params.set('category', filters.category);
+    if (filters?.type) params.set('type', filters.type);
+    if (filters?.search) params.set('search', filters.search);
+    if (filters?.startDate) params.set('startDate', filters.startDate);
+    if (filters?.endDate) params.set('endDate', filters.endDate);
+
+    const query = params.toString();
+    const endpoint = `${API_CONFIG.ENDPOINTS.EXPENSES.EXPORT}${query ? `?${query}` : ''}`;
+
+    return authedFetch<string>(endpoint, {
+      method: 'GET',
+      token,
+      timeout: 60000,
     });
   }
 

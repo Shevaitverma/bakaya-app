@@ -24,6 +24,9 @@ import { Theme } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { groupService } from '../../services/groupService';
 import { invitationService } from '../../services/invitationService';
+import { categoryService } from '../../services/categoryService';
+import { isFresh } from '../../lib/staleness';
+import { useRefetchOnForeground } from '../../hooks/useRefetchOnForeground';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import { formatCurrency } from '../../utils/currency';
 import type { HomeStackParamList } from '../../navigation/types';
@@ -36,6 +39,7 @@ import type {
 } from '../../types/group';
 import { getPopulatedUserName } from '../../types/group';
 import type { GroupInvitation } from '../../types/invitation';
+import type { Category } from '../../types/category';
 
 type GroupDetailScreenProps = NativeStackScreenProps<HomeStackParamList, 'GroupDetail'>;
 
@@ -65,6 +69,8 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
   const [expenses, setExpenses] = useState<GroupExpense[]>([]);
   const [balances, setBalances] = useState<GroupBalance>({});
   const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [totalAmount, setTotalAmount] = useState(0);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   // Loading states
   const [loading, setLoading] = useState(true);
@@ -78,6 +84,7 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
   // Invite member state
   const [showAddMember, setShowAddMember] = useState(false);
   const [memberEmail, setMemberEmail] = useState('');
+  const [inviteMessage, setInviteMessage] = useState('');
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [addMemberError, setAddMemberError] = useState('');
 
@@ -145,11 +152,11 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
 
   const fetchAllData = useCallback(async () => {
     if (!accessToken) return;
-    if (Date.now() - lastFetchTime.current < 30000) return;
+    if (isFresh(lastFetchTime.current)) return;
 
     try {
-      setLoading(true);
-      const [groupRes, expensesRes, balancesRes, settlementsRes, invitationsRes] = await Promise.all([
+      if (!group) setLoading(true);
+      const [groupRes, expensesRes, balancesRes, settlementsRes, invitationsRes, categoriesRes] = await Promise.all([
         groupService.getGroup(groupId, accessToken),
         groupService.getGroupExpenses(groupId, 1, 50, accessToken),
         groupService.getGroupBalances(groupId, accessToken),
@@ -158,6 +165,7 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
         invitationService
           .listGroupInvitations(groupId, accessToken, 'pending')
           .catch(() => null),
+        categoryService.getCategories(accessToken).catch(() => null),
       ]);
 
       if (groupRes.success && groupRes.data) {
@@ -165,6 +173,7 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
       }
       if (expensesRes.success && expensesRes.data) {
         setExpenses(expensesRes.data.expenses);
+        setTotalAmount(expensesRes.data.totalAmount);
       }
       if (balancesRes.success && balancesRes.data) {
         setBalances(balancesRes.data.balances);
@@ -177,6 +186,9 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
       } else {
         setPendingInvitations([]);
       }
+      if (categoriesRes && categoriesRes.success && categoriesRes.data?.categories) {
+        setCategories(categoriesRes.data.categories.filter((c) => c.isActive));
+      }
       lastFetchTime.current = Date.now();
     } catch (err) {
       const errorMessage =
@@ -185,13 +197,15 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
     } finally {
       setLoading(false);
     }
-  }, [accessToken, groupId]);
+  }, [accessToken, groupId, group]);
 
   useFocusEffect(
     useCallback(() => {
       fetchAllData();
     }, [fetchAllData])
   );
+
+  useRefetchOnForeground(fetchAllData);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -211,8 +225,12 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
     setDeleteLoading(true);
 
     // Optimistically remove from list
-    const deletedExpense = expenses.find((e) => e._id === expenseToDelete.id);
+    const deletedIndex = expenses.findIndex((e) => e._id === expenseToDelete.id);
+    const deletedExpense = deletedIndex >= 0 ? expenses[deletedIndex] : undefined;
     setExpenses((prev) => prev.filter((e) => e._id !== expenseToDelete.id));
+    if (deletedExpense) {
+      setTotalAmount((t) => t - deletedExpense.amount);
+    }
     setDeleteDialogVisible(false);
     setExpenseToDelete(null);
 
@@ -224,9 +242,14 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
         setBalances(balancesRes.data.balances);
       }
     } catch (err) {
-      // Revert optimistic removal
+      // Revert optimistic removal at its original position
       if (deletedExpense) {
-        setExpenses((prev) => [deletedExpense, ...prev]);
+        setExpenses((prev) => {
+          const next = [...prev];
+          next.splice(Math.min(deletedIndex, next.length), 0, deletedExpense);
+          return next;
+        });
+        setTotalAmount((t) => t + deletedExpense.amount);
       }
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to delete expense';
@@ -255,6 +278,7 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
     navigation.navigate('AddGroupExpense', {
       groupId,
       members: getMembers(),
+      isAdmin: isGroupAdmin,
     });
   };
 
@@ -274,11 +298,12 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
     setAddMemberError('');
 
     try {
-      const res = await invitationService.sendInvitation(groupId, trimmedEmail, accessToken);
+      const res = await invitationService.sendInvitation(groupId, trimmedEmail, accessToken, inviteMessage);
       if (res.success && res.data?.invitation) {
         setPendingInvitations((prev) => [res.data.invitation, ...prev]);
       }
       setMemberEmail('');
+      setInviteMessage('');
       setShowAddMember(false);
       Alert.alert(
         'Invitation sent',
@@ -472,11 +497,17 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
     }
   };
 
-  // Calculate group total expense
-  const groupTotalExpense = useMemo(
-    () => expenses.reduce((sum, expense) => sum + expense.amount, 0),
-    [expenses]
-  );
+  // Prefer the freshest name from the fetched group over the route param
+  const displayGroupName = group?.name ?? groupName;
+
+  // Build category name -> emoji/color lookup map
+  const categoryMap = useMemo(() => {
+    const map: Record<string, { emoji: string; color: string }> = {};
+    categories.forEach((cat) => {
+      map[cat.name.toLowerCase()] = { emoji: cat.emoji, color: cat.color };
+    });
+    return map;
+  }, [categories]);
 
   const getSettlementUserName = (settlementUser: PopulatedUser): string => {
     return getPopulatedUserName(settlementUser);
@@ -650,16 +681,22 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
       netSign = '';
     }
 
+    const catData = item.category ? categoryMap[item.category.toLowerCase()] : undefined;
+
     return (
       <View style={styles.expenseCard}>
         <View style={styles.expenseCardContent}>
-          <View style={styles.expenseIconWrapper}>
-            <FontAwesome6
-              name="receipt"
-              size={16}
-              color={Theme.colors.primary}
-              solid
-            />
+          <View style={[styles.expenseIconWrapper, catData && { backgroundColor: catData.color + '20' }]}>
+            {catData ? (
+              <Text style={styles.expenseEmojiIcon}>{catData.emoji}</Text>
+            ) : (
+              <FontAwesome6
+                name="receipt"
+                size={16}
+                color={Theme.colors.primary}
+                solid
+              />
+            )}
           </View>
           <View style={styles.expenseInfo}>
             <Text style={styles.expenseTitle} numberOfLines={1}>
@@ -684,32 +721,34 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
             <Text style={[styles.expenseNetLabel, { color: netColor }]} numberOfLines={1}>
               {netLabel}
             </Text>
-            <View style={styles.expenseActions}>
-              <TouchableOpacity
-                style={styles.expenseActionButton}
-                onPress={() => handleEditExpense(item._id)}
-                activeOpacity={0.7}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <FontAwesome6
-                  name="pen-to-square"
-                  size={14}
-                  color={Theme.colors.blue}
-                  solid
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.expenseActionButton}
-                onPress={() => handleDeleteExpense(item._id, item.title)}
-                activeOpacity={0.7}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <FontAwesome6
-                  name="trash-can"
-                  size={14}
-                  color={Theme.colors.error}
-                  solid
-                />
-              </TouchableOpacity>
-            </View>
+            {(payerId === user?.id || isGroupAdmin) && (
+              <View style={styles.expenseActions}>
+                <TouchableOpacity
+                  style={styles.expenseActionButton}
+                  onPress={() => handleEditExpense(item._id)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <FontAwesome6
+                    name="pen-to-square"
+                    size={14}
+                    color={Theme.colors.blue}
+                    solid
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.expenseActionButton}
+                  onPress={() => handleDeleteExpense(item._id, item.title)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <FontAwesome6
+                    name="trash-can"
+                    size={14}
+                    color={Theme.colors.error}
+                    solid
+                  />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
       </View>
@@ -828,6 +867,7 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
                     key={`${transfer.from}-${transfer.to}-${index}`}
                     style={styles.suggestedTransferRow}
                     onPress={handleSuggestedTransferTap}
+                    disabled={transfer.from !== user?.id}
                     activeOpacity={0.7}>
                     <View style={styles.suggestedTransferContent}>
                       <Text style={styles.suggestedTransferName} numberOfLines={1}>
@@ -847,12 +887,14 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
                       <Text style={styles.suggestedTransferAmount}>
                         {formatCurrency(transfer.amount)}
                       </Text>
-                      <FontAwesome6
-                        name="chevron-right"
-                        size={10}
-                        color={Theme.colors.textTertiary}
-                        solid
-                      />
+                      {transfer.from === user?.id && (
+                        <FontAwesome6
+                          name="chevron-right"
+                          size={10}
+                          color={Theme.colors.textTertiary}
+                          solid
+                        />
+                      )}
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -927,24 +969,27 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
             <Text style={styles.sectionTitle}>
               Members{memberCount > 0 ? ` (${memberCount})` : ''}
             </Text>
-            <TouchableOpacity
-              style={styles.addMemberButton}
-              onPress={() => {
-                setShowAddMember(!showAddMember);
-                setAddMemberError('');
-                setMemberEmail('');
-              }}
-              activeOpacity={0.8}>
-              <FontAwesome6
-                name={showAddMember ? 'xmark' : 'user-plus'}
-                size={14}
-                color={Theme.colors.white}
-                solid
-              />
-              <Text style={styles.addMemberButtonText}>
-                {showAddMember ? 'Cancel' : 'Invite Member'}
-              </Text>
-            </TouchableOpacity>
+            {isGroupAdmin && (
+              <TouchableOpacity
+                style={styles.addMemberButton}
+                onPress={() => {
+                  setShowAddMember(!showAddMember);
+                  setAddMemberError('');
+                  setMemberEmail('');
+                  setInviteMessage('');
+                }}
+                activeOpacity={0.8}>
+                <FontAwesome6
+                  name={showAddMember ? 'xmark' : 'user-plus'}
+                  size={14}
+                  color={Theme.colors.white}
+                  solid
+                />
+                <Text style={styles.addMemberButtonText}>
+                  {showAddMember ? 'Cancel' : 'Invite Member'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Inline Add Member Form */}
@@ -982,6 +1027,15 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
                   )}
                 </TouchableOpacity>
               </View>
+              <TextInput
+                style={[styles.addMemberInput, styles.addMemberMessageInput]}
+                placeholder="Add a message (optional)"
+                placeholderTextColor={Theme.colors.textTertiary}
+                value={inviteMessage}
+                onChangeText={setInviteMessage}
+                multiline
+                editable={!isAddingMember}
+              />
             </View>
           )}
 
@@ -1013,7 +1067,10 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
                           {member.role}
                         </Text>
                       </View>
-                      {isGroupCreator && memberUserId !== '' && memberUserId !== user?.id && (
+                      {isGroupAdmin &&
+                        memberUserId !== '' &&
+                        memberUserId !== user?.id &&
+                        memberUserId !== group?.createdBy?.id && (
                         <TouchableOpacity
                           style={styles.removeMemberButton}
                           onPress={() => handleRemoveMember(memberUserId, displayName)}
@@ -1089,6 +1146,11 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
                     <Text style={styles.pendingInvitationDate}>
                       Invited {formatDate(inv.createdAt)}
                     </Text>
+                    {inv.message ? (
+                      <Text style={styles.pendingInvitationMessage} numberOfLines={2}>
+                        {inv.message}
+                      </Text>
+                    ) : null}
                   </View>
                   <View style={styles.pendingInvitationRight}>
                     <View style={styles.pendingBadge}>
@@ -1155,7 +1217,7 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
               solid
             />
           </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>{groupName}</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>{displayGroupName}</Text>
           <View style={styles.backButtonPlaceholder} />
         </View>
         <View style={styles.loadingContainer}>
@@ -1183,7 +1245,7 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
             solid
           />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>{groupName}</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>{displayGroupName}</Text>
         {isGroupCreator ? (
           <View style={styles.headerActions}>
             <TouchableOpacity
@@ -1217,10 +1279,10 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
       </View>
 
       {/* Group Total Expense */}
-      {groupTotalExpense > 0 && (
+      {totalAmount > 0 && (
         <View style={styles.totalExpenseContainer}>
           <Text style={styles.totalExpenseLabel}>Total Expense</Text>
-          <Text style={styles.totalExpenseAmount}>{formatCurrency(groupTotalExpense)}</Text>
+          <Text style={styles.totalExpenseAmount}>{formatCurrency(totalAmount)}</Text>
         </View>
       )}
 
@@ -1317,7 +1379,7 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
       <ConfirmationDialog
         visible={deleteGroupDialogVisible}
         title="Delete Group"
-        message={`Are you sure you want to delete "${groupName}"? All expenses, settlements, and balances will be permanently removed. This action cannot be undone.`}
+        message={`Are you sure you want to delete "${displayGroupName}"? All expenses, settlements, and balances will be permanently removed. This action cannot be undone.`}
         confirmText="Delete Group"
         cancelText="Cancel"
         onConfirm={handleConfirmDeleteGroup}
@@ -1756,6 +1818,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.08)',
   },
+  addMemberMessageInput: {
+    marginTop: Theme.spacing.sm,
+    minHeight: 44,
+    textAlignVertical: 'top',
+  },
   addMemberSubmitButton: {
     backgroundColor: Theme.colors.primary,
     paddingHorizontal: Theme.spacing.lg,
@@ -1909,6 +1976,13 @@ const styles = StyleSheet.create({
     fontFamily: Theme.typography.fontFamily,
     marginTop: 1,
   },
+  pendingInvitationMessage: {
+    fontSize: Theme.typography.fontSize.small,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily,
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
   pendingInvitationRight: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1967,6 +2041,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(216, 27, 96, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  expenseEmojiIcon: {
+    fontSize: 18,
   },
   expenseInfo: {
     flex: 1,

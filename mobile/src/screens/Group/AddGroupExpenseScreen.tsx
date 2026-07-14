@@ -33,7 +33,7 @@ import type { Category } from '../../types/category';
 type AddGroupExpenseScreenProps = NativeStackScreenProps<HomeStackParamList, 'AddGroupExpense'>;
 
 const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigation, route }) => {
-  const { groupId, members } = route.params;
+  const { groupId, members, isAdmin } = route.params;
   const insets = useSafeAreaInsets();
   const { accessToken, user } = useAuth();
 
@@ -46,9 +46,10 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showPaidByModal, setShowPaidByModal] = useState(false);
 
-  // Paid by - default to current user
+  // Paid by - default to current user; non-admins can only pay themselves
   const currentUserId = user?.id || '';
   const [paidBy, setPaidBy] = useState(currentUserId);
+  const payerOptions = isAdmin ? members : members.filter((m) => m.userId === currentUserId);
 
   // Split type: "equal" | "exact" | "percentage"
   const [splitType, setSplitType] = useState<'equal' | 'exact' | 'percentage'>('equal');
@@ -141,6 +142,16 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
         const exactTotal = getExactTotal();
         if (Math.abs(exactTotal - amountNum) > 0.01) {
           newErrors.split = `Split amounts must equal the total. Currently ${formatCurrencyExact(exactTotal)} of ${formatCurrencyExact(amountNum)} allocated.`;
+        } else {
+          // A 0-amount member would get a 0 split, which the server rejects.
+          const splitMemberIdsLocal = Array.from(splitMembers);
+          const hasEmptyAmount = splitMemberIdsLocal.some((uid) => {
+            const val = parseFloat(exactAmounts[uid] || '0');
+            return isNaN(val) || val <= 0;
+          });
+          if (hasEmptyAmount) {
+            newErrors.split = 'Every selected member needs an amount greater than 0.';
+          }
         }
       }
     } else if (splitType === 'percentage') {
@@ -873,7 +884,7 @@ const AddGroupExpenseScreen: React.FC<AddGroupExpenseScreenProps> = ({ navigatio
             <ScrollView
               style={styles.modalList}
               showsVerticalScrollIndicator={false}>
-              {members.map((member) => {
+              {payerOptions.map((member) => {
                 const isSelected = paidBy === member.userId;
                 const isCurrentUser = member.userId === currentUserId;
                 const displayName = isCurrentUser ? `You (${member.name})` : member.name;

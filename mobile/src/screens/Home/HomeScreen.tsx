@@ -16,14 +16,13 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../context/AuthContext';
 import { Theme } from '../../constants/theme';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
-import { Group } from '../../interfaces/group';
 import type { HomeStackParamList } from '../../navigation/types';
-import { groupService } from '../../services/groupService';
 import { profileService } from '../../services/profileService';
 import { expenseService } from '../../services/expenseService';
 import { categoryService } from '../../services/categoryService';
+import { isFresh } from '../../lib/staleness';
+import { useRefetchOnForeground } from '../../hooks/useRefetchOnForeground';
 import { formatCurrency } from '../../utils/currency';
-import type { GroupsResponse } from '../../types/group';
 import type { Profile, ProfilesResponse } from '../../types/profile';
 import type { Expense, PersonalExpensesResponse, BalanceData } from '../../types/expense';
 import type { Category } from '../../types/category';
@@ -112,7 +111,6 @@ const HomeScreen = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
-  const [groups, setGroups] = useState<Group[]>([]);
   const [balanceData, setBalanceData] = useState<BalanceData | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null); // null = "All"
   const selectedProfileIdRef = useRef<string | null>(null);
@@ -121,7 +119,6 @@ const HomeScreen = () => {
   // Loading states (independent per section)
   const [profilesLoading, setProfilesLoading] = useState(true);
   const [expensesLoading, setExpensesLoading] = useState(true);
-  const [groupsLoading, setGroupsLoading] = useState(true);
   const [balanceLoading, setBalanceLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -134,7 +131,7 @@ const HomeScreen = () => {
 
     // Staleness check: skip fetch if data was fetched less than 30s ago.
     // Pull-to-refresh bypasses this by resetting lastFetchTime to 0 before calling fetchAllData.
-    if (Date.now() - lastFetchTime.current < 30000) return;
+    if (isFresh(lastFetchTime.current)) return;
 
     const fetchProfiles = async () => {
       try {
@@ -168,29 +165,6 @@ const HomeScreen = () => {
       }
     };
 
-    const fetchGroups = async () => {
-      try {
-        setGroupsLoading(true);
-        const response: GroupsResponse = await groupService.getGroups(1, 20, accessToken);
-        if (response.success && response.data) {
-          const apiGroups: Group[] = response.data.groups.map((group) => ({
-            id: group._id,
-            title: group.name,
-            amount: 0,
-            imageUri: undefined,
-            memberCount: group.members?.length ?? 0,
-            memberNames: group.members?.map((m) => m.userId?.email?.split('@')[0] ?? 'User') ?? [],
-          }));
-          setGroups(apiGroups);
-        }
-      } catch (err: any) {
-        if (err?.statusCode === 401) throw err; // Propagate 401 to parent
-        console.error('Error fetching groups:', err);
-      } finally {
-        setGroupsLoading(false);
-      }
-    };
-
     const fetchCategories = async () => {
       try {
         const response = await categoryService.getCategories(accessToken);
@@ -220,21 +194,18 @@ const HomeScreen = () => {
 
     try {
       // Stagger requests to avoid hitting server rate limits.
-      // Batch into two groups with a small delay between them.
       await Promise.all([fetchProfiles(), fetchExpenses(), fetchBalance()]);
-      await Promise.all([fetchGroups(), fetchCategories()]);
+      await fetchCategories();
       lastFetchTime.current = Date.now();
     } catch (err: any) {
       if (err?.statusCode === 401) {
-        // Attempt token refresh; if it fails, log the user out
-        const refreshed = await refreshSession();
-        if (!refreshed) {
-          await logout();
-        }
+        // Attempt token refresh; a rejected refresh token already triggers
+        // logout via authedFetch's onSessionExpired.
+        await refreshSession();
         // If refresh succeeded, the next useFocusEffect cycle will re-fetch with new token
       }
     }
-  }, [accessToken, refreshSession, logout]);
+  }, [accessToken, refreshSession]);
 
   // Refetch when screen comes into focus (also covers initial mount)
   useFocusEffect(
@@ -242,6 +213,8 @@ const HomeScreen = () => {
       fetchAllData();
     }, [fetchAllData])
   );
+
+  useRefetchOnForeground(fetchAllData);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -287,17 +260,6 @@ const HomeScreen = () => {
     if (parentNav) {
       parentNav.navigate('MeTab', { screen: 'AddProfile' });
     }
-  };
-
-  const handleGroupPress = (group: Group) => {
-    navigation.navigate('GroupDetail', {
-      groupId: group.id,
-      groupName: group.title,
-    });
-  };
-
-  const handleCreateGroup = () => {
-    navigation.navigate('CreateGroup');
   };
 
   const handleViewAllExpenses = () => {
@@ -403,7 +365,7 @@ const HomeScreen = () => {
   );
 
   const getExpenseProfile = (expense: Expense): Profile | undefined => {
-    if (!expense.profileId) return undefined;
+    if (!expense.profileId) return profiles.find((p) => p.isDefault);
     return profiles.find((p) => p._id === expense.profileId);
   };
 

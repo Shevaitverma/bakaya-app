@@ -25,7 +25,7 @@ export interface SingleCategoryResponse {
 
 export interface CreateCategoryRequest {
   name: string;
-  emoji: string;
+  emoji?: string;
   color: string;
 }
 

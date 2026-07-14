@@ -22,6 +22,7 @@ import { useAuth } from '../../context/AuthContext';
 import { profileService } from '../../services/profileService';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
+import ColorPicker, { PROFILE_COLORS } from '../../components/ColorPicker';
 import type { MeStackParamList } from '../../navigation/types';
 
 type AddProfileScreenProps = NativeStackScreenProps<MeStackParamList, 'AddProfile'>;
@@ -32,17 +33,6 @@ const RELATIONSHIP_OPTIONS = [
   { label: 'Partner', value: 'partner' },
   { label: 'Friend', value: 'friend' },
   { label: 'Other', value: 'other' },
-];
-
-const PROFILE_COLORS = [
-  '#D81B60', // Primary magenta
-  '#3B82F6', // Blue
-  '#10B981', // Green
-  '#F59E0B', // Amber
-  '#EF4444', // Red
-  '#8B5CF6', // Purple
-  '#EC4899', // Pink
-  '#06B6D4', // Cyan
 ];
 
 const AddProfileScreen: React.FC<AddProfileScreenProps> = ({ navigation }) => {
@@ -195,33 +185,7 @@ const AddProfileScreen: React.FC<AddProfileScreenProps> = ({ navigation }) => {
           {/* Color Picker */}
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionLabel}>Color</Text>
-            <View style={styles.colorGrid}>
-              {PROFILE_COLORS.map((c) => {
-                const isSelected = color === c;
-                return (
-                  <TouchableOpacity
-                    key={c}
-                    style={[
-                      styles.colorCircleWrapper,
-                      isSelected && styles.colorCircleWrapperSelected,
-                      isSelected && { borderColor: c },
-                    ]}
-                    onPress={() => setColor(c)}
-                    activeOpacity={0.7}>
-                    <View style={[styles.colorCircle, { backgroundColor: c }]}>
-                      {isSelected && (
-                        <FontAwesome6
-                          name="check"
-                          size={14}
-                          color={Theme.colors.white}
-                          solid
-                        />
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            <ColorPicker colors={PROFILE_COLORS} selectedColor={color} onSelect={setColor} />
           </View>
 
           {/* Submit Button */}
@@ -339,30 +303,6 @@ const styles = StyleSheet.create({
   chipTextSelected: {
     color: Theme.colors.primary,
     fontWeight: Theme.typography.fontWeight.semibold,
-  },
-  colorGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Theme.spacing.md,
-  },
-  colorCircleWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: Theme.borderRadius.round,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2.5,
-    borderColor: 'transparent',
-  },
-  colorCircleWrapperSelected: {
-    // borderColor is set dynamically
-  },
-  colorCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: Theme.borderRadius.round,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   submitContainer: {
     marginTop: Theme.spacing.lg,

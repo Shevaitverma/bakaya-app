@@ -16,8 +16,9 @@ export type HomeStackParamList = {
   EditExpense: { expenseId: string };
   CreateGroup: undefined;
   ProfileExpenses: { profileId: string; profileName: string; profileColor?: string };
+  EditProfile: { profileId: string; profileName: string; profileColor?: string };
   GroupDetail: { groupId: string; groupName: string };
-  AddGroupExpense: { groupId: string; members: { userId: string; name: string }[] };
+  AddGroupExpense: { groupId: string; members: { userId: string; name: string }[]; isAdmin?: boolean };
   EditGroupExpense: { groupId: string; expenseId: string; members: { userId: string; name: string }[] };
   EditGroup: { groupId: string };
   SettleUp: { groupId: string; balances: Record<string, number>; members: { userId: string; name: string }[] };
@@ -27,7 +28,7 @@ export type GroupsStackParamList = {
   GroupsList: undefined;
   GroupDetail: { groupId: string; groupName: string };
   CreateGroup: undefined;
-  AddGroupExpense: { groupId: string; members: { userId: string; name: string }[] };
+  AddGroupExpense: { groupId: string; members: { userId: string; name: string }[]; isAdmin?: boolean };
   EditGroupExpense: { groupId: string; expenseId: string; members: { userId: string; name: string }[] };
   EditGroup: { groupId: string };
   SettleUp: { groupId: string; balances: Record<string, number>; members: { userId: string; name: string }[] };

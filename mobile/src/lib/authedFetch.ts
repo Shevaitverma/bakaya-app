@@ -74,6 +74,7 @@ async function performRefresh(): Promise<RefreshOutcome> {
   const currentRefresh = await storage.getRefreshToken();
   if (!currentRefresh) {
     // No refresh token means we can never recover; treat as expired.
+    await fireSessionExpired();
     return { ok: false, rejected: true };
   }
 
@@ -81,11 +82,11 @@ async function performRefresh(): Promise<RefreshOutcome> {
 
   let res: Response;
   try {
-    res = await fetch(url, {
+    res = await timedFetch(url, {
       method: 'POST',
       headers: { ...API_CONFIG.HEADERS },
       body: JSON.stringify({ refreshToken: currentRefresh }),
-    });
+    }, 15000);
   } catch (err) {
     // Transient network failure — do NOT log the user out. Caller will see
     // ok:false/rejected:false and propagate the original 401.
@@ -96,6 +97,7 @@ async function performRefresh(): Promise<RefreshOutcome> {
   if (!res.ok) {
     // 401/403 from /auth/refresh means the refresh token is no longer valid.
     if (res.status === 401 || res.status === 403) {
+      await fireSessionExpired();
       return { ok: false, rejected: true };
     }
     // Server 5xx or similar — treat as transient, keep the session.
@@ -111,6 +113,11 @@ async function performRefresh(): Promise<RefreshOutcome> {
   }
 
   if (body?.success && body?.data?.accessToken && body?.data?.refreshToken) {
+    if ((await storage.getRefreshToken()) !== currentRefresh) {
+      // User logged out while the refresh was in flight — don't resurrect
+      // the session by persisting fresh tokens.
+      return { ok: false, rejected: true };
+    }
     await storage.saveTokens(body.data.accessToken, body.data.refreshToken);
     if (body.data.user) {
       await storage.saveUser(body.data.user);
@@ -139,13 +146,13 @@ export function getOrStartRefresh(): Promise<RefreshOutcome> {
 // ---------------------------------------------------------------------------
 
 export interface AuthedFetchOptions extends RequestInit {
-  /** Explicit bearer token override (falls back to storage). */
+  /** Fallback bearer token used only when storage has none. */
   token?: string;
   /** Request timeout in ms. Default 15s. */
   timeout?: number;
 }
 
-async function rawFetch(
+export async function timedFetch(
   url: string,
   init: RequestInit,
   timeout: number,
@@ -197,19 +204,19 @@ export async function authedFetch<T>(
   const attempt = async (tokenForCall: string | null): Promise<Response> => {
     const headers = buildHeaders(baseHeaders, tokenForCall);
     try {
-      return await rawFetch(url, { ...rest, headers }, timeout);
+      return await timedFetch(url, { ...rest, headers }, timeout);
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         throw createApiError('Request timeout: The server took too long to respond. Please try again.', 408);
       }
-      if (err instanceof TypeError && err.message.includes('fetch')) {
+      if (err instanceof TypeError) {
         throw createApiError('Network error: Unable to connect to the server. Please check your internet connection.', 0);
       }
       throw err;
     }
   };
 
-  const initialToken = tokenOverride ?? (await storage.getAccessToken());
+  const initialToken = (await storage.getAccessToken()) ?? tokenOverride ?? null;
   let response = await attempt(initialToken);
 
   // Auto-refresh on 401 — but never for the refresh endpoint itself.
@@ -217,11 +224,9 @@ export async function authedFetch<T>(
     const outcome = await getOrStartRefresh();
     if (outcome.ok) {
       response = await attempt(outcome.accessToken);
-    } else if (outcome.rejected) {
-      // The server said our refresh token is dead — log the user out.
-      await fireSessionExpired();
     }
-    // If !ok && !rejected (transient), fall through and let caller see the 401.
+    // On failure, performRefresh already fired onSessionExpired when the
+    // token was rejected; fall through and let the caller see the 401.
   }
 
   if (response.status === 504) {
@@ -247,5 +252,9 @@ export async function authedFetch<T>(
   }
 
   const text = await response.text();
+  const contentType = response.headers.get('content-type') ?? '';
+  if (text && !contentType.includes('json')) {
+    return text as unknown as T;
+  }
   return (text ? JSON.parse(text) : {}) as T;
 }

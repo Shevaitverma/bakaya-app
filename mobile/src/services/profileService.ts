@@ -6,6 +6,7 @@
 
 import { API_CONFIG } from '../constants/api';
 import { authedFetch } from '../lib/authedFetch';
+import { markDataChanged } from '../lib/staleness';
 import type {
   ProfilesResponse,
   ProfileResponse,
@@ -15,10 +16,20 @@ import type {
 
 class ProfileService {
   async getProfiles(token: string): Promise<ProfilesResponse> {
-    return authedFetch<ProfilesResponse>(API_CONFIG.ENDPOINTS.PROFILES.LIST, {
-      method: 'GET',
-      token,
-    });
+    let res = await authedFetch<ProfilesResponse>(
+      `${API_CONFIG.ENDPOINTS.PROFILES.LIST}?page=1&limit=100`,
+      { method: 'GET', token }
+    );
+    const profiles = [...res.data.profiles];
+    const totalPages = res.data.pagination?.totalPages ?? 1;
+    for (let page = 2; page <= totalPages; page++) {
+      res = await authedFetch<ProfilesResponse>(
+        `${API_CONFIG.ENDPOINTS.PROFILES.LIST}?page=${page}&limit=100`,
+        { method: 'GET', token }
+      );
+      profiles.push(...res.data.profiles);
+    }
+    return { ...res, data: { ...res.data, profiles } };
   }
 
   async getProfile(id: string, token: string): Promise<ProfileResponse> {
@@ -32,11 +43,13 @@ class ProfileService {
     data: CreateProfileRequest,
     token: string
   ): Promise<ProfileResponse> {
-    return authedFetch<ProfileResponse>(API_CONFIG.ENDPOINTS.PROFILES.LIST, {
+    const res = await authedFetch<ProfileResponse>(API_CONFIG.ENDPOINTS.PROFILES.LIST, {
       method: 'POST',
       token,
       body: JSON.stringify(data),
     });
+    markDataChanged();
+    return res;
   }
 
   async updateProfile(
@@ -44,21 +57,29 @@ class ProfileService {
     data: UpdateProfileRequest,
     token: string
   ): Promise<ProfileResponse> {
-    return authedFetch<ProfileResponse>(API_CONFIG.ENDPOINTS.PROFILES.SINGLE(id), {
+    const res = await authedFetch<ProfileResponse>(API_CONFIG.ENDPOINTS.PROFILES.SINGLE(id), {
       method: 'PUT',
       token,
       body: JSON.stringify(data),
     });
+    markDataChanged();
+    return res;
   }
 
   async deleteProfile(
     id: string,
     token: string
   ): Promise<{ success: boolean; data: { message: string }; meta: { timestamp: string } }> {
-    return authedFetch(API_CONFIG.ENDPOINTS.PROFILES.SINGLE(id), {
+    const res = await authedFetch<{
+      success: boolean;
+      data: { message: string };
+      meta: { timestamp: string };
+    }>(API_CONFIG.ENDPOINTS.PROFILES.SINGLE(id), {
       method: 'DELETE',
       token,
     });
+    markDataChanged();
+    return res;
   }
 }
 

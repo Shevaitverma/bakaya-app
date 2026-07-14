@@ -21,6 +21,10 @@ function getBaseUrl(): string {
     return `http://${ip}:8080/api/v1`;
   }
 
+  if (!__DEV__) {
+    throw new Error('EXPO_PUBLIC_API_URL not set — fill it in for this build profile in eas.json');
+  }
+
   // Fallback: Android emulator uses 10.0.2.2 to reach host; iOS simulator uses localhost
   const fallbackHost = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
   return `http://${fallbackHost}:8080/api/v1`;
@@ -34,10 +38,12 @@ export const API_CONFIG = {
       REGISTER: '/auth/register',
       GOOGLE: '/auth/google',
       REFRESH: '/auth/refresh',
+      LOGOUT: '/auth/logout',
     },
     EXPENSES: {
       PERSONAL_EXPENSES: '/personal-expenses',
       SINGLE_EXPENSE: (id: string) => `/personal-expenses/${id}`,
+      EXPORT: '/personal-expenses/export',
     },
     ANALYTICS: {
       SUMMARY: '/analytics/summary',
@@ -77,6 +83,4 @@ export const API_CONFIG = {
     'Content-Type': 'application/json',
     'accept': 'application/json',
   },
-  // Hardcoded FCM token as requested
-  FCM_TOKEN: 'firebase-cloud-messaging-token',
 } as const;

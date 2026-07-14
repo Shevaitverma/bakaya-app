@@ -38,6 +38,11 @@ export const queryKeys = {
     settlements: (groupId: string) => [...queryKeys.groups.all, 'settlements', groupId] as const,
   },
 
+  invitations: {
+    all: ['invitations'] as const,
+    mine: (status: string) => [...queryKeys.invitations.all, 'mine', status] as const,
+  },
+
   analytics: {
     all: ['analytics'] as const,
     summary: (params?: Record<string, unknown>) =>

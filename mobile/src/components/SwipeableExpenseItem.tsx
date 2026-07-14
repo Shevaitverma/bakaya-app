@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Animated,
   PanResponder,
+  PanResponderGestureState,
   TouchableOpacity,
 } from 'react-native';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
@@ -73,6 +74,41 @@ const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({
     };
   }, [isOpen, translateX]);
 
+  const settle = (gestureState: PanResponderGestureState) => {
+    const finalValue = startX.current + gestureState.dx;
+
+    // Detect tap: minimal movement
+    const isTap = Math.abs(gestureState.dx) < 5 && Math.abs(gestureState.dy) < 5;
+    if (isTap && startX.current === 0 && onPress) {
+      onPress(item._id);
+      return;
+    }
+
+    if (!isTap && finalValue < -SWIPE_THRESHOLD) {
+      // Swipe threshold reached, snap to delete button position
+      Animated.spring(translateX, {
+        toValue: -DELETE_BUTTON_WIDTH,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 7,
+      }).start(() => {
+        // Item is now open
+        onSwipeEnd(item._id, true);
+      });
+    } else {
+      // Snap back to original position (a tap on an open row closes it)
+      Animated.spring(translateX, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 7,
+      }).start(() => {
+        // Item is closed
+        onSwipeEnd(item._id, false);
+      });
+    }
+  };
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -95,40 +131,8 @@ const SwipeableExpenseItem: React.FC<SwipeableExpenseItemProps> = ({
         const clampedValue = Math.max(-DELETE_BUTTON_WIDTH, Math.min(0, newValue));
         translateX.setValue(clampedValue);
       },
-      onPanResponderRelease: (_, gestureState) => {
-        const finalValue = startX.current + gestureState.dx;
-
-        // Detect tap: minimal movement and item is not swiped open
-        const isTap = Math.abs(gestureState.dx) < 5 && Math.abs(gestureState.dy) < 5;
-        if (isTap && startX.current === 0 && onPress) {
-          onPress(item._id);
-          return;
-        }
-
-        if (finalValue < -SWIPE_THRESHOLD) {
-          // Swipe threshold reached, snap to delete button position
-          Animated.spring(translateX, {
-            toValue: -DELETE_BUTTON_WIDTH,
-            useNativeDriver: true,
-            tension: 50,
-            friction: 7,
-          }).start(() => {
-            // Item is now open
-            onSwipeEnd(item._id, true);
-          });
-        } else {
-          // Snap back to original position
-          Animated.spring(translateX, {
-            toValue: 0,
-            useNativeDriver: true,
-            tension: 50,
-            friction: 7,
-          }).start(() => {
-            // Item is closed
-            onSwipeEnd(item._id, false);
-          });
-        }
-      },
+      onPanResponderRelease: (_, gestureState) => settle(gestureState),
+      onPanResponderTerminate: (_, gestureState) => settle(gestureState),
     })
   ).current;
 

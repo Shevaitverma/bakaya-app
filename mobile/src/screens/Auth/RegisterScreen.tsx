@@ -54,6 +54,13 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
     lastName?: string;
   }>({});
 
+  const passwordChecks = [
+    { label: 'At least 8 characters', ok: password.length >= 8 },
+    { label: 'One lowercase letter', ok: /[a-z]/.test(password) },
+    { label: 'One uppercase letter', ok: /[A-Z]/.test(password) },
+    { label: 'One number', ok: /[0-9]/.test(password) },
+  ];
+
   const validateForm = (): boolean => {
     const newErrors: typeof errors = {};
 
@@ -74,27 +81,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
     if (!password.trim()) {
       newErrors.password = 'Password is required';
     } else {
-      // Check password requirements
-      const passwordErrors: string[] = [];
-
-      if (password.length < 8) {
-        passwordErrors.push('at least 8 characters');
-      }
-
-      if (!/[a-z]/.test(password)) {
-        passwordErrors.push('one lowercase letter');
-      }
-
-      if (!/[A-Z]/.test(password)) {
-        passwordErrors.push('one uppercase letter');
-      }
-
-      if (!/[0-9]/.test(password)) {
-        passwordErrors.push('one number');
-      }
-
-      if (passwordErrors.length > 0) {
-        newErrors.password = `Password must contain ${passwordErrors.join(', ')}`;
+      const unmet = passwordChecks.filter((c) => !c.ok);
+      if (unmet.length > 0) {
+        newErrors.password = `Password must contain ${unmet
+          .map((c) => c.label.toLowerCase())
+          .join(', ')}`;
       }
     }
 
@@ -188,6 +179,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
       }
 
       console.log('[REGISTER SCREEN] Final error message to display:', errorMessage);
+
+      if (/already (registered|exists|in use)/i.test(errorMessage)) {
+        setErrors((prev) => ({ ...prev, email: errorMessage }));
+        return;
+      }
 
       Alert.alert(
         'Registration Failed',
@@ -317,6 +313,18 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               {errors.password && (
                 <Text style={styles.passwordErrorText}>{errors.password}</Text>
               )}
+              <View style={styles.passwordChecklist}>
+                {passwordChecks.map((check) => (
+                  <Text
+                    key={check.label}
+                    style={[
+                      styles.checklistItem,
+                      check.ok && styles.checklistItemMet,
+                    ]}>
+                    {check.ok ? '✓' : '○'} {check.label}
+                  </Text>
+                ))}
+              </View>
             </View>
 
             {/* Confirm Password Input with Visibility Toggle */}
@@ -514,5 +522,17 @@ const styles = StyleSheet.create({
     color: Theme.colors.error,
     fontFamily: Theme.typography.fontFamily,
     marginTop: Theme.spacing.xs,
+  },
+  passwordChecklist: {
+    marginTop: Theme.spacing.xs,
+    gap: 2,
+  },
+  checklistItem: {
+    fontSize: Theme.typography.fontSize.small,
+    color: Theme.colors.textTertiary,
+    fontFamily: Theme.typography.fontFamily,
+  },
+  checklistItemMet: {
+    color: Theme.colors.success,
   },
 });

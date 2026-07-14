@@ -20,67 +20,18 @@ import { Theme } from '../../constants/theme';
 import { expenseService } from '../../services/expenseService';
 import { profileService } from '../../services/profileService';
 import { categoryService } from '../../services/categoryService';
+import { isFresh } from '../../lib/staleness';
+import { useRefetchOnForeground } from '../../hooks/useRefetchOnForeground';
 import type { Expense, PersonalExpensesResponse } from '../../types/expense';
 import type { Profile } from '../../types/profile';
 import type { Category } from '../../types/category';
 import SwipeableExpenseItem from '../../components/SwipeableExpenseItem';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
+import DateRangePicker from '../../components/DateRangePicker';
 import { formatCurrencyExact } from '../../utils/currency';
+import { istToday, istMonthStart } from '../../utils/istDate';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { HomeStackParamList } from '../../navigation/types';
-
-// ---------------------------------------------------------------------------
-// Date filter presets (inline chips — replaces DateRangePicker modal)
-// ---------------------------------------------------------------------------
-
-type DatePreset = 'this_month' | 'last_month' | 'last_3_months' | 'this_year' | 'all';
-
-interface DateRange {
-  startDate: string | undefined;
-  endDate: string | undefined;
-}
-
-function toISODate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function computeRange(preset: DatePreset): DateRange {
-  const today = new Date();
-  switch (preset) {
-    case 'this_month': {
-      const start = new Date(today.getFullYear(), today.getMonth(), 1);
-      return { startDate: toISODate(start), endDate: toISODate(today) };
-    }
-    case 'last_month': {
-      const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      const end = new Date(today.getFullYear(), today.getMonth(), 0);
-      return { startDate: toISODate(start), endDate: toISODate(end) };
-    }
-    case 'last_3_months': {
-      const start = new Date(today.getFullYear(), today.getMonth() - 2, 1);
-      return { startDate: toISODate(start), endDate: toISODate(today) };
-    }
-    case 'this_year': {
-      const start = new Date(today.getFullYear(), 0, 1);
-      return { startDate: toISODate(start), endDate: toISODate(today) };
-    }
-    case 'all':
-      return { startDate: undefined, endDate: undefined };
-    default:
-      return { startDate: undefined, endDate: undefined };
-  }
-}
-
-const DATE_PRESETS: { key: DatePreset; label: string }[] = [
-  { key: 'this_month', label: 'This Month' },
-  { key: 'last_month', label: 'Last Month' },
-  { key: 'last_3_months', label: 'Last 3 Months' },
-  { key: 'this_year', label: 'This Year' },
-  { key: 'all', label: 'All' },
-];
 
 type ExpenseDetailScreenProps = NativeStackScreenProps<HomeStackParamList, 'ExpenseDetail'>;
 
@@ -123,9 +74,8 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
   const [typeFilter, setTypeFilter] = useState<'income' | 'expense' | null>(null);
   const [profileFilter, setProfileFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(routeCategory);
-  const [startDate, setStartDate] = useState<string | undefined>(undefined);
-  const [endDate, setEndDate] = useState<string | undefined>(undefined);
-  const [datePreset, setDatePreset] = useState<DatePreset>('all');
+  const [startDate, setStartDate] = useState<string | undefined>(istMonthStart);
+  const [endDate, setEndDate] = useState<string | undefined>(istToday);
 
   // Refs for debounce and keeping filter values current
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -134,12 +84,19 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
     type: null as 'income' | 'expense' | null,
     profileId: null as string | null,
     category: routeCategory as string | null,
-    startDate: undefined as string | undefined,
-    endDate: undefined as string | undefined,
+    startDate: istMonthStart() as string | undefined,
+    endDate: istToday() as string | undefined,
   });
 
   // Guard: prevent overlapping expense fetches from piling up requests.
   const fetchInFlightRef = useRef(false);
+  // Set when a fetch is requested while another is in flight; the in-flight
+  // fetch fires a trailing refetch from its `finally` block.
+  const pendingRefetchRef = useRef(false);
+
+  // Pagination state
+  const pageRef = useRef(1);
+  const hasNextRef = useRef(false);
 
   // Staleness check: track the last successful fetch time so that
   // useFocusEffect can skip redundant refetches when returning to the
@@ -160,26 +117,14 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
     category?: string | null;
     startDate?: string;
     endDate?: string;
+    /** Page to fetch; pages > 1 append to the existing list. */
+    page?: number;
     /** When true, bypass the staleness check (used for active filter changes). */
     force?: boolean;
   }) => {
     if (!accessToken) {
       setError('Authentication required');
       setLoading(false);
-      return;
-    }
-
-    // --- In-flight guard ---
-    // If a fetch is already running, skip this request to avoid 429s.
-    if (fetchInFlightRef.current) {
-      return;
-    }
-
-    // --- Staleness guard ---
-    // When `force` is false (e.g. useFocusEffect re-focus), skip the fetch
-    // if data was loaded less than 30 seconds ago to prevent duplicate requests.
-    const force = overrides?.force ?? false;
-    if (!force && Date.now() - lastFetchTimeRef.current < STALE_THRESHOLD_MS) {
       return;
     }
 
@@ -192,8 +137,27 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
       endDate: overrides?.endDate !== undefined ? overrides.endDate : filtersRef.current.endDate,
     };
 
-    // Update ref
+    // Update ref before any guard so a dropped request's filters are still
+    // picked up by the trailing refetch.
     filtersRef.current = { ...filters };
+
+    const page = overrides?.page ?? 1;
+
+    // --- In-flight guard ---
+    // If a fetch is already running, queue a trailing refetch instead of
+    // silently dropping this request.
+    if (fetchInFlightRef.current) {
+      pendingRefetchRef.current = true;
+      return;
+    }
+
+    // --- Staleness guard ---
+    // When `force` is false (e.g. useFocusEffect re-focus), skip the fetch
+    // if data was loaded less than 30 seconds ago to prevent duplicate requests.
+    const force = overrides?.force ?? false;
+    if (!force && isFresh(lastFetchTimeRef.current, STALE_THRESHOLD_MS)) {
+      return;
+    }
 
     try {
       fetchInFlightRef.current = true;
@@ -209,14 +173,17 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
       if (filters.endDate) apiFilters.endDate = filters.endDate;
 
       const response: PersonalExpensesResponse = await expenseService.getPersonalExpenses(
-        1,
-        50,
+        page,
+        100,
         accessToken,
         Object.keys(apiFilters).length > 0 ? apiFilters : undefined
       );
 
       if (response.success && response.data) {
-        setExpenses(response.data.expenses);
+        const fetched = response.data.expenses;
+        setExpenses((prev) => (page > 1 ? [...prev, ...fetched] : fetched));
+        pageRef.current = page;
+        hasNextRef.current = response.data.pagination?.hasNext ?? false;
         setTotalExpenseAmount(response.data.totalExpenseAmount);
         setTotalIncome(response.data.totalIncome);
         setTotalExpenses(response.data.totalExpenses);
@@ -233,8 +200,18 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
       fetchInFlightRef.current = false;
       lastFetchTimeRef.current = Date.now();
       setLoading(false);
+      if (pendingRefetchRef.current) {
+        pendingRefetchRef.current = false;
+        fetchExpenses({ force: true });
+      }
     }
   }, [accessToken]);
+
+  const handleEndReached = useCallback(() => {
+    if (hasNextRef.current && !fetchInFlightRef.current) {
+      fetchExpenses({ page: pageRef.current + 1, force: true });
+    }
+  }, [fetchExpenses]);
 
   const fetchProfiles = useCallback(async () => {
     if (!accessToken) return;
@@ -285,6 +262,8 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
       };
     }, [fetchExpenses, fetchProfiles, fetchCategories])
   );
+
+  useRefetchOnForeground(fetchExpenses);
 
   // -------------------------------------------------------------------
   // Search with 400ms debounce
@@ -337,42 +316,33 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
   const handleDateRangeChange = useCallback((newStartDate?: string, newEndDate?: string) => {
     setStartDate(newStartDate);
     setEndDate(newEndDate);
-    fetchExpenses({ startDate: newStartDate, endDate: newEndDate, force: true });
+    // Write the ref directly: the fetch merge treats an undefined override as
+    // "keep previous", which would prevent clearing dates (e.g. "All Time").
+    filtersRef.current = { ...filtersRef.current, startDate: newStartDate, endDate: newEndDate };
+    fetchExpenses({ force: true });
   }, [fetchExpenses]);
 
-  const handleDatePresetChange = useCallback((preset: DatePreset) => {
-    setDatePreset(preset);
-    const range = computeRange(preset);
-    handleDateRangeChange(range.startDate, range.endDate);
-  }, [handleDateRangeChange]);
-
   // -------------------------------------------------------------------
-  // CSV Export
+  // CSV Export (server-generated — full history, current filters)
   // -------------------------------------------------------------------
   const handleExportCSV = useCallback(async () => {
-    if (expenses.length === 0) {
-      Alert.alert('No Data', 'There are no expenses to export.');
+    if (!accessToken) {
+      Alert.alert('Error', 'Authentication required');
       return;
     }
 
     setExporting(true);
 
     try {
-      const header = 'Date,Title,Amount,Type,Category,Profile,Notes';
-
-      const rows = expenses.map((exp) => {
-        const date = toISODate(new Date(exp.createdAt));
-        const title = `"${(exp.title || '').replace(/"/g, '""')}"`;
-        const amount = exp.amount.toFixed(2);
-        const type = exp.type || 'expense';
-        const category = `"${(exp.category || '').replace(/"/g, '""')}"`;
-        const profile = profiles.find((p) => p._id === exp.profileId);
-        const profileName = `"${(profile?.name || '').replace(/"/g, '""')}"`;
-        const notes = `"${(exp.notes || '').replace(/"/g, '""')}"`;
-        return `${date},${title},${amount},${type},${category},${profileName},${notes}`;
+      const f = filtersRef.current;
+      const csvString = await expenseService.exportCSV(accessToken, {
+        search: f.search || undefined,
+        type: f.type ?? undefined,
+        profileId: f.profileId ?? undefined,
+        category: f.category ?? undefined,
+        startDate: f.startDate,
+        endDate: f.endDate,
       });
-
-      const csvString = [header, ...rows].join('\n');
 
       // Use react-native Share API to let the user share/copy the CSV data
       await Share.share({
@@ -385,17 +355,17 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
     } finally {
       setExporting(false);
     }
-  }, [expenses, profiles]);
+  }, [accessToken]);
 
   // -------------------------------------------------------------------
   // Existing helpers (formatDate, formatTime, formatAmount, etc.)
   // -------------------------------------------------------------------
   const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = monthNames[date.getMonth()];
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${month}-${day}`;
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
   };
 
   const formatTime = (dateString: string): string => {
@@ -488,7 +458,7 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
   };
 
   const getExpenseProfile = (expense: Expense): Profile | undefined => {
-    if (!expense.profileId) return undefined;
+    if (!expense.profileId) return profiles.find((p) => p.isDefault);
     return profiles.find((p) => p._id === expense.profileId);
   };
 
@@ -649,36 +619,12 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
           </TouchableOpacity>
         </View>
 
-        {/* 4. Date Range Chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.dateChipsContainer}
-        >
-          {DATE_PRESETS.map((preset) => {
-            const isActive = datePreset === preset.key;
-            return (
-              <TouchableOpacity
-                key={preset.key}
-                style={[
-                  styles.dateChip,
-                  isActive && styles.dateChipActive,
-                ]}
-                onPress={() => handleDatePresetChange(preset.key)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.dateChipText,
-                    isActive && styles.dateChipTextActive,
-                  ]}
-                >
-                  {preset.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        {/* 4. Date Range Picker */}
+        <DateRangePicker
+          onChange={handleDateRangeChange}
+          defaultPreset="this_month"
+          style={styles.dateRangeTrigger}
+        />
 
         {/* 5. Profile Filter Chips */}
         {profiles.length > 0 && (
@@ -748,7 +694,11 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
   // -------------------------------------------------------------------
   // Loading & error states
   // -------------------------------------------------------------------
-  if (loading && expenses.length === 0 && !searchText && !typeFilter && !profileFilter && !categoryFilter) {
+  const hasActiveFilters = Boolean(
+    searchText || typeFilter || profileFilter || categoryFilter || startDate || endDate
+  );
+
+  if (loading && expenses.length === 0 && !hasActiveFilters) {
     return (
       <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
         <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
@@ -758,7 +708,7 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
     );
   }
 
-  if (error && expenses.length === 0 && !searchText && !typeFilter && !profileFilter && !categoryFilter) {
+  if (error && expenses.length === 0 && !hasActiveFilters) {
     return (
       <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
         <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
@@ -797,6 +747,8 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
             { paddingBottom: insets.bottom + 100 },
           ]}
           showsVerticalScrollIndicator={false}
+          onEndReached={handleEndReached}
+          onEndReachedThreshold={0.5}
           ListEmptyComponent={
             !loading ? (
               <View style={styles.emptyContainer}>
@@ -808,7 +760,7 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
                 />
                 <Text style={styles.emptyText}>No transactions found</Text>
                 <Text style={styles.emptySubtext}>
-                  {searchText || typeFilter || profileFilter || categoryFilter || startDate
+                  {hasActiveFilters
                     ? 'Try adjusting your filters'
                     : 'Add your first expense to get started'}
                 </Text>
@@ -1015,32 +967,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // --- Date Range Chips ---
-  dateChipsContainer: {
-    gap: Theme.spacing.sm,
-    paddingVertical: 2,
-  },
-  dateChip: {
-    paddingHorizontal: Theme.spacing.md,
-    paddingVertical: Theme.spacing.sm,
-    borderRadius: Theme.borderRadius.round,
-    backgroundColor: Theme.colors.lightGrey,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  dateChipActive: {
-    backgroundColor: Theme.colors.white,
-    borderColor: Theme.colors.primary,
-  },
-  dateChipText: {
-    fontSize: Theme.typography.fontSize.small,
-    color: Theme.colors.textSecondary,
-    fontFamily: Theme.typography.fontFamily,
-    fontWeight: Theme.typography.fontWeight.medium,
-  },
-  dateChipTextActive: {
-    color: Theme.colors.primary,
-    fontWeight: Theme.typography.fontWeight.semibold,
+  // --- Date Range Picker trigger ---
+  dateRangeTrigger: {
+    alignSelf: 'flex-start',
   },
 
   // --- Profile Filter Chips ---

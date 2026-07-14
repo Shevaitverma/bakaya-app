@@ -7,7 +7,11 @@ import { Platform, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import { useQuery } from '@tanstack/react-query';
 import { Theme } from '../constants/theme';
+import { useAuth } from '../context/AuthContext';
+import { invitationService } from '../services/invitationService';
+import { queryKeys } from '../lib/queryKeys';
 import type {
   MainTabParamList,
   HomeStackParamList,
@@ -70,6 +74,7 @@ const HomeStackNavigator: React.FC = () => {
       <HomeStack.Screen name="EditGroup" component={EditGroupScreen} />
       <HomeStack.Screen name="SettleUp" component={SettleUpScreen} />
       <HomeStack.Screen name="ProfileExpenses" component={ProfileExpensesScreen} />
+      <HomeStack.Screen name="EditProfile" component={EditProfileScreen as any} />
     </HomeStack.Navigator>
   );
 };
@@ -130,6 +135,16 @@ const MeStackNavigator: React.FC = () => {
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export const MainTabNavigator: React.FC = () => {
+  const { accessToken } = useAuth();
+  const { data: pendingCount = 0 } = useQuery({
+    queryKey: queryKeys.invitations.mine('pending'),
+    queryFn: async () => {
+      const response = await invitationService.listMyInvitations(accessToken!, 'pending');
+      return response.data?.invitations?.length ?? 0;
+    },
+    enabled: !!accessToken,
+  });
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -177,6 +192,8 @@ export const MainTabNavigator: React.FC = () => {
         component={MeStackNavigator}
         options={{
           tabBarLabel: 'Profiles',
+          tabBarBadge:
+            pendingCount > 0 ? (pendingCount > 99 ? '99+' : pendingCount) : undefined,
           tabBarIcon: ({ color, focused }) => (
             <FontAwesome6 name="user" size={20} color={color} solid={focused} />
           ),

@@ -32,6 +32,13 @@ export interface ProfilesResponse {
   success: boolean;
   data: {
     profiles: Profile[];
+    pagination?: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+    };
   };
   meta: {
     timestamp: string;

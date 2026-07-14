@@ -3,7 +3,7 @@
     "name": "Bakaya",
     "slug": "bakaya",
     "version": "1.0.0",
-    "scheme": "bakaya",
+    "scheme": ["bakaya", "com.bakaya.app"],
     "platforms": [
       "ios",
       "android"

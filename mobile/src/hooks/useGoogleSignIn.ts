@@ -6,12 +6,13 @@
  * 2. Exchange the Google ID token for a Firebase ID token via REST API
  * 3. Return the Firebase ID token to send to the server
  *
- * On iOS without a configured iosClientId the hook is still safe to call
- * but `isAvailable` will be false — callers should hide the Google button.
+ * Without a configured client ID for the platform the hook is still safe to
+ * call but `isAvailable` will be false — callers should hide the Google button.
  */
 
 import { useCallback, useState } from 'react';
 import { Platform } from 'react-native';
+import { exchangeCodeAsync } from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { signInWithGoogleIdToken } from '../lib/firebase';
@@ -20,8 +21,11 @@ import { signInWithGoogleIdToken } from '../lib/firebase';
 WebBrowser.maybeCompleteAuthSession();
 
 /** Google SSO is available when we have the required client ID for the platform */
-const hasIosClientId = !!process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
-const googleSignInAvailable = Platform.OS !== 'ios' || hasIosClientId;
+const googleSignInAvailable = !!Platform.select({
+  ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+  android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+  default: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+});
 
 interface GoogleSignInState {
   isLoading: boolean;
@@ -29,7 +33,7 @@ interface GoogleSignInState {
 }
 
 interface UseGoogleSignInReturn extends GoogleSignInState {
-  /** false on iOS when no iosClientId is configured — hide the button */
+  /** false when no client ID is configured for this platform — hide the button */
   isAvailable: boolean;
   signIn: () => Promise<string | null>;
 }
@@ -40,12 +44,13 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
     error: null,
   });
 
-  // On iOS without iosClientId we pass the webClientId to prevent the hook
-  // from throwing, but mark SSO as unavailable so the UI hides the button.
-  const [_request, _response, promptAsync] = Google.useAuthRequest({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  // The 'unavailable' placeholders keep the hook from throwing when a client
+  // ID is missing; they are unreachable because signIn() early-returns when
+  // SSO is unavailable on the platform.
+  const [request, _response, promptAsync] = Google.useAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || 'unavailable',
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || 'unavailable',
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || 'unavailable',
   });
 
   const signIn = useCallback(async (): Promise<string | null> => {
@@ -69,13 +74,27 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
         throw new Error('Google sign-in was not successful');
       }
 
-      const { id_token } = result.params;
-      if (!id_token) {
+      // Native uses the code flow — exchange the authorization code for tokens
+      const code = result.params.code;
+      if (!code) {
+        throw new Error('No authorization code received from Google');
+      }
+      const tokens = await exchangeCodeAsync(
+        {
+          clientId: request!.clientId,
+          redirectUri: request!.redirectUri,
+          code,
+          extraParams: { code_verifier: request?.codeVerifier ?? '' },
+        },
+        Google.discovery
+      );
+
+      if (!tokens.idToken) {
         throw new Error('No ID token received from Google');
       }
 
       // Step 2: Exchange Google ID token for Firebase ID token via REST API
-      const firebaseResult = await signInWithGoogleIdToken(id_token);
+      const firebaseResult = await signInWithGoogleIdToken(tokens.idToken);
 
       console.log('[GOOGLE SIGN-IN] Firebase ID token obtained');
 
@@ -88,7 +107,7 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
       setState({ isLoading: false, error: errorMessage });
       throw err;
     }
-  }, [promptAsync]);
+  }, [promptAsync, request]);
 
   return {
     ...state,

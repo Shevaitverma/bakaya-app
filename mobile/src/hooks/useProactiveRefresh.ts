@@ -35,15 +35,12 @@ function decodeJwtExp(token: string): number | null {
     if (parts.length !== 3) return null;
     const payloadPart = parts[1];
     if (!payloadPart) return null;
-    // React Native supports atob via globalThis; fall back to a manual
-    // base64url decode if not available.
     const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
-    const decoded =
-      typeof atob === 'function'
-        ? atob(normalized)
-        : // @ts-ignore — Buffer is available in Metro via globals
-          Buffer.from(normalized, 'base64').toString('utf8');
-    const payload = JSON.parse(decoded);
+    const padded = normalized.padEnd(
+      normalized.length + ((4 - (normalized.length % 4)) % 4),
+      '=',
+    );
+    const payload = JSON.parse(atob(padded));
     return typeof payload.exp === 'number' ? payload.exp : null;
   } catch {
     return null;
@@ -81,18 +78,22 @@ async function maybeRefresh(): Promise<void> {
 
 export function useProactiveRefresh() {
   const prevState = useRef<AppStateStatus>(AppState.currentState);
+  const lastCheckAt = useRef(0);
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
 
     // Also refresh once on mount (covers cold starts where the persisted
     // access token is already expired).
+    lastCheckAt.current = Date.now();
     maybeRefresh();
 
     const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
       const prev = prevState.current;
       prevState.current = next;
       if (next === 'active' && prev !== 'active') {
+        if (Date.now() - lastCheckAt.current < 5000) return;
+        lastCheckAt.current = Date.now();
         maybeRefresh();
       }
     });

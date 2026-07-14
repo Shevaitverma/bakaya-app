@@ -12,6 +12,7 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,7 +23,10 @@ import { useAuth } from '../../context/AuthContext';
 import { profileService } from '../../services/profileService';
 import { expenseService } from '../../services/expenseService';
 import { invitationService } from '../../services/invitationService';
+import { isFresh } from '../../lib/staleness';
+import { useRefetchOnForeground } from '../../hooks/useRefetchOnForeground';
 import { formatCurrency } from '../../utils/currency';
+import { istMonthStart, istToday } from '../../utils/istDate';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import type { Profile } from '../../types/profile';
 import type { MeStackParamList } from '../../navigation/types';
@@ -36,6 +40,7 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
   const [logoutLoading, setLogoutLoading] = useState(false);
   const { accessToken, user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
@@ -70,6 +75,8 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
       try {
         const response = await expenseService.getPersonalExpenses(1, 1, accessToken, {
           profileId: profile._id,
+          startDate: istMonthStart(),
+          endDate: istToday(),
         });
         if (response.success && response.data) {
           totals[profile._id] = {
@@ -93,7 +100,7 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
       setLoading(false);
       return;
     }
-    if (Date.now() - lastFetchTime.current < 30000) return;
+    if (isFresh(lastFetchTime.current)) return;
 
     try {
       setLoading(true);
@@ -124,6 +131,18 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
       fetchPendingInvitationCount();
     }, [fetchProfiles, fetchPendingInvitationCount])
   );
+
+  useRefetchOnForeground(() => {
+    fetchProfiles();
+    fetchPendingInvitationCount();
+  });
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    lastFetchTime.current = 0;
+    await fetchProfiles();
+    setRefreshing(false);
+  }, [fetchProfiles]);
 
   const handleDeleteProfile = (profileId: string) => {
     if (!accessToken) {
@@ -157,10 +176,8 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
     setDeleteLoading(true);
 
     // Optimistically update UI
-    const deletedProfile = profiles.find((p) => p._id === profileToDelete.id);
-    if (deletedProfile) {
-      setProfiles((prev) => prev.filter((p) => p._id !== profileToDelete.id));
-    }
+    const prevProfiles = profiles;
+    setProfiles((prev) => prev.filter((p) => p._id !== profileToDelete.id));
 
     // Close dialog immediately
     setDeleteDialogVisible(false);
@@ -171,7 +188,7 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to delete profile';
-      fetchProfiles();
+      setProfiles(prevProfiles);
       Alert.alert('Error', errorMessage);
     } finally {
       setDeleteLoading(false);
@@ -192,7 +209,7 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
   };
 
   const handleProfilePress = (profile: Profile) => {
-    navigation.navigate('EditProfile', {
+    navigation.navigate('ProfileExpenses', {
       profileId: profile._id,
       profileName: profile.name,
       profileColor: profile.color,
@@ -209,6 +226,7 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
       <TouchableOpacity
         style={[styles.profileCard, isDefault && styles.profileCardDefault]}
         onPress={() => handleProfilePress(item)}
+        onLongPress={() => handleDeleteProfile(item._id)}
         activeOpacity={0.7}>
         <View style={styles.profileCardContent}>
           {/* Avatar */}
@@ -276,7 +294,7 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
     );
   };
 
-  if (loading) {
+  if (loading && !refreshing) {
     return (
       <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
         <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
@@ -345,6 +363,14 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
             { paddingBottom: Theme.spacing.xxl },
           ]}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[Theme.colors.primary]}
+              tintColor={Theme.colors.primary}
+            />
+          }
           ListHeaderComponent={
             <TouchableOpacity
               style={styles.invitationsCard}

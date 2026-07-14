@@ -22,6 +22,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Theme } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { categoryService } from '../../services/categoryService';
+import { isFresh } from '../../lib/staleness';
+import { useRefetchOnForeground } from '../../hooks/useRefetchOnForeground';
 import { EmojiPicker } from '../../components/EmojiPicker';
 import { ColorPicker } from '../../components/ColorPicker';
 import { Input } from '../../components/Input';
@@ -48,7 +50,7 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formName, setFormName] = useState('');
-  const [formEmoji, setFormEmoji] = useState('\uD83C\uDF7D\uFE0F');
+  const [formEmoji, setFormEmoji] = useState('');
   const [formColor, setFormColor] = useState('#D81B60');
   const [formNameError, setFormNameError] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
@@ -102,7 +104,7 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
       setLoading(false);
       return;
     }
-    if (Date.now() - lastFetchTime.current < 30000) return;
+    if (isFresh(lastFetchTime.current)) return;
 
     try {
       setLoading(true);
@@ -131,6 +133,8 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
     }, [fetchCategories])
   );
 
+  useRefetchOnForeground(fetchCategories);
+
   // ---- Derived data ----
 
   const activeCategories = categories.filter((c) => c.isActive);
@@ -141,7 +145,7 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
   const openAddModal = () => {
     setEditingCategory(null);
     setFormName('');
-    setFormEmoji('\uD83C\uDF7D\uFE0F');
+    setFormEmoji('');
     setFormColor('#D81B60');
     setFormNameError(undefined);
     setModalVisible(true);
@@ -198,7 +202,7 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
       } else {
         // Create new
         const response = await categoryService.createCategory(
-          { name: trimmedName, emoji: formEmoji, color: formColor },
+          { name: trimmedName, emoji: formEmoji || undefined, color: formColor },
           accessToken
         );
 
@@ -269,18 +273,18 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
     setDeleteLoading(true);
 
     // Optimistic update
-    const deletedId = categoryToDelete.id;
-    setCategories((prev) => prev.filter((c) => c.id !== deletedId));
+    const deleted = categoryToDelete;
+    setCategories((prev) => prev.filter((c) => c.id !== deleted.id));
 
     // Close dialog immediately
     setDeleteDialogVisible(false);
     setCategoryToDelete(null);
 
     try {
-      await categoryService.deleteCategory(deletedId, accessToken);
+      await categoryService.deleteCategory(deleted.id, accessToken);
     } catch (err) {
-      // Revert - re-fetch
-      fetchCategories();
+      // Revert optimistic update
+      setCategories((prev) => [...prev, deleted]);
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to delete category';
       Alert.alert('Error', errorMessage);
@@ -576,7 +580,7 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
                 style={styles.emojiSelector}
                 onPress={() => setEmojiPickerVisible(true)}
                 activeOpacity={0.7}>
-                <Text style={styles.emojiSelectorText}>{formEmoji}</Text>
+                <Text style={styles.emojiSelectorText}>{formEmoji || '📄'}</Text>
                 <Text style={styles.emojiSelectorHint}>Tap to change</Text>
               </TouchableOpacity>
             </View>
@@ -629,7 +633,11 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
         title="Delete Category"
         message={
           categoryToDelete
-            ? `Are you sure you want to delete "${categoryToDelete.name}"? This action cannot be undone.`
+            ? `Are you sure you want to delete "${categoryToDelete.name}"? Existing expenses using this category will keep their label.${
+                categoryToDelete.name === 'Other'
+                  ? ' Warning: "Other" is the fallback category. Deleting it may affect expenses without a specific category.'
+                  : ''
+              }`
             : ''
         }
         confirmText="Delete"

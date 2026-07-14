@@ -84,12 +84,10 @@ const EditGroupScreen: React.FC<EditGroupScreenProps> = ({ navigation, route }) 
     try {
       setSubmitting(true);
 
-      const data: { name?: string; description?: string } = {
+      const data = {
         name: name.trim(),
+        description: description.trim(),
       };
-      if (description.trim()) {
-        data.description = description.trim();
-      }
 
       const response = await groupService.updateGroup(groupId, data, accessToken);
 

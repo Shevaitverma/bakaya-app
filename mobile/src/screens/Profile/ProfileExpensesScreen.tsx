@@ -21,6 +21,8 @@ import { useAuth } from '../../context/AuthContext';
 import { Theme } from '../../constants/theme';
 import { expenseService } from '../../services/expenseService';
 import { categoryService } from '../../services/categoryService';
+import { isFresh } from '../../lib/staleness';
+import { useRefetchOnForeground } from '../../hooks/useRefetchOnForeground';
 import type { Expense, PersonalExpensesResponse } from '../../types/expense';
 import type { Category } from '../../types/category';
 import SwipeableExpenseItem from '../../components/SwipeableExpenseItem';
@@ -129,11 +131,17 @@ const ProfileExpensesScreen: React.FC<ProfileExpensesScreenProps> = ({ route, na
   // Dates are initialized to "this_month" so the first fetch always has a valid range.
   useFocusEffect(
     useCallback(() => {
-      if (Date.now() - lastFetchTime.current < 30000) return;
+      if (isFresh(lastFetchTime.current)) return;
       fetchExpenses(startDate, endDate);
       fetchCategories();
     }, [fetchExpenses, fetchCategories, startDate, endDate])
   );
+
+  useRefetchOnForeground(() => {
+    if (isFresh(lastFetchTime.current)) return;
+    fetchExpenses(startDate, endDate);
+    fetchCategories();
+  });
 
   const handleDateRangeChange = useCallback(
     (newStart?: string, newEnd?: string) => {
@@ -153,11 +161,11 @@ const ProfileExpensesScreen: React.FC<ProfileExpensesScreenProps> = ({ route, na
   }, [fetchExpenses, startDate, endDate]);
 
   const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = monthNames[date.getMonth()];
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${month}-${day}`;
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
   };
 
   const formatTime = (dateString: string): string => {
@@ -418,7 +426,19 @@ const ProfileExpensesScreen: React.FC<ProfileExpensesScreenProps> = ({ route, na
             style={styles.dateRangeTrigger}
           />
         </View>
-        <View style={styles.backButtonPlaceholder} />
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() =>
+            navigation.navigate('EditProfile', { profileId, profileName, profileColor })
+          }
+          activeOpacity={0.7}>
+          <FontAwesome6
+            name="pen"
+            size={16}
+            color={Theme.colors.textOnPrimary}
+            solid
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Content Area */}
@@ -521,9 +541,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 2,
-  },
-  backButtonPlaceholder: {
-    width: 40,
   },
   headerContent: {
     flex: 1,

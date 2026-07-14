@@ -6,6 +6,7 @@
 
 import { API_CONFIG } from '../constants/api';
 import { authedFetch } from '../lib/authedFetch';
+import { markDataChanged } from '../lib/staleness';
 import type {
   CategoriesResponse,
   SingleCategoryResponse,
@@ -31,11 +32,13 @@ class CategoryService {
     data: CreateCategoryRequest,
     token: string
   ): Promise<SingleCategoryResponse> {
-    return authedFetch<SingleCategoryResponse>(API_CONFIG.ENDPOINTS.CATEGORIES.LIST, {
+    const res = await authedFetch<SingleCategoryResponse>(API_CONFIG.ENDPOINTS.CATEGORIES.LIST, {
       method: 'POST',
       token,
       body: JSON.stringify(data),
     });
+    markDataChanged();
+    return res;
   }
 
   /**
@@ -46,11 +49,13 @@ class CategoryService {
     data: UpdateCategoryRequest,
     token: string
   ): Promise<SingleCategoryResponse> {
-    return authedFetch<SingleCategoryResponse>(API_CONFIG.ENDPOINTS.CATEGORIES.SINGLE(id), {
+    const res = await authedFetch<SingleCategoryResponse>(API_CONFIG.ENDPOINTS.CATEGORIES.SINGLE(id), {
       method: 'PUT',
       token,
       body: JSON.stringify(data),
     });
+    markDataChanged();
+    return res;
   }
 
   /**
@@ -60,10 +65,12 @@ class CategoryService {
     id: string,
     token: string
   ): Promise<DeleteCategoryResponse> {
-    return authedFetch<DeleteCategoryResponse>(API_CONFIG.ENDPOINTS.CATEGORIES.SINGLE(id), {
+    const res = await authedFetch<DeleteCategoryResponse>(API_CONFIG.ENDPOINTS.CATEGORIES.SINGLE(id), {
       method: 'DELETE',
       token,
     });
+    markDataChanged();
+    return res;
   }
 }
 

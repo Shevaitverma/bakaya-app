@@ -28,8 +28,8 @@ export const expenseQuerySchema = z.object({
   search: z.string().max(100).optional(),
   category: z.string().optional(),
   profileId: z.string().optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;

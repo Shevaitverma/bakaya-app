@@ -7,6 +7,7 @@
 
 import { API_CONFIG } from '../constants/api';
 import { authedFetch } from '../lib/authedFetch';
+import { markDataChanged } from '../lib/staleness';
 import type {
   GroupsResponse,
   GroupResponse,
@@ -32,11 +33,13 @@ class GroupService {
   }
 
   async createGroup(data: CreateGroupRequest, token: string): Promise<GroupResponse> {
-    return authedFetch<GroupResponse>(API_CONFIG.ENDPOINTS.GROUPS.LIST, {
+    const res = await authedFetch<GroupResponse>(API_CONFIG.ENDPOINTS.GROUPS.LIST, {
       method: 'POST',
       token,
       body: JSON.stringify(data),
     });
+    markDataChanged();
+    return res;
   }
 
   async getGroup(id: string, token: string): Promise<GroupResponse> {
@@ -61,11 +64,16 @@ class GroupService {
     data: CreateGroupExpenseRequest,
     token: string
   ): Promise<{ success: boolean; data: any; meta: { timestamp: string } }> {
-    return authedFetch(API_CONFIG.ENDPOINTS.GROUPS.EXPENSES(groupId), {
-      method: 'POST',
-      token,
-      body: JSON.stringify(data),
-    });
+    const res = await authedFetch<{ success: boolean; data: any; meta: { timestamp: string } }>(
+      API_CONFIG.ENDPOINTS.GROUPS.EXPENSES(groupId),
+      {
+        method: 'POST',
+        token,
+        body: JSON.stringify(data),
+      }
+    );
+    markDataChanged();
+    return res;
   }
 
   async deleteGroupExpense(
@@ -73,10 +81,16 @@ class GroupService {
     expenseId: string,
     token: string
   ): Promise<{ success: boolean; data: { message: string }; meta: { timestamp: string } }> {
-    return authedFetch(API_CONFIG.ENDPOINTS.GROUPS.SINGLE_EXPENSE(groupId, expenseId), {
+    const res = await authedFetch<{
+      success: boolean;
+      data: { message: string };
+      meta: { timestamp: string };
+    }>(API_CONFIG.ENDPOINTS.GROUPS.SINGLE_EXPENSE(groupId, expenseId), {
       method: 'DELETE',
       token,
     });
+    markDataChanged();
+    return res;
   }
 
   async getGroupBalances(groupId: string, token: string): Promise<GroupBalancesResponse> {
@@ -98,29 +112,42 @@ class GroupService {
     data: CreateSettlementRequest,
     token: string
   ): Promise<{ success: boolean; data: any; meta: { timestamp: string } }> {
-    return authedFetch(API_CONFIG.ENDPOINTS.GROUPS.SETTLEMENTS(groupId), {
-      method: 'POST',
-      token,
-      body: JSON.stringify(data),
-    });
+    const res = await authedFetch<{ success: boolean; data: any; meta: { timestamp: string } }>(
+      API_CONFIG.ENDPOINTS.GROUPS.SETTLEMENTS(groupId),
+      {
+        method: 'POST',
+        token,
+        body: JSON.stringify(data),
+      }
+    );
+    markDataChanged();
+    return res;
   }
 
   async updateGroup(id: string, data: UpdateGroupRequest, token: string): Promise<GroupResponse> {
-    return authedFetch<GroupResponse>(API_CONFIG.ENDPOINTS.GROUPS.SINGLE(id), {
+    const res = await authedFetch<GroupResponse>(API_CONFIG.ENDPOINTS.GROUPS.SINGLE(id), {
       method: 'PUT',
       token,
       body: JSON.stringify(data),
     });
+    markDataChanged();
+    return res;
   }
 
   async deleteGroup(
     id: string,
     token: string
   ): Promise<{ success: boolean; data: { deleted: boolean }; meta: { timestamp: string } }> {
-    return authedFetch(API_CONFIG.ENDPOINTS.GROUPS.SINGLE(id), {
+    const res = await authedFetch<{
+      success: boolean;
+      data: { deleted: boolean };
+      meta: { timestamp: string };
+    }>(API_CONFIG.ENDPOINTS.GROUPS.SINGLE(id), {
       method: 'DELETE',
       token,
     });
+    markDataChanged();
+    return res;
   }
 
   async removeMember(
@@ -128,10 +155,16 @@ class GroupService {
     memberId: string,
     token: string
   ): Promise<{ success: boolean; data: { removed: boolean }; meta: { timestamp: string } }> {
-    return authedFetch(API_CONFIG.ENDPOINTS.GROUPS.SINGLE_MEMBER(groupId, memberId), {
+    const res = await authedFetch<{
+      success: boolean;
+      data: { removed: boolean };
+      meta: { timestamp: string };
+    }>(API_CONFIG.ENDPOINTS.GROUPS.SINGLE_MEMBER(groupId, memberId), {
       method: 'DELETE',
       token,
     });
+    markDataChanged();
+    return res;
   }
 
   async getGroupExpense(
@@ -151,11 +184,17 @@ class GroupService {
     data: UpdateGroupExpenseRequest,
     token: string
   ): Promise<{ success: boolean; data: GroupExpense; meta: { timestamp: string } }> {
-    return authedFetch(API_CONFIG.ENDPOINTS.GROUPS.SINGLE_EXPENSE(groupId, expenseId), {
+    const res = await authedFetch<{
+      success: boolean;
+      data: GroupExpense;
+      meta: { timestamp: string };
+    }>(API_CONFIG.ENDPOINTS.GROUPS.SINGLE_EXPENSE(groupId, expenseId), {
       method: 'PUT',
       token,
       body: JSON.stringify(data),
     });
+    markDataChanged();
+    return res;
   }
 
   async deleteSettlement(
@@ -163,10 +202,16 @@ class GroupService {
     settlementId: string,
     token: string
   ): Promise<{ success: boolean; data: { deleted: boolean }; meta: { timestamp: string } }> {
-    return authedFetch(API_CONFIG.ENDPOINTS.GROUPS.SINGLE_SETTLEMENT(groupId, settlementId), {
+    const res = await authedFetch<{
+      success: boolean;
+      data: { deleted: boolean };
+      meta: { timestamp: string };
+    }>(API_CONFIG.ENDPOINTS.GROUPS.SINGLE_SETTLEMENT(groupId, settlementId), {
       method: 'DELETE',
       token,
     });
+    markDataChanged();
+    return res;
   }
 }
 

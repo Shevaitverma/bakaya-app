@@ -51,7 +51,7 @@ const SettleUpScreen: React.FC<SettleUpScreenProps> = ({ navigation, route }) =>
   const getMemberName = useCallback((userId: string): string => {
     if (userId === currentUserId) return 'You';
     const member = members.find((m) => m.userId === userId);
-    return member?.name || userId;
+    return member?.name || 'Unknown member';
   }, [currentUserId, members]);
 
   // Calculate simplified debts from balances

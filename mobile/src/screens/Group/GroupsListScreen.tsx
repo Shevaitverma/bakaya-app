@@ -20,6 +20,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Theme } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { groupService } from '../../services/groupService';
+import { isFresh } from '../../lib/staleness';
+import { useRefetchOnForeground } from '../../hooks/useRefetchOnForeground';
 import type { GroupData, GroupsResponse } from '../../types/group';
 import type { GroupsStackParamList } from '../../navigation/types';
 
@@ -56,7 +58,7 @@ const getGroupIconColor = (name: string): string => {
 
 const GroupsListScreen: React.FC<GroupsListScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { accessToken, refreshSession, logout } = useAuth();
+  const { accessToken, refreshSession } = useAuth();
 
   const [groups, setGroups] = useState<GroupData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,7 +72,7 @@ const GroupsListScreen: React.FC<GroupsListScreenProps> = ({ navigation }) => {
       setLoading(false);
       return;
     }
-    if (Date.now() - lastFetchTime.current < 30000) return;
+    if (isFresh(lastFetchTime.current)) return;
 
     try {
       setLoading(true);
@@ -85,11 +87,7 @@ const GroupsListScreen: React.FC<GroupsListScreenProps> = ({ navigation }) => {
       lastFetchTime.current = Date.now();
     } catch (err: any) {
       if (err?.statusCode === 401) {
-        const refreshed = await refreshSession();
-        if (!refreshed) {
-          await logout();
-          return;
-        }
+        await refreshSession();
         // Token refreshed, next focus will re-fetch
         return;
       }
@@ -99,13 +97,15 @@ const GroupsListScreen: React.FC<GroupsListScreenProps> = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, refreshSession, logout]);
+  }, [accessToken, refreshSession]);
 
   useFocusEffect(
     useCallback(() => {
       fetchGroups();
     }, [fetchGroups])
   );
+
+  useRefetchOnForeground(fetchGroups);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

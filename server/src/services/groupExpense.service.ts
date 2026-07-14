@@ -168,10 +168,14 @@ export async function updateGroupExpense(
     if (uniqueUserIds.size !== input.splitAmong.length) {
       throw new Error("Duplicate users in splitAmong are not allowed");
     }
-    // Validate splitAmong users are group members
-    const memberIds = new Set(group.members.map((m) => m.userId.toString()));
+    // Validate splitAmong users are group members or existing participants
+    // (grandfather members who left the group after this expense was created)
+    const allowedIds = new Set([
+      ...group.members.map((m) => m.userId.toString()),
+      ...expense.splitAmong.map((s) => s.userId.toString()),
+    ]);
     for (const split of input.splitAmong) {
-      if (!memberIds.has(split.userId)) {
+      if (!allowedIds.has(split.userId)) {
         throw new Error(`User ${split.userId} is not a member of this group`);
       }
     }
@@ -267,6 +271,10 @@ export async function getGroupBalances(groupId: string) {
   if (settlement) {
     for (const row of settlement.paid) add(row._id, row.total);
     for (const row of settlement.received) add(row._id, -row.total);
+  }
+
+  for (const key of Object.keys(balances)) {
+    balances[key] = Math.round(balances[key]! * 100) / 100 || 0;
   }
 
   return balances;

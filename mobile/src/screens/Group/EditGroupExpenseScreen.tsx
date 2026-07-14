@@ -185,6 +185,16 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
         const exactTotal = getExactTotal();
         if (Math.abs(exactTotal - amountNum) > 0.01) {
           newErrors.split = `Split amounts must equal the total. Currently ${formatCurrencyExact(exactTotal)} of ${formatCurrencyExact(amountNum)} allocated.`;
+        } else {
+          // A 0-amount member would get a 0 split, which the server rejects.
+          const splitMemberIdsLocal = Array.from(splitMembers);
+          const hasEmptyAmount = splitMemberIdsLocal.some((uid) => {
+            const val = parseFloat(exactAmounts[uid] || '0');
+            return isNaN(val) || val <= 0;
+          });
+          if (hasEmptyAmount) {
+            newErrors.split = 'Every selected member needs an amount greater than 0.';
+          }
         }
       }
     } else if (splitType === 'percentage') {

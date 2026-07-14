@@ -27,7 +27,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { Theme } from '../../constants/theme';
 import { analyticsService } from '../../services/analyticsService';
+import { profileService } from '../../services/profileService';
+import { categoryService } from '../../services/categoryService';
+import { isFresh } from '../../lib/staleness';
+import { useRefetchOnForeground } from '../../hooks/useRefetchOnForeground';
 import { formatCurrency, formatCurrencyAbbreviated } from '../../utils/currency';
+import { istToday, istTodayParts, istMonthStart, istMonthEnd } from '../../utils/istDate';
 import { SkeletonLoader } from '../../components/SkeletonLoader';
 import VerticalBarChart from '../../components/charts/VerticalBarChart';
 
@@ -70,35 +75,18 @@ interface DateRange {
   endDate: string | undefined;
 }
 
-function toISODate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
 function computeRange(preset: DatePreset): DateRange {
-  const today = new Date();
   switch (preset) {
-    case 'this_month': {
-      const start = new Date(today.getFullYear(), today.getMonth(), 1);
-      return { startDate: toISODate(start), endDate: toISODate(today) };
-    }
-    case 'last_month': {
-      const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      const end = new Date(today.getFullYear(), today.getMonth(), 0);
-      return { startDate: toISODate(start), endDate: toISODate(end) };
-    }
-    case 'last_3_months': {
-      const start = new Date(today.getFullYear(), today.getMonth() - 2, 1);
-      return { startDate: toISODate(start), endDate: toISODate(today) };
-    }
-    case 'half_year': {
-      const start = new Date(today.getFullYear(), today.getMonth() - 5, 1);
-      return { startDate: toISODate(start), endDate: toISODate(today) };
-    }
+    case 'this_month':
+      return { startDate: istMonthStart(), endDate: istToday() };
+    case 'last_month':
+      return { startDate: istMonthStart(1), endDate: istMonthEnd(1) };
+    case 'last_3_months':
+      return { startDate: istMonthStart(2), endDate: istToday() };
+    case 'half_year':
+      return { startDate: istMonthStart(5), endDate: istToday() };
     case 'all':
-      return { startDate: '2020-01-01', endDate: toISODate(today) };
+      return { startDate: '2020-01-01', endDate: istToday() };
     default:
       return { startDate: undefined, endDate: undefined };
   }
@@ -118,29 +106,22 @@ const DATE_PRESETS: { key: DatePreset; label: string }[] = [
 
 const AnalyticsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const { accessToken, refreshSession, logout } = useAuth();
+  const { accessToken, refreshSession } = useAuth();
 
   // --- Date range ---
   const [activePreset, setActivePreset] = useState<DatePreset>('this_month');
-  const [startDate, setStartDate] = useState<string | undefined>(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    return `${y}-${m}-01`;
-  });
-  const [endDate, setEndDate] = useState<string | undefined>(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  });
+  const [startDate, setStartDate] = useState<string | undefined>(() =>
+    istMonthStart(),
+  );
+  const [endDate, setEndDate] = useState<string | undefined>(() => istToday());
 
   // --- Data ---
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [profileData, setProfileData] = useState<ByProfileData | null>(null);
   const [categoryData, setCategoryData] = useState<ByCategoryData | null>(null);
   const [trendsData, setTrendsData] = useState<TrendsData | null>(null);
+  const [profileColors, setProfileColors] = useState<Record<string, string>>({});
+  const [categoryColors, setCategoryColors] = useState<Record<string, string>>({});
 
   // --- Independent loading states ---
   const [loadingSummary, setLoadingSummary] = useState(true);
@@ -149,6 +130,7 @@ const AnalyticsScreen: React.FC = () => {
   const [loadingTrends, setLoadingTrends] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const lastFetchTime = useRef<number>(0);
+  const fetchId = useRef(0);
 
   // ------------------------------------------------------------------
   // Data fetching
@@ -156,7 +138,10 @@ const AnalyticsScreen: React.FC = () => {
 
   const fetchAllData = useCallback(async () => {
     if (!accessToken) return;
-    if (Date.now() - lastFetchTime.current < 30000) return;
+    if (isFresh(lastFetchTime.current)) return;
+
+    const id = ++fetchId.current;
+    const isCurrent = () => id === fetchId.current;
 
     const params: AnalyticsQueryParams = {};
     if (startDate) params.startDate = startDate;
@@ -170,48 +155,79 @@ const AnalyticsScreen: React.FC = () => {
     const fetchSummary = async () => {
       try {
         const res = await analyticsService.getSummary(accessToken, params);
-        if (res.success && res.data) setSummary(res.data);
+        if (res.success && res.data && isCurrent()) setSummary(res.data);
       } catch (err: any) {
         if (err?.statusCode === 401) throw err;
         console.error('[Analytics] Error fetching summary:', err);
       } finally {
-        setLoadingSummary(false);
+        if (isCurrent()) setLoadingSummary(false);
       }
     };
 
     const fetchProfiles = async () => {
       try {
         const res = await analyticsService.getByProfile(accessToken, params);
-        if (res.success && res.data) setProfileData(res.data);
+        if (res.success && res.data && isCurrent()) setProfileData(res.data);
       } catch (err: any) {
         if (err?.statusCode === 401) throw err;
         console.error('[Analytics] Error fetching profiles:', err);
       } finally {
-        setLoadingProfiles(false);
+        if (isCurrent()) setLoadingProfiles(false);
       }
     };
 
     const fetchCategories = async () => {
       try {
         const res = await analyticsService.getByCategory(accessToken, params);
-        if (res.success && res.data) setCategoryData(res.data);
+        if (res.success && res.data && isCurrent()) setCategoryData(res.data);
       } catch (err: any) {
         if (err?.statusCode === 401) throw err;
         console.error('[Analytics] Error fetching categories:', err);
       } finally {
-        setLoadingCategories(false);
+        if (isCurrent()) setLoadingCategories(false);
       }
     };
 
     const fetchTrends = async () => {
       try {
         const res = await analyticsService.getTrends(accessToken, params);
-        if (res.success && res.data) setTrendsData(res.data);
+        if (res.success && res.data && isCurrent()) setTrendsData(res.data);
       } catch (err: any) {
         if (err?.statusCode === 401) throw err;
         console.error('[Analytics] Error fetching trends:', err);
       } finally {
-        setLoadingTrends(false);
+        if (isCurrent()) setLoadingTrends(false);
+      }
+    };
+
+    const fetchColors = async () => {
+      try {
+        const [profilesRes, categoriesRes] = await Promise.all([
+          profileService.getProfiles(accessToken),
+          categoryService.getCategories(accessToken),
+        ]);
+        if (!isCurrent()) return;
+        if (profilesRes.success && profilesRes.data) {
+          setProfileColors(
+            Object.fromEntries(
+              profilesRes.data.profiles
+                .filter((p) => p.color)
+                .map((p) => [p._id, p.color!]),
+            ),
+          );
+        }
+        if (categoriesRes.success && categoriesRes.data) {
+          setCategoryColors(
+            Object.fromEntries(
+              categoriesRes.data.categories
+                .filter((c) => c.color)
+                .map((c) => [c.name, c.color]),
+            ),
+          );
+        }
+      } catch (err: any) {
+        if (err?.statusCode === 401) throw err;
+        console.error('[Analytics] Error fetching colors:', err);
       }
     };
 
@@ -220,6 +236,7 @@ const AnalyticsScreen: React.FC = () => {
       fetchProfiles(),
       fetchCategories(),
       fetchTrends(),
+      fetchColors(),
     ]);
 
     // Check if any fetch threw a 401 (session expired)
@@ -227,14 +244,11 @@ const AnalyticsScreen: React.FC = () => {
       (r) => r.status === 'rejected' && (r.reason as any)?.statusCode === 401,
     );
     if (has401) {
-      const refreshed = await refreshSession();
-      if (!refreshed) {
-        await logout();
-      }
-    } else {
+      await refreshSession();
+    } else if (isCurrent()) {
       lastFetchTime.current = Date.now();
     }
-  }, [accessToken, startDate, endDate, refreshSession, logout]);
+  }, [accessToken, startDate, endDate, refreshSession]);
 
   // Fetch on focus
   useFocusEffect(
@@ -242,6 +256,8 @@ const AnalyticsScreen: React.FC = () => {
       fetchAllData();
     }, [fetchAllData]),
   );
+
+  useRefetchOnForeground(fetchAllData);
 
   // Pull-to-refresh
   const onRefresh = useCallback(async () => {
@@ -300,14 +316,6 @@ const AnalyticsScreen: React.FC = () => {
     return Math.round(totalSpent / days);
   }, [summary, totalSpent]);
 
-  // Budget status text for avg daily card
-  const avgDailyBudgetStatus = useMemo(() => {
-    if (changePercent !== null && changePercent > 0) {
-      return { text: 'Over budget', color: Theme.colors.error };
-    }
-    return { text: 'Within budget', color: Theme.colors.success };
-  }, [changePercent]);
-
   // Profile chart data
   const profileBars = useMemo(() => {
     const sorted = [...(profileData?.profiles ?? [])].sort(
@@ -317,11 +325,11 @@ const AnalyticsScreen: React.FC = () => {
     return sorted.map((p, i) => ({
       label: p.profileName,
       value: p.total,
-      color: p.profileColor || PROFILE_COLORS[i % PROFILE_COLORS.length]!,
+      color: profileColors[p.profileId] || PROFILE_COLORS[i % PROFILE_COLORS.length]!,
       percentage:
         total > 0 ? Math.round((p.total / total) * 100) : 0,
     }));
-  }, [profileData, totalSpent]);
+  }, [profileData, totalSpent, profileColors]);
 
   // Category chart data
   const categoryBars = useMemo(() => {
@@ -332,15 +340,14 @@ const AnalyticsScreen: React.FC = () => {
     return sorted.map((c, i) => ({
       label: c.category ?? 'Uncategorized',
       value: c.total,
-      color: CATEGORY_COLORS[i % CATEGORY_COLORS.length]!,
+      color:
+        categoryColors[c.category] || CATEGORY_COLORS[i % CATEGORY_COLORS.length]!,
       percentage: catTotal > 0 ? Math.round((c.total / catTotal) * 100) : 0,
     }));
-  }, [categoryData, totalSpent]);
+  }, [categoryData, totalSpent, categoryColors]);
 
   // Trend chart data (last 6 months)
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const currentYear = now.getFullYear();
+  const { y: currentYear, m: currentMonth } = istTodayParts();
 
   const trendBars = useMemo(() => {
     const months = (trendsData?.months ?? []).slice(-6);
@@ -453,8 +460,8 @@ const AnalyticsScreen: React.FC = () => {
           <Text style={[styles.summaryValue, { color: Theme.colors.error }]} numberOfLines={1} adjustsFontSizeToFit>
             {formatCurrency(avgDaily)}
           </Text>
-          <Text style={[styles.summarySubtext, { color: avgDailyBudgetStatus.color }]} numberOfLines={1}>
-            {avgDailyBudgetStatus.text}
+          <Text style={[styles.summarySubtext, { color: Theme.colors.success }]} numberOfLines={1}>
+            Within budget
           </Text>
         </View>
       </ScrollView>

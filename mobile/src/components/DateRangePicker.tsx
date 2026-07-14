@@ -6,10 +6,12 @@ import {
   Modal,
   TextInput,
   StyleSheet,
+  Platform,
   type ViewStyle,
 } from 'react-native';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { Theme } from '../constants/theme';
+import { istToday, istTodayParts, istMonthStart, istMonthEnd } from '../utils/istDate';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -40,35 +42,16 @@ export interface DateRangePickerProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Format a Date as YYYY-MM-DD for API params. */
-function toISODate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
 function computeRange(preset: Preset): DateRange {
-  const today = new Date();
-
   switch (preset) {
-    case 'this_month': {
-      const start = new Date(today.getFullYear(), today.getMonth(), 1);
-      return { startDate: toISODate(start), endDate: toISODate(today) };
-    }
-    case 'last_month': {
-      const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      const end = new Date(today.getFullYear(), today.getMonth(), 0); // last day of prev month
-      return { startDate: toISODate(start), endDate: toISODate(end) };
-    }
-    case 'last_3_months': {
-      const start = new Date(today.getFullYear(), today.getMonth() - 2, 1);
-      return { startDate: toISODate(start), endDate: toISODate(today) };
-    }
-    case 'this_year': {
-      const start = new Date(today.getFullYear(), 0, 1);
-      return { startDate: toISODate(start), endDate: toISODate(today) };
-    }
+    case 'this_month':
+      return { startDate: istMonthStart(), endDate: istToday() };
+    case 'last_month':
+      return { startDate: istMonthStart(1), endDate: istMonthEnd(1) };
+    case 'last_3_months':
+      return { startDate: istMonthStart(2), endDate: istToday() };
+    case 'this_year':
+      return { startDate: `${istTodayParts().y}-01-01`, endDate: istToday() };
     case 'all_time':
       return { startDate: undefined, endDate: undefined };
     case 'custom':
@@ -93,6 +76,13 @@ function presetLabel(preset: Preset): string {
   return PRESETS.find((p) => p.key === preset)?.label ?? 'Custom';
 }
 
+/** True for a complete, real YYYY-MM-DD date (rejects e.g. 2026-13-99). */
+function isValidDate(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(`${s}T00:00:00Z`);
+  return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -106,10 +96,11 @@ export default function DateRangePicker({
   const [activePreset, setActivePreset] = useState<Preset>(defaultPreset);
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
+  const [customError, setCustomError] = useState<string | null>(null);
 
   // NOTE: No useEffect that fires onChange on mount. The parent screen is
   // responsible for its own initial data fetch. This component only fires
-  // onChange when the user actively selects a preset or changes dates.
+  // onChange when the user actively selects a preset or applies custom dates.
 
   // --------------------------------------------------
   // Handlers
@@ -117,10 +108,9 @@ export default function DateRangePicker({
 
   const handlePresetPress = (preset: Preset) => {
     setActivePreset(preset);
+    setCustomError(null);
 
     if (preset === 'custom') {
-      // Emit whatever custom dates are currently set (may be empty)
-      onChange(customStart || undefined, customEnd || undefined);
       return;
     }
 
@@ -130,18 +120,25 @@ export default function DateRangePicker({
 
   const handleCustomStartChange = (value: string) => {
     setCustomStart(value);
-    onChange(value || undefined, customEnd || undefined);
+    setCustomError(null);
   };
 
   const handleCustomEndChange = (value: string) => {
     setCustomEnd(value);
-    onChange(customStart || undefined, value || undefined);
+    setCustomError(null);
   };
 
   const handleApply = () => {
-    // Re-emit current selection so consumers can react
     if (activePreset === 'custom') {
-      onChange(customStart || undefined, customEnd || undefined);
+      if (!isValidDate(customStart) || !isValidDate(customEnd)) {
+        setCustomError('Enter valid dates as YYYY-MM-DD');
+        return;
+      }
+      if (customStart > customEnd) {
+        setCustomError('Start date must be on or before end date');
+        return;
+      }
+      onChange(customStart, customEnd);
     } else {
       const range = computeRange(activePreset);
       onChange(range.startDate, range.endDate);
@@ -231,7 +228,10 @@ export default function DateRangePicker({
                     onChangeText={handleCustomStartChange}
                     placeholder="YYYY-MM-DD"
                     placeholderTextColor={Theme.colors.textTertiary}
-                    keyboardType="numbers-and-punctuation"
+                    keyboardType={Platform.select({
+                      ios: 'numbers-and-punctuation',
+                      default: 'default',
+                    })}
                     maxLength={10}
                   />
                 </View>
@@ -244,11 +244,18 @@ export default function DateRangePicker({
                     onChangeText={handleCustomEndChange}
                     placeholder="YYYY-MM-DD"
                     placeholderTextColor={Theme.colors.textTertiary}
-                    keyboardType="numbers-and-punctuation"
+                    keyboardType={Platform.select({
+                      ios: 'numbers-and-punctuation',
+                      default: 'default',
+                    })}
                     maxLength={10}
                   />
                 </View>
               </View>
+            )}
+
+            {activePreset === 'custom' && customError && (
+              <Text style={styles.errorText}>{customError}</Text>
             )}
 
             {/* Action buttons */}
@@ -384,6 +391,12 @@ const styles = StyleSheet.create({
     color: Theme.colors.textPrimary,
     fontFamily: Theme.typography.fontFamily,
     backgroundColor: Theme.colors.surface,
+  },
+  errorText: {
+    fontSize: Theme.typography.fontSize.small,
+    color: Theme.colors.error,
+    fontFamily: Theme.typography.fontFamily,
+    marginBottom: Theme.spacing.md,
   },
   customSeparator: {
     fontSize: Theme.typography.fontSize.large,

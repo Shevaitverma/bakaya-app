@@ -14,7 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authService } from '../services/authService';
 import { storage } from '../utils/storage';
 import { setOnSessionExpired, getOrStartRefresh } from '../lib/authedFetch';
-import { queryClient } from '../lib/queryClient';
+import { queryClient, setAuthFailureHandler } from '../lib/queryClient';
 import type {
   User,
   LoginResponse,
@@ -95,6 +95,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // ---- logout (needs to be defined before the effect that uses it) ----
 
   const logout = useCallback(async () => {
+    // Best-effort server-side logout (deactivates device records, revokes
+    // refresh tokens). Fire-and-forget — authService.logout never throws.
+    const token = await storage.getAccessToken();
+    if (token) {
+      authService.logout(token);
+    }
+
     setUser(null);
     setAccessToken(null);
     setRefreshToken(null);
@@ -119,6 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log('[AUTH] Session expired — refresh token rejected by server');
       await logout();
     });
+    setAuthFailureHandler(logout);
     return () => {
       setOnSessionExpired(null);
     };

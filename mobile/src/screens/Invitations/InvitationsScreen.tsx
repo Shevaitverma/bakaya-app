@@ -17,12 +17,18 @@ import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Theme } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { invitationService } from '../../services/invitationService';
+import { isFresh } from '../../lib/staleness';
+import { useRefetchOnForeground } from '../../hooks/useRefetchOnForeground';
+import { queryClient } from '../../lib/queryClient';
+import { queryKeys } from '../../lib/queryKeys';
+import type { ApiError } from '../../lib/authedFetch';
 import { Button } from '../../components/Button';
 import { SkeletonLoader } from '../../components/SkeletonLoader';
-import type { MeStackParamList } from '../../navigation/types';
+import type { MeStackParamList, MainTabParamList } from '../../navigation/types';
 import type { GroupInvitation } from '../../types/invitation';
 
 type InvitationsScreenProps = NativeStackScreenProps<MeStackParamList, 'Invitations'>;
@@ -41,13 +47,15 @@ const InvitationsScreen: React.FC<InvitationsScreenProps> = ({ navigation }) => 
   const [invitations, setInvitations] = useState<GroupInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [processing, setProcessing] = useState<
+    { id: string; action: 'accept' | 'decline' } | null
+  >(null);
   const lastFetchTime = useRef<number>(0);
 
   const fetchInvitations = useCallback(
     async (force: boolean = false) => {
       if (!accessToken) return;
-      if (!force && Date.now() - lastFetchTime.current < 30000) return;
+      if (!force && isFresh(lastFetchTime.current)) return;
 
       try {
         setLoading(true);
@@ -73,48 +81,59 @@ const InvitationsScreen: React.FC<InvitationsScreenProps> = ({ navigation }) => 
     }, [fetchInvitations])
   );
 
+  useRefetchOnForeground(fetchInvitations);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchInvitations(true);
     setRefreshing(false);
   }, [fetchInvitations]);
 
-  const handleAccept = async (invitation: GroupInvitation) => {
-    if (!accessToken || processingId) return;
-    setProcessingId(invitation._id);
+  const respond = async (invitation: GroupInvitation, action: 'accept' | 'decline') => {
+    if (!accessToken || processing) return;
+    setProcessing({ id: invitation._id, action });
     try {
-      const response = await invitationService.acceptInvitation(invitation._id, accessToken);
+      const response =
+        action === 'accept'
+          ? await invitationService.acceptInvitation(invitation._id, accessToken)
+          : await invitationService.declineInvitation(invitation._id, accessToken);
       // Remove row from local state
       setInvitations((prev) => prev.filter((i) => i._id !== invitation._id));
-      const groupName = response.data?.group?.name ?? invitation.groupId.name;
-      Alert.alert('Joined', `You've joined ${groupName}`);
+      queryClient.invalidateQueries({ queryKey: queryKeys.invitations.all });
+      if (action === 'accept') {
+        const group = response.data?.group;
+        const groupName = group?.name ?? invitation.groupId.name;
+        Alert.alert('Joined', `You've joined ${groupName}`, [
+          { text: 'Later', style: 'cancel' },
+          {
+            text: 'View group',
+            onPress: () =>
+              navigation
+                .getParent<BottomTabNavigationProp<MainTabParamList>>()
+                ?.navigate('GroupsTab', {
+                  screen: 'GroupDetail',
+                  params: { groupId: group?._id ?? invitation.groupId._id, groupName },
+                }),
+          },
+        ]);
+      }
     } catch (err) {
+      const status = (err as ApiError).statusCode;
+      if (status === 400 || status === 403 || status === 404) {
+        setInvitations((prev) => prev.filter((i) => i._id !== invitation._id));
+        queryClient.invalidateQueries({ queryKey: queryKeys.invitations.all });
+      }
       const errorMessage =
-        err instanceof Error ? err.message : 'Failed to accept invitation';
+        err instanceof Error ? err.message : `Failed to ${action} invitation`;
       Alert.alert('Error', errorMessage);
     } finally {
-      setProcessingId(null);
-    }
-  };
-
-  const handleDecline = async (invitation: GroupInvitation) => {
-    if (!accessToken || processingId) return;
-    setProcessingId(invitation._id);
-    try {
-      await invitationService.declineInvitation(invitation._id, accessToken);
-      setInvitations((prev) => prev.filter((i) => i._id !== invitation._id));
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to decline invitation';
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setProcessingId(null);
+      setProcessing(null);
     }
   };
 
   const renderInvitation = ({ item }: { item: GroupInvitation }) => {
     const inviterName = formatInviterName(item.invitedBy);
-    const isProcessing = processingId === item._id;
+    const isProcessing = processing?.id === item._id;
 
     return (
       <View style={styles.invitationCard}>
@@ -149,16 +168,16 @@ const InvitationsScreen: React.FC<InvitationsScreenProps> = ({ navigation }) => 
           <Button
             title="Decline"
             variant="outline"
-            onPress={() => handleDecline(item)}
-            loading={isProcessing}
+            onPress={() => respond(item, 'decline')}
+            loading={isProcessing && processing?.action === 'decline'}
             disabled={isProcessing}
             style={styles.declineButton}
           />
           <Button
             title="Accept"
             variant="primary"
-            onPress={() => handleAccept(item)}
-            loading={isProcessing}
+            onPress={() => respond(item, 'accept')}
+            loading={isProcessing && processing?.action === 'accept'}
             disabled={isProcessing}
             style={styles.acceptButton}
           />
