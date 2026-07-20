@@ -51,12 +51,6 @@ export const authApi = {
     return api.post<LoginResponse>("/api/v1/auth/google", data);
   },
 
-  refreshToken(token: string): Promise<LoginResponse> {
-    return api.post<LoginResponse>("/api/v1/auth/refresh", {
-      refreshToken: token,
-    });
-  },
-
   /** Best-effort server logout. Always resolves (never throws). */
   async logout(): Promise<void> {
     try {

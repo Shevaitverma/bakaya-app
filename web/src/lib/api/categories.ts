@@ -25,7 +25,4 @@ export const categoriesApi = {
   delete(id: string) {
     return api.delete<{ deleted: boolean }>(`/api/v1/categories/${id}`);
   },
-  reorder(categoryIds: string[]) {
-    return api.put<void>("/api/v1/categories/reorder", { categoryIds });
-  },
 };

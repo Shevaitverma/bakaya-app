@@ -89,7 +89,10 @@
       "Bash(npm start *)",
       "Bash(npm run *)",
       "Bash(sed -i '649,651d' \"E:/shevait-projects/bakaya-app/mobile/src/screens/Group/GroupDetailScreen.tsx\")",
-      "Bash(sed -n '645,655p' \"E:/shevait-projects/bakaya-app/mobile/src/screens/Group/GroupDetailScreen.tsx\")"
+      "Bash(sed -n '645,655p' \"E:/shevait-projects/bakaya-app/mobile/src/screens/Group/GroupDetailScreen.tsx\")",
+      "Bash(PORT=8083 bun run dev)",
+      "Bash(xcrun simctl *)",
+      "Bash(open -a Simulator)"
     ]
   }
 }

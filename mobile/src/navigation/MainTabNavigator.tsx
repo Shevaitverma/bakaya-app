@@ -17,6 +17,7 @@ import type {
   HomeStackParamList,
   GroupsStackParamList,
   AnalyticsStackParamList,
+  InvitationsStackParamList,
   MeStackParamList,
 } from './types';
 
@@ -125,8 +126,20 @@ const MeStackNavigator: React.FC = () => {
       <MeStack.Screen name="ProfileExpenses" component={MeProfileExpensesScreen as any} />
       <MeStack.Screen name="Categories" component={CategoriesScreen} options={{ headerShown: false }} />
       <MeStack.Screen name="Settings" component={SettingsScreen} />
-      <MeStack.Screen name="Invitations" component={InvitationsScreen} />
     </MeStack.Navigator>
+  );
+};
+
+// ── Invitations Stack ───────────────────────────────────────────────────────
+
+const InvitationsStack = createNativeStackNavigator<InvitationsStackParamList>();
+
+const InvitationsStackNavigator: React.FC = () => {
+  return (
+    <InvitationsStack.Navigator
+      screenOptions={stackScreenOptions}>
+      <InvitationsStack.Screen name="Invitations" component={InvitationsScreen} />
+    </InvitationsStack.Navigator>
   );
 };
 
@@ -178,6 +191,18 @@ export const MainTabNavigator: React.FC = () => {
         }}
       />
       <Tab.Screen
+        name="InvitationsTab"
+        component={InvitationsStackNavigator}
+        options={{
+          tabBarLabel: 'Invitations',
+          tabBarBadge:
+            pendingCount > 0 ? (pendingCount > 99 ? '99+' : pendingCount) : undefined,
+          tabBarIcon: ({ color, focused }) => (
+            <FontAwesome6 name="envelope" size={20} color={color} solid={focused} />
+          ),
+        }}
+      />
+      <Tab.Screen
         name="AnalyticsTab"
         component={AnalyticsStackNavigator}
         options={{
@@ -192,8 +217,6 @@ export const MainTabNavigator: React.FC = () => {
         component={MeStackNavigator}
         options={{
           tabBarLabel: 'Profiles',
-          tabBarBadge:
-            pendingCount > 0 ? (pendingCount > 99 ? '99+' : pendingCount) : undefined,
           tabBarIcon: ({ color, focused }) => (
             <FontAwesome6 name="user" size={20} color={color} solid={focused} />
           ),

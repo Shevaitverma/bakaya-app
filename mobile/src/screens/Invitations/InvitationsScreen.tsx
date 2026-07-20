@@ -8,7 +8,6 @@ import {
   Text,
   StyleSheet,
   StatusBar,
-  TouchableOpacity,
   FlatList,
   Alert,
   RefreshControl,
@@ -28,10 +27,10 @@ import { queryKeys } from '../../lib/queryKeys';
 import type { ApiError } from '../../lib/authedFetch';
 import { Button } from '../../components/Button';
 import { SkeletonLoader } from '../../components/SkeletonLoader';
-import type { MeStackParamList, MainTabParamList } from '../../navigation/types';
+import type { InvitationsStackParamList, MainTabParamList } from '../../navigation/types';
 import type { GroupInvitation } from '../../types/invitation';
 
-type InvitationsScreenProps = NativeStackScreenProps<MeStackParamList, 'Invitations'>;
+type InvitationsScreenProps = NativeStackScreenProps<InvitationsStackParamList, 'Invitations'>;
 
 const formatInviterName = (invitedBy: GroupInvitation['invitedBy']): string => {
   if (invitedBy.firstName || invitedBy.lastName) {
@@ -227,21 +226,9 @@ const InvitationsScreen: React.FC<InvitationsScreenProps> = ({ navigation }) => 
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + Theme.spacing.md }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}>
-          <FontAwesome6
-            name="arrow-left"
-            size={20}
-            color={Theme.colors.textOnPrimary}
-            solid
-          />
-        </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
           Invitations
         </Text>
-        <View style={styles.backButtonPlaceholder} />
       </View>
 
       {/* Content */}
@@ -281,21 +268,9 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.primary,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: Theme.spacing.md,
     paddingBottom: Theme.spacing.lg,
     backgroundColor: Theme.colors.primary,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backButtonPlaceholder: {
-    width: 40,
   },
   headerTitle: {
     fontSize: Theme.typography.fontSize.xxlarge,
@@ -303,8 +278,6 @@ const styles = StyleSheet.create({
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.bold,
     letterSpacing: -0.5,
-    flex: 1,
-    textAlign: 'center',
   },
   contentWrapper: {
     flex: 1,

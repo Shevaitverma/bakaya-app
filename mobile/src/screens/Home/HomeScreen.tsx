@@ -466,17 +466,10 @@ const HomeScreen = () => {
 
       {/* ===== Header ===== */}
       <View style={[styles.header, { paddingTop: insets.top + Theme.spacing.md }]}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.greeting}>
-            Hello{user?.firstName ? `, ${user.firstName}` : ''}
-          </Text>
-          <Text style={styles.title}>Bakaya</Text>
-        </View>
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>
-            {user?.firstName ? user.firstName.charAt(0).toUpperCase() : 'U'}
-          </Text>
-        </View>
+        <Text style={styles.title}>Bakaya</Text>
+        <Text style={styles.greeting}>
+          Hello{user?.firstName ? `, ${user.firstName}` : ''}
+        </Text>
       </View>
 
       <ScrollView
@@ -678,17 +671,13 @@ const styles = StyleSheet.create({
     paddingBottom: Theme.spacing.xl + Theme.borderRadius.xl,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  headerLeft: {
-    flex: 1,
+    alignItems: 'center',
   },
   greeting: {
     fontSize: Theme.typography.fontSize.medium,
     color: 'rgba(255, 255, 255, 0.8)',
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.regular,
-    marginBottom: Theme.spacing.xs,
   },
   title: {
     fontSize: Theme.typography.fontSize.title,
@@ -696,23 +685,6 @@ const styles = StyleSheet.create({
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.bold,
     letterSpacing: -0.5,
-  },
-  avatarCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: Theme.spacing.xs,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  avatarText: {
-    fontSize: Theme.typography.fontSize.large,
-    color: Theme.colors.white,
-    fontFamily: Theme.typography.fontFamily,
-    fontWeight: Theme.typography.fontWeight.bold,
   },
 
   // --- Balance Card ---

@@ -45,12 +45,16 @@ export type MeStackParamList = {
   ProfileExpenses: { profileId: string; profileName: string; profileColor?: string };
   Categories: undefined;
   Settings: undefined;
+};
+
+export type InvitationsStackParamList = {
   Invitations: undefined;
 };
 
 export type MainTabParamList = {
   HomeTab: NavigatorScreenParams<HomeStackParamList>;
   GroupsTab: NavigatorScreenParams<GroupsStackParamList>;
+  InvitationsTab: NavigatorScreenParams<InvitationsStackParamList>;
   AnalyticsTab: NavigatorScreenParams<AnalyticsStackParamList>;
   MeTab: NavigatorScreenParams<MeStackParamList>;
 };

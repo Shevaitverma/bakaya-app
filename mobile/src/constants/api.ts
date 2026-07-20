@@ -72,7 +72,6 @@ export const API_CONFIG = {
     CATEGORIES: {
       LIST: '/categories',
       SINGLE: (id: string) => `/categories/${id}`,
-      REORDER: '/categories/reorder',
     },
     PROFILES: {
       LIST: '/profiles',
