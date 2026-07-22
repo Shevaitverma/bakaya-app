@@ -17,7 +17,12 @@ import { useOnlineManager } from './hooks/useOnlineManager';
 import { useProactiveRefresh } from './hooks/useProactiveRefresh';
 import { AuthProvider } from './context/AuthContext';
 import { RootNavigator } from './navigation/RootNavigator';
+import { navigationRef } from './lib/navigationRef';
+import { configureNotificationHandler } from './lib/push';
 import { Theme } from './constants/theme';
+
+// Foreground notification display behaviour — set once at module load.
+configureNotificationHandler();
 
 function AppContent() {
   // Wire up TanStack Query with React Native AppState + network
@@ -30,7 +35,7 @@ function AppContent() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
           <RootNavigator />
         </NavigationContainer>
       </AuthProvider>

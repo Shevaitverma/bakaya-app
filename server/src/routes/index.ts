@@ -7,6 +7,7 @@ import {
   deleteUser,
 } from "@/controllers/user.controller";
 import { login, register, googleAuth, refreshTokenHandler, logout } from "@/controllers/auth.controller";
+import { registerDeviceToken } from "@/controllers/device.controller";
 import {
   getPersonalExpenses,
   getPersonalExpense,
@@ -152,6 +153,9 @@ const routes: RouteHandler[] = [
   { path: "/api/v1/categories/reorder", method: "PUT", handler: reorderCategoriesHandler, protected: true },
   { path: "/api/v1/categories/:id", method: "PUT", handler: updateCategoryHandler, protected: true },
   { path: "/api/v1/categories/:id", method: "DELETE", handler: deleteCategoryHandler, protected: true },
+
+  // Device / push-notification routes (protected)
+  { path: "/api/v1/devices/token", method: "PUT", handler: registerDeviceToken, protected: true },
 ];
 
 interface MatchResult {

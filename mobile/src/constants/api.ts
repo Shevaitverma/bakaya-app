@@ -77,6 +77,9 @@ export const API_CONFIG = {
       LIST: '/profiles',
       SINGLE: (id: string) => `/profiles/${id}`,
     },
+    DEVICES: {
+      TOKEN: '/devices/token',
+    },
   },
   HEADERS: {
     'Content-Type': 'application/json',

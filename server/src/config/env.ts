@@ -20,6 +20,9 @@ const envSchema = z.object({
 
   // Firebase
   FIREBASE_PROJECT_ID: z.string().default(""),
+  // Service-account for push (firebase-admin). Raw JSON or base64-encoded JSON.
+  // Empty = push notifications disabled (server runs fine, just doesn't send).
+  FIREBASE_SERVICE_ACCOUNT: z.string().default(""),
 
   // Security
   CORS_ORIGIN: z.string().default("*"),

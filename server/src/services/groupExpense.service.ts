@@ -5,6 +5,7 @@ import type { CreateGroupExpenseInput, UpdateGroupExpenseInput } from "@/schemas
 import { createPaginationMeta } from "@/utils/pagination";
 import mongoose from "mongoose";
 import { logger } from "@/utils/logger";
+import { sendToUsers, getUserDisplayName } from "@/services/notification.service";
 
 export async function createGroupExpense(
   groupId: string,
@@ -67,6 +68,20 @@ export async function createGroupExpense(
   });
 
   logger.info("Group expense created", { groupId, expenseId: expense._id });
+
+  // Fire-and-forget push to every other member of the group.
+  void (async () => {
+    const payerName = await getUserDisplayName(paidBy);
+    const recipients = group.members
+      .map((m) => m.userId.toString())
+      .filter((id) => id !== paidBy);
+    await sendToUsers(recipients, {
+      title: group.name,
+      body: `${payerName} added ${input.title} (₹${input.amount}) in ${group.name}`,
+      data: { type: "group", groupId: group._id.toString() },
+    });
+  })().catch((error) => logger.error("Group expense push failed", { error }));
+
   return expense;
 }
 

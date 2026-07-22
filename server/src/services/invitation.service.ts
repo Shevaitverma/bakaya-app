@@ -3,6 +3,7 @@ import { GroupInvitation, type GroupInvitationStatus } from "@/models/GroupInvit
 import { User } from "@/models/User";
 import mongoose from "mongoose";
 import { logger } from "@/utils/logger";
+import { sendToUser, getUserDisplayName } from "@/services/notification.service";
 
 const INVITATION_POPULATE = [
   { path: "groupId", select: "name description members" },
@@ -75,6 +76,17 @@ export async function createInvitation(
     groupId,
     invitedUserId: invitedUser._id,
   });
+
+  // Fire-and-forget push to the invitee — must never block/fail the invite.
+  void (async () => {
+    const inviterName = await getUserDisplayName(inviterUserId);
+    await sendToUser(invitedUser._id.toString(), {
+      title: "New group invitation",
+      body: `${inviterName} invited you to ${group.name}`,
+      data: { type: "invitation", groupId: group._id.toString() },
+    });
+  })().catch((error) => logger.error("Invitation push failed", { error }));
+
   return populated;
 }
 
@@ -211,6 +223,16 @@ export async function acceptInvitation(invitationId: string, userId: string) {
     groupId: group._id,
     userId,
   });
+
+  // Fire-and-forget push to the inviter — someone joined their group.
+  void (async () => {
+    const joinerName = await getUserDisplayName(userId);
+    await sendToUser(invitation.invitedBy.toString(), {
+      title: "Invitation accepted",
+      body: `${joinerName} joined ${group.name}`,
+      data: { type: "group", groupId: group._id.toString() },
+    });
+  })().catch((error) => logger.error("Accept push failed", { error }));
 
   return { invitation: populatedInvitation, group: populatedGroup };
 }

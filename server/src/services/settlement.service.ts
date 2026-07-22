@@ -5,6 +5,7 @@ import { createPaginationMeta } from "@/utils/pagination";
 import { getGroupBalances } from "@/services/groupExpense.service";
 import mongoose from "mongoose";
 import { logger } from "@/utils/logger";
+import { sendToUser, getUserDisplayName } from "@/services/notification.service";
 
 // Compute what paidBy currently owes paidTo so we can reject settlements
 // larger than the outstanding pairwise balance. Bounded by
@@ -59,6 +60,17 @@ export async function createSettlement(
   });
 
   logger.info("Settlement created", { groupId, settlementId: settlement._id });
+
+  // Fire-and-forget push to the counterparty who received the payment.
+  void (async () => {
+    const payerName = await getUserDisplayName(input.paidBy);
+    await sendToUser(input.paidTo, {
+      title: group.name,
+      body: `${payerName} settled ₹${input.amount} with you`,
+      data: { type: "group", groupId: group._id.toString() },
+    });
+  })().catch((error) => logger.error("Settlement push failed", { error }));
+
   return settlement;
 }
 

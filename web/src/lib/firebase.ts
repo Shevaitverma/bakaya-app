@@ -1,7 +1,8 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getMessaging, isSupported, type Messaging } from "firebase/messaging";
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
@@ -14,3 +15,15 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+
+/** Messaging only works in a browser with SW/push support. Returns null on SSR
+ * or unsupported browsers instead of throwing. */
+export async function getMessagingInstance(): Promise<Messaging | null> {
+  if (typeof window === "undefined") return null;
+  try {
+    if (!(await isSupported())) return null;
+    return getMessaging(app);
+  } catch {
+    return null;
+  }
+}

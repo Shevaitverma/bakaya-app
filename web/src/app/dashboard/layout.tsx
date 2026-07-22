@@ -7,6 +7,7 @@ import { clearAllAuth, getToken, setOnSessionExpired } from "@/lib/api-client";
 import { useProactiveRefresh } from "@/lib/use-proactive-refresh";
 import { useMyInvitations } from "@/lib/queries";
 import { useQueryClient } from "@tanstack/react-query";
+import { EnableNotifications } from "@/components/EnableNotifications";
 import styles from "./layout.module.css";
 
 interface NavItem {
@@ -209,6 +210,9 @@ export default function DashboardLayout({
         </nav>
 
         <div className={styles.sidebarFooter}>
+          <div style={{ marginBottom: 12 }}>
+            <EnableNotifications />
+          </div>
           <div className={styles.userInfo}>
             <div className={styles.userAvatar}>{initials}</div>
             <div className={styles.userDetails}>
