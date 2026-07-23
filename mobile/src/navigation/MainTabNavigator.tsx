@@ -7,6 +7,7 @@ import { Platform, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { Theme } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
@@ -148,6 +149,7 @@ const InvitationsStackNavigator: React.FC = () => {
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export const MainTabNavigator: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const { accessToken } = useAuth();
   const { data: pendingCount = 0 } = useQuery({
     queryKey: queryKeys.invitations.mine('pending'),
@@ -158,6 +160,12 @@ export const MainTabNavigator: React.FC = () => {
     enabled: !!accessToken,
   });
 
+  // Bottom padding = the device inset, but floored and capped so it looks right
+  // everywhere: Android edge-to-edge can under-report (needs the 12 floor), and
+  // iOS reports the full 34px home-indicator inset which a tab bar doesn't need
+  // (cap at 22 so labels clear the indicator without a big empty band).
+  const bottomGap = Math.min(Math.max(insets.bottom, 12), 22);
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -165,7 +173,13 @@ export const MainTabNavigator: React.FC = () => {
         animation: 'fade',
         tabBarActiveTintColor: Theme.colors.primary,
         tabBarInactiveTintColor: '#9CA3AF',
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            height: 52 + bottomGap,
+            paddingBottom: bottomGap,
+          },
+        ],
         tabBarLabelStyle: styles.tabBarLabel,
         tabBarIconStyle: styles.tabBarIcon,
         tabBarItemStyle: styles.tabBarItem,
@@ -236,17 +250,19 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
-    paddingTop: 4,
+    paddingTop: 8,
   },
   tabBarLabel: {
     fontSize: 11,
     fontFamily: Theme.typography.fontFamily,
     fontWeight: Theme.typography.fontWeight.medium,
+    marginTop: 2,
   },
   tabBarIcon: {
   },
   tabBarItem: {
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 2,
   },
 });

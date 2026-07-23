@@ -4,45 +4,47 @@
  *
  * Why native instead of expo-auth-session: the browser/auth-session flow sends
  * Google a custom-scheme redirect (`com.bakaya.app:/oauthredirect`) that Google
- * rejects with `Error 400: invalid_request` in a standalone build (it only
- * worked in Expo Go via the auth.expo.io proxy). The native SDK uses no browser
- * redirect — it is validated by package name + signing SHA-1 (registered in the
- * Firebase project) and returns a Google ID token directly.
+ * rejects with `Error 400: invalid_request` in a standalone build. The native
+ * SDK uses no browser redirect — it is validated by package + signing SHA-1 and
+ * returns a Google ID token directly.
  *
- * Flow:
- * 1. Native Google Sign-In → Google ID token (audience = Web client ID)
- * 2. Exchange the Google ID token for a Firebase ID token via REST API
- * 3. Return the Firebase ID token to send to the server
+ * Expo Go compatibility: the native module isn't present in Expo Go, and
+ * importing it there throws `getEnforcing('RNGoogleSignin')`. So we load it
+ * lazily and only outside Expo Go; in Expo Go the button is simply hidden
+ * (`isAvailable === false`) and the rest of the app runs normally.
  */
 
 import { useCallback, useState } from 'react';
 import { Platform } from 'react-native';
-import {
-  GoogleSignin,
-  statusCodes,
-  isSuccessResponse,
-  isErrorWithCode,
-} from '@react-native-google-signin/google-signin';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+import type * as GoogleSigninModule from '@react-native-google-signin/google-signin';
 import { signInWithGoogleIdToken } from '../lib/firebase';
+
+const isExpoGo =
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+// Load the native module only outside Expo Go — the require triggers the
+// TurboModule lookup that would crash under Expo Go.
+const GS: typeof GoogleSigninModule | null = isExpoGo
+  ? null
+  : require('@react-native-google-signin/google-signin');
 
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 
 // Native sign-in needs the Web client ID for the ID-token audience; the Android
-// OAuth client is matched automatically via package + SHA-1 from
-// google-services.json. iOS additionally needs its own client ID (none yet, so
-// the button stays hidden on iOS).
+// OAuth client is matched via package + SHA-1 from google-services.json. iOS
+// additionally needs its own client ID (none yet). Unavailable in Expo Go.
 const googleSignInAvailable =
-  Platform.OS === 'ios' ? !!IOS_CLIENT_ID : !!WEB_CLIENT_ID;
+  !!GS && (Platform.OS === 'ios' ? !!IOS_CLIENT_ID : !!WEB_CLIENT_ID);
 
-if (googleSignInAvailable) {
+if (googleSignInAvailable && GS) {
   try {
-    GoogleSignin.configure({
+    GS.GoogleSignin.configure({
       webClientId: WEB_CLIENT_ID,
       iosClientId: IOS_CLIENT_ID || undefined,
     });
   } catch (err) {
-    // Native module absent (e.g. a build predating this lib) — sign-in will no-op.
     console.warn('[GOOGLE SIGN-IN] configure failed:', err instanceof Error ? err.message : err);
   }
 }
@@ -53,7 +55,7 @@ interface GoogleSignInState {
 }
 
 interface UseGoogleSignInReturn extends GoogleSignInState {
-  /** false when Google SSO isn't configured for this platform — hide the button */
+  /** false when Google SSO isn't available here (missing client ID or Expo Go) — hide the button */
   isAvailable: boolean;
   signIn: () => Promise<string | null>;
 }
@@ -65,11 +67,12 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
   });
 
   const signIn = useCallback(async (): Promise<string | null> => {
-    if (!googleSignInAvailable) {
-      console.warn('[GOOGLE SIGN-IN] Not available on this platform');
+    if (!googleSignInAvailable || !GS) {
+      console.warn('[GOOGLE SIGN-IN] Not available here (Expo Go or unconfigured)');
       return null;
     }
 
+    const { GoogleSignin, statusCodes, isSuccessResponse, isErrorWithCode } = GS;
     setState({ isLoading: true, error: null });
 
     try {
@@ -81,7 +84,6 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
 
       const response = await GoogleSignin.signIn();
       if (!isSuccessResponse(response)) {
-        // User dismissed the picker.
         setState({ isLoading: false, error: null });
         return null;
       }
@@ -91,7 +93,6 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
         throw new Error('No ID token received from Google');
       }
 
-      // Exchange the Google ID token for a Firebase ID token via REST API.
       const firebaseResult = await signInWithGoogleIdToken(idToken);
       console.log('[GOOGLE SIGN-IN] Firebase ID token obtained');
 
