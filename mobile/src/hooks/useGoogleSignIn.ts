@@ -1,31 +1,51 @@
 /**
- * Hook for Google Sign-In using expo-auth-session + Firebase REST API
+ * Hook for Google Sign-In using the native Google Identity SDK
+ * (@react-native-google-signin) + Firebase REST API.
+ *
+ * Why native instead of expo-auth-session: the browser/auth-session flow sends
+ * Google a custom-scheme redirect (`com.bakaya.app:/oauthredirect`) that Google
+ * rejects with `Error 400: invalid_request` in a standalone build (it only
+ * worked in Expo Go via the auth.expo.io proxy). The native SDK uses no browser
+ * redirect — it is validated by package name + signing SHA-1 (registered in the
+ * Firebase project) and returns a Google ID token directly.
  *
  * Flow:
- * 1. Open Google OAuth consent screen via expo-auth-session
+ * 1. Native Google Sign-In → Google ID token (audience = Web client ID)
  * 2. Exchange the Google ID token for a Firebase ID token via REST API
  * 3. Return the Firebase ID token to send to the server
- *
- * Without a configured client ID for the platform the hook is still safe to
- * call but `isAvailable` will be false — callers should hide the Google button.
  */
 
 import { useCallback, useState } from 'react';
 import { Platform } from 'react-native';
-import { exchangeCodeAsync } from 'expo-auth-session';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
+import {
+  GoogleSignin,
+  statusCodes,
+  isSuccessResponse,
+  isErrorWithCode,
+} from '@react-native-google-signin/google-signin';
 import { signInWithGoogleIdToken } from '../lib/firebase';
 
-// Required for expo-auth-session to handle browser redirect on Android
-WebBrowser.maybeCompleteAuthSession();
+const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 
-/** Google SSO is available when we have the required client ID for the platform */
-const googleSignInAvailable = !!Platform.select({
-  ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-  android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-  default: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-});
+// Native sign-in needs the Web client ID for the ID-token audience; the Android
+// OAuth client is matched automatically via package + SHA-1 from
+// google-services.json. iOS additionally needs its own client ID (none yet, so
+// the button stays hidden on iOS).
+const googleSignInAvailable =
+  Platform.OS === 'ios' ? !!IOS_CLIENT_ID : !!WEB_CLIENT_ID;
+
+if (googleSignInAvailable) {
+  try {
+    GoogleSignin.configure({
+      webClientId: WEB_CLIENT_ID,
+      iosClientId: IOS_CLIENT_ID || undefined,
+    });
+  } catch (err) {
+    // Native module absent (e.g. a build predating this lib) — sign-in will no-op.
+    console.warn('[GOOGLE SIGN-IN] configure failed:', err instanceof Error ? err.message : err);
+  }
+}
 
 interface GoogleSignInState {
   isLoading: boolean;
@@ -33,7 +53,7 @@ interface GoogleSignInState {
 }
 
 interface UseGoogleSignInReturn extends GoogleSignInState {
-  /** false when no client ID is configured for this platform — hide the button */
+  /** false when Google SSO isn't configured for this platform — hide the button */
   isAvailable: boolean;
   signIn: () => Promise<string | null>;
 }
@@ -42,15 +62,6 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
   const [state, setState] = useState<GoogleSignInState>({
     isLoading: false,
     error: null,
-  });
-
-  // The 'unavailable' placeholders keep the hook from throwing when a client
-  // ID is missing; they are unreachable because signIn() early-returns when
-  // SSO is unavailable on the platform.
-  const [request, _response, promptAsync] = Google.useAuthRequest({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || 'unavailable',
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || 'unavailable',
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || 'unavailable',
   });
 
   const signIn = useCallback(async (): Promise<string | null> => {
@@ -62,52 +73,42 @@ export function useGoogleSignIn(): UseGoogleSignInReturn {
     setState({ isLoading: true, error: null });
 
     try {
-      // Step 1: Open Google OAuth consent screen
-      const result = await promptAsync();
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
 
-      if (result.type !== 'success') {
-        // User cancelled or flow was dismissed
-        if (result.type === 'cancel' || result.type === 'dismiss') {
-          setState({ isLoading: false, error: null });
-          return null;
-        }
-        throw new Error('Google sign-in was not successful');
+      // A stale session can make signIn() return the previous account silently;
+      // sign out first so the account picker always shows.
+      await GoogleSignin.signOut().catch(() => {});
+
+      const response = await GoogleSignin.signIn();
+      if (!isSuccessResponse(response)) {
+        // User dismissed the picker.
+        setState({ isLoading: false, error: null });
+        return null;
       }
 
-      // Native uses the code flow — exchange the authorization code for tokens
-      const code = result.params.code;
-      if (!code) {
-        throw new Error('No authorization code received from Google');
-      }
-      const tokens = await exchangeCodeAsync(
-        {
-          clientId: request!.clientId,
-          redirectUri: request!.redirectUri,
-          code,
-          extraParams: { code_verifier: request?.codeVerifier ?? '' },
-        },
-        Google.discovery
-      );
-
-      if (!tokens.idToken) {
+      const idToken = response.data.idToken;
+      if (!idToken) {
         throw new Error('No ID token received from Google');
       }
 
-      // Step 2: Exchange Google ID token for Firebase ID token via REST API
-      const firebaseResult = await signInWithGoogleIdToken(tokens.idToken);
-
+      // Exchange the Google ID token for a Firebase ID token via REST API.
+      const firebaseResult = await signInWithGoogleIdToken(idToken);
       console.log('[GOOGLE SIGN-IN] Firebase ID token obtained');
 
       setState({ isLoading: false, error: null });
       return firebaseResult.idToken;
     } catch (err) {
+      if (isErrorWithCode(err) && err.code === statusCodes.SIGN_IN_CANCELLED) {
+        setState({ isLoading: false, error: null });
+        return null;
+      }
       const errorMessage =
         err instanceof Error ? err.message : 'Google sign-in failed';
       console.error('[GOOGLE SIGN-IN] Error:', errorMessage);
       setState({ isLoading: false, error: errorMessage });
       throw err;
     }
-  }, [promptAsync, request]);
+  }, []);
 
   return {
     ...state,

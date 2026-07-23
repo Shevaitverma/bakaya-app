@@ -3,7 +3,11 @@
     "name": "Bakaya",
     "slug": "bakaya",
     "version": "1.0.0",
-    "scheme": ["bakaya", "com.bakaya.app"],
+    "scheme": [
+      "bakaya",
+      "com.bakaya.app"
+    ],
+    "icon": "./assets/icon.png",
     "platforms": [
       "ios",
       "android"
@@ -15,7 +19,8 @@
     "android": {
       "package": "com.bakaya.app",
       "adaptiveIcon": {
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#D81B60"
       },
       "usesCleartextTraffic": true,
       "googleServicesFile": "./google-services.json"
@@ -23,7 +28,8 @@
     "plugins": [
       "expo-splash-screen",
       "expo-web-browser",
-      "expo-notifications"
+      "expo-notifications",
+      "@react-native-google-signin/google-signin"
     ]
   }
 }
