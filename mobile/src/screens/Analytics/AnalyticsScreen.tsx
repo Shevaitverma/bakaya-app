@@ -24,25 +24,21 @@ import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 
-import { useAuth } from '../../context/AuthContext';
 import { Theme } from '../../constants/theme';
-import { analyticsService } from '../../services/analyticsService';
-import { profileService } from '../../services/profileService';
-import { categoryService } from '../../services/categoryService';
-import { isFresh } from '../../lib/staleness';
-import { useRefetchOnForeground } from '../../hooks/useRefetchOnForeground';
+import {
+  useAnalyticsSummary,
+  useAnalyticsByProfile,
+  useAnalyticsByCategory,
+  useAnalyticsTrends,
+  useProfiles,
+  useCategories,
+} from '../../hooks/queries';
 import { formatCurrency, formatCurrencyAbbreviated } from '../../utils/currency';
 import { istToday, istTodayParts, istMonthStart, istMonthEnd } from '../../utils/istDate';
 import { SkeletonLoader } from '../../components/SkeletonLoader';
 import VerticalBarChart from '../../components/charts/VerticalBarChart';
 
-import type {
-  SummaryData,
-  ByProfileData,
-  ByCategoryData,
-  TrendsData,
-  AnalyticsQueryParams,
-} from '../../types/analytics';
+import type { AnalyticsQueryParams } from '../../types/analytics';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -106,7 +102,6 @@ const DATE_PRESETS: { key: DatePreset; label: string }[] = [
 
 const AnalyticsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const { accessToken, refreshSession } = useAuth();
 
   // --- Date range ---
   const [activePreset, setActivePreset] = useState<DatePreset>('this_month');
@@ -115,165 +110,90 @@ const AnalyticsScreen: React.FC = () => {
   );
   const [endDate, setEndDate] = useState<string | undefined>(() => istToday());
 
-  // --- Data ---
-  const [summary, setSummary] = useState<SummaryData | null>(null);
-  const [profileData, setProfileData] = useState<ByProfileData | null>(null);
-  const [categoryData, setCategoryData] = useState<ByCategoryData | null>(null);
-  const [trendsData, setTrendsData] = useState<TrendsData | null>(null);
-  const [profileColors, setProfileColors] = useState<Record<string, string>>({});
-  const [categoryColors, setCategoryColors] = useState<Record<string, string>>({});
+  const params = useMemo(() => {
+    const p: AnalyticsQueryParams = {};
+    if (startDate) p.startDate = startDate;
+    if (endDate) p.endDate = endDate;
+    return p;
+  }, [startDate, endDate]);
 
-  // --- Independent loading states ---
-  const [loadingSummary, setLoadingSummary] = useState(true);
-  const [loadingProfiles, setLoadingProfiles] = useState(true);
-  const [loadingCategories, setLoadingCategories] = useState(true);
-  const [loadingTrends, setLoadingTrends] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const lastFetchTime = useRef<number>(0);
-  const fetchId = useRef(0);
+  // --- Data. Each section has its own query, so one failure does not
+  //     block the others (what Promise.allSettled used to give us). ---
+  const summaryQuery = useAnalyticsSummary(params);
+  const profileQuery = useAnalyticsByProfile(params);
+  const categoryQuery = useAnalyticsByCategory(params);
+  const trendsQuery = useAnalyticsTrends(params);
+  const profilesQuery = useProfiles();
+  const categoriesQuery = useCategories();
 
-  // ------------------------------------------------------------------
-  // Data fetching
-  // ------------------------------------------------------------------
+  const summary = summaryQuery.data;
+  const profileData = profileQuery.data;
+  const categoryData = categoryQuery.data;
+  const trendsData = trendsQuery.data;
 
-  const fetchAllData = useCallback(async () => {
-    if (!accessToken) return;
-    if (isFresh(lastFetchTime.current)) return;
+  const loadingSummary = summaryQuery.isLoading;
+  const loadingProfiles = profileQuery.isLoading;
+  const loadingCategories = categoryQuery.isLoading;
+  const loadingTrends = trendsQuery.isLoading;
 
-    const id = ++fetchId.current;
-    const isCurrent = () => id === fetchId.current;
-
-    const params: AnalyticsQueryParams = {};
-    if (startDate) params.startDate = startDate;
-    if (endDate) params.endDate = endDate;
-
-    setLoadingSummary(true);
-    setLoadingProfiles(true);
-    setLoadingCategories(true);
-    setLoadingTrends(true);
-
-    const fetchSummary = async () => {
-      try {
-        const res = await analyticsService.getSummary(accessToken, params);
-        if (res.success && res.data && isCurrent()) setSummary(res.data);
-      } catch (err: any) {
-        if (err?.statusCode === 401) throw err;
-        console.error('[Analytics] Error fetching summary:', err);
-      } finally {
-        if (isCurrent()) setLoadingSummary(false);
-      }
-    };
-
-    const fetchProfiles = async () => {
-      try {
-        const res = await analyticsService.getByProfile(accessToken, params);
-        if (res.success && res.data && isCurrent()) setProfileData(res.data);
-      } catch (err: any) {
-        if (err?.statusCode === 401) throw err;
-        console.error('[Analytics] Error fetching profiles:', err);
-      } finally {
-        if (isCurrent()) setLoadingProfiles(false);
-      }
-    };
-
-    const fetchCategories = async () => {
-      try {
-        const res = await analyticsService.getByCategory(accessToken, params);
-        if (res.success && res.data && isCurrent()) setCategoryData(res.data);
-      } catch (err: any) {
-        if (err?.statusCode === 401) throw err;
-        console.error('[Analytics] Error fetching categories:', err);
-      } finally {
-        if (isCurrent()) setLoadingCategories(false);
-      }
-    };
-
-    const fetchTrends = async () => {
-      try {
-        const res = await analyticsService.getTrends(accessToken, params);
-        if (res.success && res.data && isCurrent()) setTrendsData(res.data);
-      } catch (err: any) {
-        if (err?.statusCode === 401) throw err;
-        console.error('[Analytics] Error fetching trends:', err);
-      } finally {
-        if (isCurrent()) setLoadingTrends(false);
-      }
-    };
-
-    const fetchColors = async () => {
-      try {
-        const [profilesRes, categoriesRes] = await Promise.all([
-          profileService.getProfiles(accessToken),
-          categoryService.getCategories(accessToken),
-        ]);
-        if (!isCurrent()) return;
-        if (profilesRes.success && profilesRes.data) {
-          setProfileColors(
-            Object.fromEntries(
-              profilesRes.data.profiles
-                .filter((p) => p.color)
-                .map((p) => [p._id, p.color!]),
-            ),
-          );
-        }
-        if (categoriesRes.success && categoriesRes.data) {
-          setCategoryColors(
-            Object.fromEntries(
-              categoriesRes.data.categories
-                .filter((c) => c.color)
-                .map((c) => [c.name, c.color]),
-            ),
-          );
-        }
-      } catch (err: any) {
-        if (err?.statusCode === 401) throw err;
-        console.error('[Analytics] Error fetching colors:', err);
-      }
-    };
-
-    const results = await Promise.allSettled([
-      fetchSummary(),
-      fetchProfiles(),
-      fetchCategories(),
-      fetchTrends(),
-      fetchColors(),
-    ]);
-
-    // Check if any fetch threw a 401 (session expired)
-    const has401 = results.some(
-      (r) => r.status === 'rejected' && (r.reason as any)?.statusCode === 401,
-    );
-    if (has401) {
-      await refreshSession();
-    } else if (isCurrent()) {
-      lastFetchTime.current = Date.now();
-    }
-  }, [accessToken, startDate, endDate, refreshSession]);
-
-  // Fetch on focus
-  useFocusEffect(
-    useCallback(() => {
-      fetchAllData();
-    }, [fetchAllData]),
+  // Profile/category colours come from the entity lists, not from analytics.
+  const profileColors = useMemo(
+    () =>
+      Object.fromEntries(
+        (profilesQuery.data?.profiles ?? [])
+          .filter((p) => p.color)
+          .map((p) => [p._id, p.color!]),
+      ),
+    [profilesQuery.data],
+  );
+  const categoryColors = useMemo(
+    () =>
+      Object.fromEntries(
+        (categoriesQuery.data?.categories ?? [])
+          .filter((c) => c.color)
+          .map((c) => [c.name, c.color]),
+      ),
+    [categoriesQuery.data],
   );
 
-  useRefetchOnForeground(fetchAllData);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Tab screens stay mounted, so `refetchOnMount` never fires on tab switch.
+  // Refetch on focus, but only what the 30s staleTime already marked stale —
+  // same throttle the old `isFresh(lastFetchTime)` guard gave us.
+  // `cancelRefetch: false` so this joins the mount fetch instead of doubling it.
+  const queriesRef = useRef<
+    { isStale: boolean; refetch: (opts?: { cancelRefetch?: boolean }) => unknown }[]
+  >([]);
+  queriesRef.current = [
+    summaryQuery,
+    profileQuery,
+    categoryQuery,
+    trendsQuery,
+    profilesQuery,
+    categoriesQuery,
+  ];
+  useFocusEffect(
+    useCallback(() => {
+      queriesRef.current.forEach((q) => {
+        if (q.isStale) q.refetch({ cancelRefetch: false });
+      });
+    }, []),
+  );
 
   // Pull-to-refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    lastFetchTime.current = 0;
-    await fetchAllData();
+    await Promise.all(queriesRef.current.map((q) => q.refetch()));
     setRefreshing(false);
-  }, [fetchAllData]);
+  }, []);
 
-  // Date filter chip handler
+  // Date filter chip handler — the new range re-keys every analytics query.
   const handlePresetPress = useCallback((preset: DatePreset) => {
     setActivePreset(preset);
     const range = computeRange(preset);
     setStartDate(range.startDate);
     setEndDate(range.endDate);
-    lastFetchTime.current = 0;
   }, []);
 
   // ------------------------------------------------------------------

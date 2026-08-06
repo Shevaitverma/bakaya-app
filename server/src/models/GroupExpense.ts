@@ -1,8 +1,14 @@
 import mongoose, { Schema, Document } from "mongoose";
 
+export type SplitType = "equal" | "exact" | "percentage";
+
 export interface IGroupExpenseSplit {
   userId: mongoose.Types.ObjectId;
   amount: number;
+  // Only set when splitType is "percentage", so an edit can reopen the exact
+  // percentages instead of guessing them back from the rounded amounts.
+  // `amount` stays the source of truth for balances.
+  percentage?: number;
 }
 
 export interface IGroupExpense {
@@ -12,6 +18,7 @@ export interface IGroupExpense {
   amount: number;
   category?: string;
   notes?: string;
+  splitType: SplitType;
   splitAmong: IGroupExpenseSplit[];
   createdAt: Date;
   updatedAt: Date;
@@ -29,6 +36,9 @@ const groupExpenseSplitSchema = new Schema<IGroupExpenseSplit>(
     amount: {
       type: Number,
       required: true,
+    },
+    percentage: {
+      type: Number,
     },
   },
   { _id: false }
@@ -64,6 +74,16 @@ const groupExpenseSchema = new Schema<IGroupExpenseDocument>(
     notes: {
       type: String,
       trim: true,
+    },
+    // Pre-existing documents have no splitType, and Mongoose fills this default
+    // in on hydration — so it decides how every legacy expense reopens for edit.
+    // "exact" is the only lossless answer: the stored amounts are replayed as-is
+    // whether or not they happen to be equal. Defaulting to "equal" would make
+    // the edit screen re-split an old uneven split evenly on save.
+    splitType: {
+      type: String,
+      enum: ["equal", "exact", "percentage"],
+      default: "exact",
     },
     splitAmong: [groupExpenseSplitSchema],
   },

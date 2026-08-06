@@ -3,7 +3,7 @@
  * Shows who owes whom and allows recording settlements
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   Alert,
   TouchableOpacity,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
@@ -37,10 +38,12 @@ interface DebtEntry {
 }
 
 const SettleUpScreen: React.FC<SettleUpScreenProps> = ({ navigation, route }) => {
-  const { groupId, balances, members } = route.params;
+  const { groupId, members } = route.params;
   const insets = useSafeAreaInsets();
   const { accessToken, user } = useAuth();
 
+  const [fetchLoading, setFetchLoading] = useState(true);
+  const [debts, setDebts] = useState<DebtEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState<DebtEntry | null>(null);
   const [settleAmount, setSettleAmount] = useState('');
@@ -54,58 +57,36 @@ const SettleUpScreen: React.FC<SettleUpScreenProps> = ({ navigation, route }) =>
     return member?.name || 'Unknown member';
   }, [currentUserId, members]);
 
-  // Calculate simplified debts from balances
-  // Negative balance = owes money, Positive balance = is owed money
-  const allDebts = useMemo((): DebtEntry[] => {
-    const debts: DebtEntry[] = [];
-    const debtors: { userId: string; amount: number }[] = [];
-    const creditors: { userId: string; amount: number }[] = [];
-
-    // ±0.01 tolerance so FP drift around zero doesn't produce ghost rows.
-    Object.entries(balances).forEach(([userId, amount]) => {
-      if (amount < -0.01) {
-        debtors.push({ userId, amount: Math.abs(amount) });
-      } else if (amount > 0.01) {
-        creditors.push({ userId, amount });
+  // The server computes the whole group's settlement plan (every pair, both
+  // directions) — we just name the people in it.
+  useEffect(() => {
+    const fetchTransfers = async () => {
+      // Guard inside the try so `finally` always clears the spinner.
+      try {
+        if (!accessToken) return;
+        const response = await groupService.getSuggestedTransfers(groupId, accessToken);
+        if (response.success && response.data) {
+          setDebts(
+            response.data.transfers.map((t) => ({
+              from: t.from,
+              fromName: getMemberName(t.from),
+              to: t.to,
+              toName: getMemberName(t.to),
+              amount: t.amount,
+            }))
+          );
+        }
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : 'Failed to load the settlement plan';
+        Alert.alert('Error', errorMessage);
+      } finally {
+        setFetchLoading(false);
       }
-    });
+    };
 
-    // Sort so largest debts/credits are matched first
-    debtors.sort((a, b) => b.amount - a.amount);
-    creditors.sort((a, b) => b.amount - a.amount);
-
-    // Greedy matching
-    let i = 0;
-    let j = 0;
-    while (i < debtors.length && j < creditors.length) {
-      const debtor = debtors[i]!;
-      const creditor = creditors[j]!;
-      const debtAmount = Math.min(debtor.amount, creditor.amount);
-      if (debtAmount > 0.01) {
-        debts.push({
-          from: debtor.userId,
-          fromName: getMemberName(debtor.userId),
-          to: creditor.userId,
-          toName: getMemberName(creditor.userId),
-          amount: Math.round(debtAmount * 100) / 100,
-        });
-      }
-      debtor.amount -= debtAmount;
-      creditor.amount -= debtAmount;
-
-      if (debtor.amount < 0.01) i++;
-      if (creditor.amount < 0.01) j++;
-    }
-
-    return debts;
-  }, [balances, getMemberName]);
-
-  // Only show debts where the current user is the debtor (from),
-  // since the server only allows settlements where paidBy === authenticated user
-  const debts = useMemo(
-    () => allDebts.filter((debt) => debt.from === currentUserId),
-    [allDebts, currentUserId]
-  );
+    fetchTransfers();
+  }, [accessToken, groupId, getMemberName]);
 
   const handleSelectDebt = (debt: DebtEntry) => {
     setSelectedDebt(debt);
@@ -177,13 +158,22 @@ const SettleUpScreen: React.FC<SettleUpScreenProps> = ({ navigation, route }) =>
 
   const renderDebtCard = (debt: DebtEntry, index: number) => {
     const isSelected = selectedDebt?.from === debt.from && selectedDebt?.to === debt.to;
+    // Only the current user's own debts can be settled — the server rejects
+    // settlements where paidBy is not the authenticated user.
+    const isMine = debt.from === currentUserId;
 
     return (
       <TouchableOpacity
         key={`${debt.from}-${debt.to}-${index}`}
-        style={[styles.debtCard, isSelected && styles.debtCardSelected]}
+        style={[
+          styles.debtCard,
+          isMine ? styles.debtCardMine : styles.debtCardOther,
+          isSelected && styles.debtCardSelected,
+        ]}
         onPress={() => handleSelectDebt(debt)}
+        disabled={!isMine}
         activeOpacity={0.7}>
+        {isMine && <Text style={styles.debtCardBadge}>You pay</Text>}
         <View style={styles.debtCardContent}>
           {/* From */}
           <View style={styles.debtPerson}>
@@ -268,7 +258,11 @@ const SettleUpScreen: React.FC<SettleUpScreenProps> = ({ navigation, route }) =>
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
 
-        {debts.length === 0 ? (
+        {fetchLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Theme.colors.primary} />
+          </View>
+        ) : debts.length === 0 ? (
           <View style={styles.allSettledCard}>
             <FontAwesome6
               name="circle-check"
@@ -284,9 +278,9 @@ const SettleUpScreen: React.FC<SettleUpScreenProps> = ({ navigation, route }) =>
         ) : (
           <>
             {/* Debts List */}
-            <Text style={styles.sectionTitle}>Outstanding balances</Text>
+            <Text style={styles.sectionTitle}>Suggested transfers</Text>
             <Text style={styles.sectionSubtext}>
-              Tap a balance to record a settlement
+              The whole group's plan. Tap one marked "You pay" to record a settlement.
             </Text>
             <View style={styles.debtsList}>
               {debts.map((debt, index) => renderDebtCard(debt, index))}
@@ -390,6 +384,11 @@ const styles = StyleSheet.create({
     paddingTop: Theme.spacing.lg,
   },
 
+  loadingContainer: {
+    paddingVertical: Theme.spacing.xxxl,
+    alignItems: 'center',
+  },
+
   // All settled state
   allSettledCard: {
     backgroundColor: Theme.colors.cardBackground,
@@ -444,9 +443,23 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0, 0, 0, 0.05)',
     ...Theme.shadows.small,
   },
+  debtCardMine: {
+    borderColor: `${Theme.colors.primary}40`,
+  },
+  // Someone else's transfer — shown for context, not settleable here.
+  debtCardOther: {
+    opacity: 0.6,
+  },
   debtCardSelected: {
     borderColor: Theme.colors.primary,
     backgroundColor: `${Theme.colors.primary}05`,
+  },
+  debtCardBadge: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.primary,
+    fontFamily: Theme.typography.fontFamily,
+    fontWeight: Theme.typography.fontWeight.bold,
+    marginBottom: Theme.spacing.xs,
   },
   debtCardContent: {
     flexDirection: 'row',

@@ -4,7 +4,12 @@
 
 import type { GroupData } from './group';
 
-export type InvitationStatus = 'pending' | 'accepted' | 'declined' | 'cancelled';
+export type InvitationStatus =
+  | 'pending'
+  | 'accepted'
+  | 'declined'
+  | 'cancelled'
+  | 'expired';
 
 export interface GroupInvitation {
   _id: string;

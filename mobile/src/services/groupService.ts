@@ -7,12 +7,12 @@
 
 import { API_CONFIG } from '../constants/api';
 import { authedFetch } from '../lib/authedFetch';
-import { markDataChanged } from '../lib/staleness';
 import type {
   GroupsResponse,
   GroupResponse,
   GroupExpensesResponse,
   GroupBalancesResponse,
+  SuggestedTransfersResponse,
   SettlementsResponse,
   CreateGroupExpenseRequest,
   CreateSettlementRequest,
@@ -38,7 +38,6 @@ class GroupService {
       token,
       body: JSON.stringify(data),
     });
-    markDataChanged();
     return res;
   }
 
@@ -72,7 +71,6 @@ class GroupService {
         body: JSON.stringify(data),
       }
     );
-    markDataChanged();
     return res;
   }
 
@@ -89,7 +87,6 @@ class GroupService {
       method: 'DELETE',
       token,
     });
-    markDataChanged();
     return res;
   }
 
@@ -98,6 +95,16 @@ class GroupService {
       method: 'GET',
       token,
     });
+  }
+
+  async getSuggestedTransfers(
+    groupId: string,
+    token: string
+  ): Promise<SuggestedTransfersResponse> {
+    return authedFetch<SuggestedTransfersResponse>(
+      API_CONFIG.ENDPOINTS.GROUPS.SUGGESTED_TRANSFERS(groupId),
+      { method: 'GET', token }
+    );
   }
 
   async getSettlements(groupId: string, token: string): Promise<SettlementsResponse> {
@@ -120,7 +127,6 @@ class GroupService {
         body: JSON.stringify(data),
       }
     );
-    markDataChanged();
     return res;
   }
 
@@ -130,7 +136,6 @@ class GroupService {
       token,
       body: JSON.stringify(data),
     });
-    markDataChanged();
     return res;
   }
 
@@ -146,7 +151,6 @@ class GroupService {
       method: 'DELETE',
       token,
     });
-    markDataChanged();
     return res;
   }
 
@@ -163,7 +167,6 @@ class GroupService {
       method: 'DELETE',
       token,
     });
-    markDataChanged();
     return res;
   }
 
@@ -193,7 +196,6 @@ class GroupService {
       token,
       body: JSON.stringify(data),
     });
-    markDataChanged();
     return res;
   }
 
@@ -210,7 +212,6 @@ class GroupService {
       method: 'DELETE',
       token,
     });
-    markDataChanged();
     return res;
   }
 }

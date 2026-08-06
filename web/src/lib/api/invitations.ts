@@ -1,7 +1,12 @@
 import { api } from "../api-client";
 import type { Group } from "./groups";
 
-export type InvitationStatus = "pending" | "accepted" | "declined" | "cancelled";
+export type InvitationStatus =
+  | "pending"
+  | "accepted"
+  | "declined"
+  | "cancelled"
+  | "expired";
 
 export interface GroupInvitation {
   _id: string;

@@ -1,7 +1,7 @@
 /**
  * Calls `refetch` when the app returns to the foreground (background →
- * active) while the current screen is focused. Screens' own staleness
- * guards (`isFresh`) dedupe redundant fetches.
+ * active) while the current screen is focused. Only used by screens not yet
+ * migrated to TanStack Query, which handles this globally via focusManager.
  */
 
 import { useEffect, useRef } from 'react';

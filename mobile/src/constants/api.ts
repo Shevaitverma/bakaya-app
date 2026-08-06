@@ -58,6 +58,7 @@ export const API_CONFIG = {
       EXPENSES: (id: string) => `/groups/${id}/expenses`,
       SINGLE_EXPENSE: (id: string, expenseId: string) => `/groups/${id}/expenses/${expenseId}`,
       BALANCES: (id: string) => `/groups/${id}/balances`,
+      SUGGESTED_TRANSFERS: (id: string) => `/groups/${id}/suggested-transfers`,
       SETTLEMENTS: (id: string) => `/groups/${id}/settlements`,
       SINGLE_SETTLEMENT: (id: string, settlementId: string) => `/groups/${id}/settlements/${settlementId}`,
       SINGLE_MEMBER: (id: string, memberId: string) => `/groups/${id}/members/${memberId}`,

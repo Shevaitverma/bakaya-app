@@ -7,19 +7,27 @@ import mongoose from "mongoose";
 import { logger } from "@/utils/logger";
 import { sendToUser, getUserDisplayName } from "@/services/notification.service";
 
-// Compute what paidBy currently owes paidTo so we can reject settlements
-// larger than the outstanding pairwise balance. Bounded by
-// min(|debtorNet|, creditorNet) when both signs align.
+// What paidBy currently owes paidTo, so we can reject settlements larger than
+// the outstanding pairwise balance. Bounded by min(|debtorNet|, creditorNet)
+// when both signs align. Exported for tests: suggestTransfers must never
+// propose a payment this cap would then refuse.
+export function pairwiseOwed(
+  balances: Record<string, number>,
+  paidBy: string,
+  paidTo: string
+): number {
+  const debtorNet = balances[paidBy] || 0; // negative ⇒ owes money
+  const creditorNet = balances[paidTo] || 0; // positive ⇒ is owed
+  if (debtorNet >= 0 || creditorNet <= 0) return 0;
+  return Math.min(Math.abs(debtorNet), creditorNet);
+}
+
 async function computePairwiseOwed(
   groupId: string,
   paidBy: string,
   paidTo: string
 ): Promise<number> {
-  const balances = await getGroupBalances(groupId);
-  const debtorNet = balances[paidBy] || 0; // negative ⇒ owes money
-  const creditorNet = balances[paidTo] || 0; // positive ⇒ is owed
-  if (debtorNet >= 0 || creditorNet <= 0) return 0;
-  return Math.min(Math.abs(debtorNet), creditorNet);
+  return pairwiseOwed(await getGroupBalances(groupId), paidBy, paidTo);
 }
 
 export async function createSettlement(

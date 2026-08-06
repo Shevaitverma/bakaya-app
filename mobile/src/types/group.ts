@@ -60,6 +60,16 @@ export interface GroupResponse {
   };
 }
 
+export type SplitType = 'equal' | 'exact' | 'percentage';
+
+export interface SplitEntry {
+  userId: string;
+  amount: number;
+  // Only set on percentage splits so an edit can reopen the original
+  // percentages; `amount` stays the source of truth for balances.
+  percentage?: number;
+}
+
 export interface GroupExpense {
   _id: string;
   groupId: string;
@@ -68,7 +78,9 @@ export interface GroupExpense {
   amount: number;
   category?: string;
   notes?: string;
-  splitAmong: { userId: string; amount: number }[];
+  // Absent on expenses written before split types existed — treat as "equal".
+  splitType?: SplitType;
+  splitAmong: SplitEntry[];
   createdAt: string;
 }
 
@@ -99,6 +111,22 @@ export interface GroupBalancesResponse {
   success: boolean;
   data: {
     balances: GroupBalance;
+  };
+  meta: {
+    timestamp: string;
+  };
+}
+
+export interface SuggestedTransfer {
+  from: string;
+  to: string;
+  amount: number;
+}
+
+export interface SuggestedTransfersResponse {
+  success: boolean;
+  data: {
+    transfers: SuggestedTransfer[];
   };
   meta: {
     timestamp: string;
@@ -139,7 +167,8 @@ export interface CreateGroupExpenseRequest {
   category?: string;
   notes?: string;
   paidBy: string;
-  splitAmong: { userId: string; amount: number }[];
+  splitType: SplitType;
+  splitAmong: SplitEntry[];
 }
 
 export interface CreateSettlementRequest {
@@ -165,7 +194,8 @@ export interface UpdateGroupExpenseRequest {
   category?: string;
   notes?: string;
   paidBy?: string;
-  splitAmong?: { userId: string; amount: number }[];
+  splitType?: SplitType;
+  splitAmong?: SplitEntry[];
 }
 
 /**

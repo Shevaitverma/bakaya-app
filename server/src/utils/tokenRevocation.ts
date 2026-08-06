@@ -1,52 +1,58 @@
+import { TokenRevocation } from "@/models/TokenRevocation";
+import { logger } from "@/utils/logger";
+
 /**
- * In-memory refresh-token deny list.
+ * Refresh-token deny list, backed by MongoDB.
  *
  * Why: when a user logs out we want their existing refresh tokens to stop
  * working immediately, not at natural expiry. JWTs are stateless, so we
  * keep a per-user "revoked-before" timestamp; any refresh token whose `iat`
  * is older than this timestamp is rejected on verify.
  *
- * Trade-offs:
- * - In-memory, so logouts are forgotten across server restarts. That's
- *   acceptable here because the server is small (10-20 users) and restarts
- *   are infrequent; a token that survives a restart is no worse than the
- *   current behavior (which never revokes).
- * - Single-process only. If the server is ever scaled out, this needs to
- *   move to Redis or a TokenRevocation collection.
+ * Stored in Mongo (with a TTL index sized to JWT_REFRESH_EXPIRES_IN) so a
+ * logout survives restarts and applies to every instance.
  */
 
-interface RevocationEntry {
-  // Tokens with iat (seconds) strictly less than this are rejected.
-  revokedBefore: number;
-  // Wall-clock ms at which this entry was set — used for TTL cleanup.
-  setAt: number;
+/**
+ * Pure decision: is a token with this `iat` revoked?
+ *
+ * `lookup` is the outcome of reading the deny list:
+ *   number  — the user's revokedBefore timestamp (seconds)
+ *   null    — no entry, nothing revoked
+ *   "error" — the lookup failed
+ */
+export function isIatRevoked(iat: number | undefined, lookup: number | null | "error"): boolean {
+  // FAIL CLOSED: if we can't read the deny list we can't prove the token
+  // wasn't revoked, and honouring a logged-out token is worse than making
+  // the user sign in again.
+  if (lookup === "error") return true;
+  if (iat === undefined) return false;
+  if (lookup === null) return false;
+  return iat < lookup;
 }
 
-const revocations = new Map<string, RevocationEntry>();
-
-// Tokens have a finite expiry; once the longest possible refresh token would
-// have expired naturally, the revocation entry is no longer needed.
-const ENTRY_TTL_MS = 45 * 24 * 60 * 60 * 1000; // 45 days
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [userId, entry] of revocations.entries()) {
-    if (now - entry.setAt > ENTRY_TTL_MS) {
-      revocations.delete(userId);
-    }
-  }
-}, 60 * 60 * 1000).unref?.();
-
-export function revokeRefreshTokensForUser(userId: string): void {
+export async function revokeRefreshTokensForUser(userId: string): Promise<void> {
   // iat in JWT is seconds, so use seconds here too. +1 ensures any token
   // issued in the same second as logout is also revoked.
   const revokedBefore = Math.floor(Date.now() / 1000) + 1;
-  revocations.set(userId, { revokedBefore, setAt: Date.now() });
+  await TokenRevocation.updateOne(
+    { userId },
+    { $set: { revokedBefore, setAt: new Date() } },
+    { upsert: true }
+  );
 }
 
-export function isRefreshTokenRevoked(userId: string, iat: number | undefined): boolean {
-  if (iat === undefined) return false;
-  const entry = revocations.get(userId);
-  if (!entry) return false;
-  return iat < entry.revokedBefore;
+export async function isRefreshTokenRevoked(
+  userId: string,
+  iat: number | undefined
+): Promise<boolean> {
+  let lookup: number | null | "error";
+  try {
+    const entry = await TokenRevocation.findOne({ userId }).lean();
+    lookup = entry?.revokedBefore ?? null;
+  } catch (error) {
+    logger.error("Revocation lookup failed, rejecting refresh token", { userId, error });
+    lookup = "error";
+  }
+  return isIatRevoked(iat, lookup);
 }

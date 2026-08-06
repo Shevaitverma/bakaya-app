@@ -2,7 +2,7 @@
  * Invitations Screen - List of pending group invitations for the current user
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -18,10 +18,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Theme } from '../../constants/theme';
-import { useAuth } from '../../context/AuthContext';
-import { invitationService } from '../../services/invitationService';
-import { isFresh } from '../../lib/staleness';
-import { useRefetchOnForeground } from '../../hooks/useRefetchOnForeground';
+import {
+  useMyInvitations,
+  useAcceptInvitation,
+  useDeclineInvitation,
+} from '../../hooks/queries';
 import { queryClient } from '../../lib/queryClient';
 import { queryKeys } from '../../lib/queryKeys';
 import type { ApiError } from '../../lib/authedFetch';
@@ -41,65 +42,47 @@ const formatInviterName = (invitedBy: GroupInvitation['invitedBy']): string => {
 
 const InvitationsScreen: React.FC<InvitationsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { accessToken } = useAuth();
 
-  const [invitations, setInvitations] = useState<GroupInvitation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading, error, refetch } = useMyInvitations();
+  const invitations = data?.invitations ?? [];
+
+  // Local flag so the pull-to-refresh spinner only shows for an actual pull,
+  // not for the background refetches the cache does on its own.
   const [refreshing, setRefreshing] = useState(false);
-  const [processing, setProcessing] = useState<
-    { id: string; action: 'accept' | 'decline' } | null
-  >(null);
-  const lastFetchTime = useRef<number>(0);
-
-  const fetchInvitations = useCallback(
-    async (force: boolean = false) => {
-      if (!accessToken) return;
-      if (!force && isFresh(lastFetchTime.current)) return;
-
-      try {
-        setLoading(true);
-        const response = await invitationService.listMyInvitations(accessToken, 'pending');
-        if (response.success && response.data) {
-          setInvitations(response.data.invitations ?? []);
-          lastFetchTime.current = Date.now();
-        }
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : 'Failed to load invitations';
-        Alert.alert('Error', errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [accessToken]
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchInvitations();
-    }, [fetchInvitations])
-  );
-
-  useRefetchOnForeground(fetchInvitations);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchInvitations(true);
+    await refetch();
     setRefreshing(false);
-  }, [fetchInvitations]);
+  }, [refetch]);
 
-  const respond = async (invitation: GroupInvitation, action: 'accept' | 'decline') => {
-    if (!accessToken || processing) return;
-    setProcessing({ id: invitation._id, action });
-    try {
-      const response =
-        action === 'accept'
-          ? await invitationService.acceptInvitation(invitation._id, accessToken)
-          : await invitationService.declineInvitation(invitation._id, accessToken);
-      // Remove row from local state
-      setInvitations((prev) => prev.filter((i) => i._id !== invitation._id));
-      queryClient.invalidateQueries({ queryKey: queryKeys.invitations.all });
-      if (action === 'accept') {
+  // Invitations arrive from outside the app (push), so pick up new ones on focus
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
+
+  const acceptInvitation = useAcceptInvitation();
+  const declineInvitation = useDeclineInvitation();
+  const processingId = acceptInvitation.isPending
+    ? acceptInvitation.variables
+    : declineInvitation.isPending
+      ? declineInvitation.variables
+      : undefined;
+
+  useEffect(() => {
+    if (error) {
+      Alert.alert('Error', error.message || 'Failed to load invitations');
+    }
+  }, [error]);
+
+  const respond = (invitation: GroupInvitation, action: 'accept' | 'decline') => {
+    if (processingId) return;
+    const mutation = action === 'accept' ? acceptInvitation : declineInvitation;
+    mutation.mutate(invitation._id, {
+      onSuccess: (response) => {
+        if (action !== 'accept') return;
         const group = response.data?.group;
         const groupName = group?.name ?? invitation.groupId.name;
         Alert.alert('Joined', `You've joined ${groupName}`, [
@@ -115,24 +98,21 @@ const InvitationsScreen: React.FC<InvitationsScreenProps> = ({ navigation }) => 
                 }),
           },
         ]);
-      }
-    } catch (err) {
-      const status = (err as ApiError).statusCode;
-      if (status === 400 || status === 403 || status === 404) {
-        setInvitations((prev) => prev.filter((i) => i._id !== invitation._id));
-        queryClient.invalidateQueries({ queryKey: queryKeys.invitations.all });
-      }
-      const errorMessage =
-        err instanceof Error ? err.message : `Failed to ${action} invitation`;
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setProcessing(null);
-    }
+      },
+      onError: (err) => {
+        // Stale invitation: drop it from the list instead of leaving a dead row
+        const status = (err as ApiError).statusCode;
+        if (status === 400 || status === 403 || status === 404) {
+          queryClient.invalidateQueries({ queryKey: queryKeys.invitations.all });
+        }
+        Alert.alert('Error', err.message || `Failed to ${action} invitation`);
+      },
+    });
   };
 
   const renderInvitation = ({ item }: { item: GroupInvitation }) => {
     const inviterName = formatInviterName(item.invitedBy);
-    const isProcessing = processing?.id === item._id;
+    const isProcessing = processingId === item._id;
 
     return (
       <View style={styles.invitationCard}>
@@ -168,7 +148,7 @@ const InvitationsScreen: React.FC<InvitationsScreenProps> = ({ navigation }) => 
             title="Decline"
             variant="outline"
             onPress={() => respond(item, 'decline')}
-            loading={isProcessing && processing?.action === 'decline'}
+            loading={isProcessing && declineInvitation.isPending}
             disabled={isProcessing}
             style={styles.declineButton}
           />
@@ -176,7 +156,7 @@ const InvitationsScreen: React.FC<InvitationsScreenProps> = ({ navigation }) => 
             title="Accept"
             variant="primary"
             onPress={() => respond(item, 'accept')}
-            loading={isProcessing && processing?.action === 'accept'}
+            loading={isProcessing && acceptInvitation.isPending}
             disabled={isProcessing}
             style={styles.acceptButton}
           />
@@ -233,7 +213,7 @@ const InvitationsScreen: React.FC<InvitationsScreenProps> = ({ navigation }) => 
 
       {/* Content */}
       <View style={styles.contentWrapper}>
-        {loading && invitations.length === 0 ? (
+        {isLoading ? (
           <View style={styles.listContent}>{renderSkeleton()}</View>
         ) : (
           <FlatList

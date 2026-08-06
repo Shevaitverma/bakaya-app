@@ -2,7 +2,7 @@
  * Categories Screen - Full CRUD management for expense categories
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,19 +17,23 @@ import {
 } from 'react-native';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Theme } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
-import { categoryService } from '../../services/categoryService';
-import { isFresh } from '../../lib/staleness';
-import { useRefetchOnForeground } from '../../hooks/useRefetchOnForeground';
+import {
+  useCategories,
+  useCreateCategory,
+  useUpdateCategory,
+  useDeleteCategory,
+} from '../../hooks/queries';
+import { queryKeys } from '../../lib/queryKeys';
 import { EmojiPicker } from '../../components/EmojiPicker';
 import { ColorPicker } from '../../components/ColorPicker';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
-import type { Category } from '../../types/category';
+import type { Category, CategoriesResponse } from '../../types/category';
 import type { MeStackParamList } from '../../navigation/types';
 
 type CategoriesScreenProps = NativeStackScreenProps<MeStackParamList, 'Categories'>;
@@ -37,11 +41,24 @@ type CategoriesScreenProps = NativeStackScreenProps<MeStackParamList, 'Categorie
 const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
 
-  // Data state
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Data — archived rows live in their own section, so ask for them too
+  const listKey = queryKeys.categories.list(true);
+  const { data, isLoading, isError, error, refetch } = useCategories(true);
+  const categories = data?.categories ?? [];
+  const createCategory = useCreateCategory();
+  const updateCategory = useUpdateCategory();
+  // Own instance so an in-flight archive toggle doesn't put the modal in "saving"
+  const archiveCategory = useUpdateCategory();
+  const deleteCategory = useDeleteCategory();
+  const saving = createCategory.isPending || updateCategory.isPending;
+
+  /** Optimistic write into the cached list; mutations invalidate it afterwards. */
+  const setCachedCategories = (update: (current: Category[]) => Category[]) =>
+    queryClient.setQueryData<CategoriesResponse['data']>(listKey, (old) =>
+      old ? { ...old, categories: update(old.categories) } : old
+    );
 
   // Archived section toggle
   const [archivedExpanded, setArchivedExpanded] = useState(false);
@@ -53,7 +70,6 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
   const [formEmoji, setFormEmoji] = useState('');
   const [formColor, setFormColor] = useState('#D81B60');
   const [formNameError, setFormNameError] = useState<string | undefined>(undefined);
-  const [saving, setSaving] = useState(false);
 
   // Emoji picker state
   const [emojiPickerVisible, setEmojiPickerVisible] = useState(false);
@@ -95,45 +111,11 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
     };
   }, [modalVisible, modalScaleAnim, modalOpacityAnim]);
 
-  // ---- Data fetching ----
-  const lastFetchTime = useRef<number>(0);
-
-  const fetchCategories = useCallback(async () => {
-    if (!accessToken) {
-      setError('Authentication required');
-      setLoading(false);
-      return;
+  useEffect(() => {
+    if (isError) {
+      Alert.alert('Error', error instanceof Error ? error.message : 'An error occurred while fetching categories');
     }
-    if (isFresh(lastFetchTime.current)) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await categoryService.getCategories(accessToken, true);
-
-      if (response.success && response.data) {
-        setCategories(response.data.categories);
-        lastFetchTime.current = Date.now();
-      } else {
-        throw new Error('Failed to fetch categories');
-      }
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'An error occurred while fetching categories';
-      setError(errorMessage);
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, [accessToken]);
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchCategories();
-    }, [fetchCategories])
-  );
-
-  useRefetchOnForeground(fetchCategories);
+  }, [isError, error]);
 
   // ---- Derived data ----
 
@@ -168,7 +150,7 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     // Validate
     const trimmedName = formName.trim();
     if (!trimmedName) {
@@ -182,49 +164,35 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
       return;
     }
 
-    setSaving(true);
+    const callbacks = {
+      onSuccess: () => {
+        setModalVisible(false);
+        setEditingCategory(null);
+      },
+      onError: (err: Error) => {
+        Alert.alert('Error', err.message || 'Failed to save category');
+      },
+    };
 
-    try {
-      if (editingCategory) {
-        // Update existing
-        const response = await categoryService.updateCategory(
-          editingCategory.id,
-          { name: trimmedName, emoji: formEmoji, color: formColor },
-          accessToken
-        );
-
-        if (response.success && response.data) {
-          // Update local state
-          setCategories((prev) =>
-            prev.map((c) => (c.id === editingCategory.id ? response.data.category : c))
-          );
-        }
-      } else {
-        // Create new
-        const response = await categoryService.createCategory(
-          { name: trimmedName, emoji: formEmoji || undefined, color: formColor },
-          accessToken
-        );
-
-        if (response.success && response.data) {
-          setCategories((prev) => [...prev, response.data.category]);
-        }
-      }
-
-      setModalVisible(false);
-      setEditingCategory(null);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to save category';
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setSaving(false);
+    if (editingCategory) {
+      updateCategory.mutate(
+        {
+          id: editingCategory.id,
+          data: { name: trimmedName, emoji: formEmoji, color: formColor },
+        },
+        callbacks
+      );
+    } else {
+      createCategory.mutate(
+        { name: trimmedName, emoji: formEmoji || undefined, color: formColor },
+        callbacks
+      );
     }
   };
 
   // ---- Archive / Unarchive ----
 
-  const handleToggleArchive = async (category: Category) => {
+  const handleToggleArchive = (category: Category) => {
     if (!accessToken) {
       Alert.alert('Error', 'Authentication required');
       return;
@@ -233,25 +201,23 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
     const newIsActive = !category.isActive;
 
     // Optimistic update
-    setCategories((prev) =>
+    const prevData = queryClient.getQueryData<CategoriesResponse['data']>(listKey);
+    setCachedCategories((prev) =>
       prev.map((c) => (c.id === category.id ? { ...c, isActive: newIsActive } : c))
     );
 
-    try {
-      await categoryService.updateCategory(
-        category.id,
-        { isActive: newIsActive },
-        accessToken
-      );
-    } catch (err) {
-      // Revert optimistic update
-      setCategories((prev) =>
-        prev.map((c) => (c.id === category.id ? { ...c, isActive: category.isActive } : c))
-      );
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to update category';
-      Alert.alert('Error', errorMessage);
-    }
+    archiveCategory.mutate(
+      { id: category.id, data: { isActive: newIsActive } },
+      {
+        onError: (err) => {
+          // Revert optimistic update
+          queryClient.setQueryData(listKey, prevData);
+          const errorMessage =
+            err instanceof Error ? err.message : 'Failed to update category';
+          Alert.alert('Error', errorMessage);
+        },
+      }
+    );
   };
 
   // ---- Delete ----
@@ -267,30 +233,29 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
     setDeleteDialogVisible(true);
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = () => {
     if (!accessToken || !categoryToDelete) return;
 
     setDeleteLoading(true);
 
     // Optimistic update
     const deleted = categoryToDelete;
-    setCategories((prev) => prev.filter((c) => c.id !== deleted.id));
+    setCachedCategories((prev) => prev.filter((c) => c.id !== deleted.id));
 
     // Close dialog immediately
     setDeleteDialogVisible(false);
     setCategoryToDelete(null);
 
-    try {
-      await categoryService.deleteCategory(deleted.id, accessToken);
-    } catch (err) {
-      // Revert optimistic update
-      setCategories((prev) => [...prev, deleted]);
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to delete category';
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setDeleteLoading(false);
-    }
+    deleteCategory.mutate(deleted.id, {
+      onError: (err) => {
+        // Revert optimistic update
+        setCachedCategories((prev) => [...prev, deleted]);
+        const errorMessage =
+          err instanceof Error ? err.message : 'Failed to delete category';
+        Alert.alert('Error', errorMessage);
+      },
+      onSettled: () => setDeleteLoading(false),
+    });
   };
 
   const handleCancelDelete = () => {
@@ -380,7 +345,7 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
 
   // ---- Loading state ----
 
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
         <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
@@ -392,7 +357,7 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
 
   // ---- Error state ----
 
-  if (error && categories.length === 0) {
+  if (isError && categories.length === 0) {
     return (
       <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
         <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
@@ -402,8 +367,10 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
           color={Theme.colors.error}
           solid
         />
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchCategories}>
+        <Text style={styles.errorText}>
+          {error instanceof Error ? error.message : 'An error occurred while fetching categories'}
+        </Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>

@@ -39,7 +39,7 @@ export async function verifyAccessToken(token: string): Promise<JwtPayload> {
 export async function verifyRefreshToken(token: string): Promise<JwtPayload> {
   const { payload } = await jwtVerify(token, refreshSecret);
   const result = payload as unknown as JwtPayload;
-  if (isRefreshTokenRevoked(result.userId, result.iat)) {
+  if (await isRefreshTokenRevoked(result.userId, result.iat)) {
     throw new Error("Refresh token has been revoked");
   }
   return result;

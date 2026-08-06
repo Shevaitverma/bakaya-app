@@ -5,6 +5,7 @@ export { useSummary, useByProfile, useByCategory, useBalance, useTrends } from "
 export { useExpenses, useExpense, useCreateExpense, useUpdateExpense, useDeleteExpense } from "./useExpenses";
 export {
   useGroups, useGroup, useGroupExpenses, useGroupBalances, useGroupSettlements,
+  useSuggestedTransfers,
   useCreateGroup, useDeleteGroup, useRemoveMember,
   useCreateGroupExpense, useDeleteGroupExpense, useCreateSettlement, useDeleteSettlement,
   useGroupExpense, useUpdateGroupExpense,

@@ -1,6 +1,11 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-export type GroupInvitationStatus = "pending" | "accepted" | "declined" | "cancelled";
+export type GroupInvitationStatus =
+  | "pending"
+  | "accepted"
+  | "declined"
+  | "cancelled"
+  | "expired";
 
 export interface IGroupInvitation {
   groupId: mongoose.Types.ObjectId;
@@ -51,7 +56,7 @@ const groupInvitationSchema = new Schema<IGroupInvitationDocument>(
     },
     status: {
       type: String,
-      enum: ["pending", "accepted", "declined", "cancelled"],
+      enum: ["pending", "accepted", "declined", "cancelled", "expired"],
       default: "pending",
       index: true,
     },
@@ -75,7 +80,9 @@ const groupInvitationSchema = new Schema<IGroupInvitationDocument>(
   }
 );
 
-// Enforce at most one active pending invitation per (group, user)
+// Enforce at most one active pending invitation per (group, user).
+// NOTE: a lapsed invitation still occupies this slot until it is transitioned
+// out of "pending" — see expireStalePending() in invitation.service.ts.
 groupInvitationSchema.index(
   { groupId: 1, invitedUserId: 1, status: 1 },
   {

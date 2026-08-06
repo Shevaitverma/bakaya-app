@@ -2,7 +2,7 @@
  * Profile Expenses Screen - Shows all expenses for a specific profile
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,15 +16,12 @@ import {
 } from 'react-native';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { Theme } from '../../constants/theme';
-import { expenseService } from '../../services/expenseService';
-import { categoryService } from '../../services/categoryService';
-import { isFresh } from '../../lib/staleness';
-import { useRefetchOnForeground } from '../../hooks/useRefetchOnForeground';
-import type { Expense, PersonalExpensesResponse } from '../../types/expense';
-import type { Category } from '../../types/category';
+import { useExpenses, useCategories, useDeleteExpense } from '../../hooks/queries';
+import { queryKeys } from '../../lib/queryKeys';
+import type { Expense, PersonalExpensesData } from '../../types/expense';
 import SwipeableExpenseItem from '../../components/SwipeableExpenseItem';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import DateRangePicker from '../../components/DateRangePicker';
@@ -40,16 +37,9 @@ const ProfileExpensesScreen: React.FC<ProfileExpensesScreenProps> = ({ route, na
   const firstLetter = profileName ? profileName.charAt(0).toUpperCase() : '?';
   const insets = useSafeAreaInsets();
   const { accessToken } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [totalExpenseAmount, setTotalExpenseAmount] = useState(0);
-  const [totalIncome, setTotalIncome] = useState(0);
-  const [balance, setBalance] = useState(0);
-  // Initialize to "this_month" so the first useFocusEffect fetch uses the
-  // correct range without relying on DateRangePicker to fire onChange on mount.
+  const queryClient = useQueryClient();
+  // Initialize to "this_month" so the first fetch uses the correct range
+  // without relying on DateRangePicker to fire onChange on mount.
   const [startDate, setStartDate] = useState<string | undefined>(() => {
     const now = new Date();
     const y = now.getFullYear();
@@ -67,98 +57,30 @@ const ProfileExpensesScreen: React.FC<ProfileExpensesScreenProps> = ({ route, na
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState<{ id: string; title: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const lastFetchTime = useRef<number>(0);
 
-  const fetchCategories = useCallback(async () => {
-    if (!accessToken) return;
-    try {
-      const response = await categoryService.getCategories(accessToken);
-      if (response.success && response.data?.categories) {
-        setCategories(response.data.categories.filter((c) => c.isActive));
-      }
-    } catch (err) {
-      console.warn('Failed to load categories:', err);
+  // Same filters/page/limit the hook keys on — reused below for optimistic writes.
+  const filters = { profileId, startDate, endDate };
+  const listKey = queryKeys.expenses.list({ ...filters, page: 1, limit: 100 });
+
+  const { data, isLoading, isError, error, refetch, isRefetching } = useExpenses(filters, 1, 100);
+  const expenses = data?.expenses ?? [];
+  const totalExpenseAmount = data?.totalExpenseAmount ?? 0;
+  const totalIncome = data?.totalIncome ?? 0;
+  const balance = data?.balance ?? 0;
+
+  const { data: categoryData } = useCategories();
+  const deleteExpense = useDeleteExpense();
+
+  useEffect(() => {
+    if (isError) {
+      Alert.alert('Error', error instanceof Error ? error.message : 'An error occurred while fetching expenses');
     }
-  }, [accessToken]);
+  }, [isError, error]);
 
-  const fetchExpenses = useCallback(async (
-    filterStartDate?: string,
-    filterEndDate?: string,
-    isRefreshing = false,
-  ) => {
-    if (!accessToken) {
-      setError('Authentication required');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      if (!isRefreshing) {
-        setLoading(true);
-      }
-      setError(null);
-      const filters: Record<string, string> = { profileId };
-      if (filterStartDate) filters.startDate = filterStartDate;
-      if (filterEndDate) filters.endDate = filterEndDate;
-
-      const response: PersonalExpensesResponse = await expenseService.getPersonalExpenses(
-        1,
-        100,
-        accessToken,
-        filters
-      );
-
-      if (response.success && response.data) {
-        setExpenses(response.data.expenses);
-        setTotalExpenseAmount(response.data.totalExpenseAmount);
-        setTotalIncome(response.data.totalIncome);
-        setBalance(response.data.balance);
-        lastFetchTime.current = Date.now();
-      } else {
-        throw new Error('Failed to fetch expenses');
-      }
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'An error occurred while fetching expenses';
-      setError(errorMessage);
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, [accessToken, profileId]);
-
-  // Fetch expenses and categories on mount and refresh when screen comes into focus.
-  // Dates are initialized to "this_month" so the first fetch always has a valid range.
-  useFocusEffect(
-    useCallback(() => {
-      if (isFresh(lastFetchTime.current)) return;
-      fetchExpenses(startDate, endDate);
-      fetchCategories();
-    }, [fetchExpenses, fetchCategories, startDate, endDate])
-  );
-
-  useRefetchOnForeground(() => {
-    if (isFresh(lastFetchTime.current)) return;
-    fetchExpenses(startDate, endDate);
-    fetchCategories();
-  });
-
-  const handleDateRangeChange = useCallback(
-    (newStart?: string, newEnd?: string) => {
-      setStartDate(newStart);
-      setEndDate(newEnd);
-      lastFetchTime.current = 0;
-      fetchExpenses(newStart, newEnd);
-    },
-    [fetchExpenses]
-  );
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    lastFetchTime.current = 0;
-    await fetchExpenses(startDate, endDate, true);
-    setRefreshing(false);
-  }, [fetchExpenses, startDate, endDate]);
+  const handleDateRangeChange = (newStart?: string, newEnd?: string) => {
+    setStartDate(newStart);
+    setEndDate(newEnd);
+  };
 
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString('en-IN', {
@@ -208,43 +130,49 @@ const ProfileExpensesScreen: React.FC<ProfileExpensesScreenProps> = ({ route, na
     }, 100);
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = () => {
     if (!accessToken || !expenseToDelete) {
       return;
     }
 
     setDeleteLoading(true);
 
-    // Optimistically update UI immediately
+    // Optimistically update the cached page immediately
     const deletedExpense = expenses.find((exp) => exp._id === expenseToDelete.id);
     if (deletedExpense) {
-      setExpenses((prevExpenses) => prevExpenses.filter((exp) => exp._id !== expenseToDelete.id));
-      if (deletedExpense.type === 'income') {
-        setTotalIncome((prev) => prev - deletedExpense.amount);
-        setBalance((prev) => prev - deletedExpense.amount);
-      } else {
-        setTotalExpenseAmount((prevTotal) => prevTotal - deletedExpense.amount);
-        setBalance((prev) => prev + deletedExpense.amount);
-      }
+      queryClient.setQueryData<PersonalExpensesData>(listKey, (old) => {
+        if (!old) return old;
+        const isIncome = deletedExpense.type === 'income';
+        return {
+          ...old,
+          expenses: old.expenses.filter((exp) => exp._id !== expenseToDelete.id),
+          totalIncome: isIncome ? old.totalIncome - deletedExpense.amount : old.totalIncome,
+          totalExpenseAmount: isIncome
+            ? old.totalExpenseAmount
+            : old.totalExpenseAmount - deletedExpense.amount,
+          balance: isIncome
+            ? old.balance - deletedExpense.amount
+            : old.balance + deletedExpense.amount,
+        };
+      });
     }
 
     // Close dialog immediately for better UX
     setDeleteDialogVisible(false);
     setExpenseToDelete(null);
 
-    try {
-      await expenseService.deleteExpense(expenseToDelete.id, accessToken);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to delete expense';
+    deleteExpense.mutate(expenseToDelete.id, {
+      onError: (err) => {
+        const errorMessage =
+          err instanceof Error ? err.message : 'Failed to delete expense';
 
-      // Refetch expenses on error to restore correct state
-      fetchExpenses(startDate, endDate);
+        // Refetch on error to restore correct state
+        refetch();
 
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setDeleteLoading(false);
-    }
+        Alert.alert('Error', errorMessage);
+      },
+      onSettled: () => setDeleteLoading(false),
+    });
   };
 
   const handleCancelDelete = () => {
@@ -274,11 +202,11 @@ const ProfileExpensesScreen: React.FC<ProfileExpensesScreenProps> = ({ route, na
   // Build category lookup map
   const categoryMap = React.useMemo(() => {
     const map: Record<string, { emoji: string; color: string }> = {};
-    categories.forEach((cat) => {
-      map[cat.name.toLowerCase()] = { emoji: cat.emoji, color: cat.color };
+    categoryData?.categories.forEach((cat) => {
+      if (cat.isActive) map[cat.name.toLowerCase()] = { emoji: cat.emoji, color: cat.color };
     });
     return map;
-  }, [categories]);
+  }, [categoryData]);
 
   const renderExpenseItem = ({ item, index }: { item: Expense; index: number }) => {
     const isLastItem = index === expenses.length - 1;
@@ -368,7 +296,7 @@ const ProfileExpensesScreen: React.FC<ProfileExpensesScreenProps> = ({ route, na
     </View>
   );
 
-  if (loading && !refreshing) {
+  if (isLoading) {
     return (
       <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
         <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
@@ -378,7 +306,7 @@ const ProfileExpensesScreen: React.FC<ProfileExpensesScreenProps> = ({ route, na
     );
   }
 
-  if (error && expenses.length === 0) {
+  if (isError && expenses.length === 0) {
     return (
       <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
         <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
@@ -388,8 +316,10 @@ const ProfileExpensesScreen: React.FC<ProfileExpensesScreenProps> = ({ route, na
           color={Theme.colors.error}
           solid
         />
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => fetchExpenses(startDate, endDate)}>
+        <Text style={styles.errorText}>
+          {error instanceof Error ? error.message : 'An error occurred while fetching expenses'}
+        </Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -455,8 +385,8 @@ const ProfileExpensesScreen: React.FC<ProfileExpensesScreenProps> = ({ route, na
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
+              refreshing={isRefetching}
+              onRefresh={() => refetch()}
               colors={[Theme.colors.primary]}
               tintColor={Theme.colors.primary}
             />

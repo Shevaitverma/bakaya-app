@@ -21,7 +21,7 @@ export const createInvitationSchema = z.object({
 });
 
 export const listInvitationsQuerySchema = z.object({
-  status: z.enum(["pending", "accepted", "declined", "cancelled"]).optional(),
+  status: z.enum(["pending", "accepted", "declined", "cancelled", "expired"]).optional(),
 });
 
 export type CreateGroupInput = z.infer<typeof createGroupSchema>;

@@ -6,7 +6,6 @@
 
 import { API_CONFIG } from '../constants/api';
 import { authedFetch } from '../lib/authedFetch';
-import { markDataChanged } from '../lib/staleness';
 import type {
   CategoriesResponse,
   SingleCategoryResponse,
@@ -37,7 +36,6 @@ class CategoryService {
       token,
       body: JSON.stringify(data),
     });
-    markDataChanged();
     return res;
   }
 
@@ -54,7 +52,6 @@ class CategoryService {
       token,
       body: JSON.stringify(data),
     });
-    markDataChanged();
     return res;
   }
 
@@ -69,7 +66,6 @@ class CategoryService {
       method: 'DELETE',
       token,
     });
-    markDataChanged();
     return res;
   }
 }

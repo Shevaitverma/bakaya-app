@@ -208,3 +208,24 @@ export async function getGroupBalances(req: Request, params?: Record<string, str
     throw error;
   }
 }
+
+// Full settlement plan for the group — every pair, both directions, not just
+// the caller's own debts.
+export async function getSuggestedTransfers(req: Request, params?: Record<string, string>): Promise<Response> {
+  try {
+    const { userId } = getAuthUser(req);
+    const groupId = params?.id;
+    if (!groupId) return badRequestResponse("Group ID is required");
+
+    // Validate group membership
+    const membershipError = await validateGroupMembership(groupId, userId);
+    if (membershipError) return membershipError;
+
+    const balances = await groupExpenseService.getGroupBalances(groupId);
+
+    return successResponse({ transfers: groupExpenseService.suggestTransfers(balances) });
+  } catch (error) {
+    logger.error("Get suggested transfers error", { error });
+    throw error;
+  }
+}

@@ -262,6 +262,12 @@ export const swaggerSchemas = {
       category: { type: "string", nullable: true, example: "Food" },
       notes: { type: "string", nullable: true, example: "Monthly team dinner" },
       paidBy: { type: "string", example: "507f1f77bcf86cd799439011" },
+      splitType: {
+        type: "string",
+        enum: ["equal", "exact", "percentage"],
+        example: "equal",
+        description: "Defaults to \"equal\"; documents created before this field existed have no value stored",
+      },
       splitAmong: {
         type: "array",
         items: {
@@ -269,6 +275,7 @@ export const swaggerSchemas = {
           properties: {
             userId: { type: "string", example: "507f1f77bcf86cd799439011" },
             amount: { type: "number", example: 50.0 },
+            percentage: { type: "number", example: 20.0, description: "Only present on percentage splits" },
           },
         },
       },
@@ -301,6 +308,12 @@ export const swaggerSchemas = {
         maxLength: 500,
         example: "Monthly team dinner",
       },
+      splitType: {
+        type: "string",
+        enum: ["equal", "exact", "percentage"],
+        example: "exact",
+        description: "Percentages must add up to 100 when set to \"percentage\"",
+      },
       splitAmong: {
         type: "array",
         items: {
@@ -309,6 +322,7 @@ export const swaggerSchemas = {
           properties: {
             userId: { type: "string", example: "507f1f77bcf86cd799439011" },
             amount: { type: "number", example: 50.0 },
+            percentage: { type: "number", example: 20.0, description: "Required on every entry when splitType is \"percentage\"" },
           },
         },
         description: "Optional split configuration among group members",
@@ -339,6 +353,12 @@ export const swaggerSchemas = {
         maxLength: 500,
         example: "Updated notes",
       },
+      splitType: {
+        type: "string",
+        enum: ["equal", "exact", "percentage"],
+        example: "exact",
+        description: "Percentages must add up to 100 when set to \"percentage\"",
+      },
       splitAmong: {
         type: "array",
         items: {
@@ -347,6 +367,7 @@ export const swaggerSchemas = {
           properties: {
             userId: { type: "string", example: "507f1f77bcf86cd799439011" },
             amount: { type: "number", example: 60.0 },
+            percentage: { type: "number", example: 20.0, description: "Required on every entry when splitType is \"percentage\"" },
           },
         },
         description: "Optional updated split configuration",

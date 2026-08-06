@@ -76,7 +76,7 @@ async function main() {
 
       // Stricter rate limit for auth endpoints
       if (pathname.startsWith("/api/v1/auth/")) {
-        const authLimitResponse = checkAuthRateLimit(req);
+        const authLimitResponse = await checkAuthRateLimit(req);
         if (authLimitResponse) {
           logRequest(authLimitResponse, "auth-rate-limit");
           return authLimitResponse;
@@ -84,7 +84,7 @@ async function main() {
       }
 
       // Check general rate limit
-      const rateLimitResponse = checkRateLimit(req);
+      const rateLimitResponse = await checkRateLimit(req);
       if (rateLimitResponse) {
         logger.warn("Rate limit exceeded", {
           method,

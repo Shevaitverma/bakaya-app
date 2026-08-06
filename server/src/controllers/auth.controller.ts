@@ -371,7 +371,7 @@ export async function logout(req: Request): Promise<Response> {
     // Revoke any outstanding refresh tokens for this user — without this,
     // a stolen refresh token issued before logout stays valid until natural
     // expiry. See utils/tokenRevocation.ts for the iat-based check.
-    revokeRefreshTokensForUser(userId);
+    await revokeRefreshTokensForUser(userId);
 
     logger.info("User logged out", { userId });
     return successResponse({ message: "Logged out successfully" });

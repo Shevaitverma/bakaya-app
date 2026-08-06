@@ -388,4 +388,69 @@ export const groupExpenseRoutes = {
       },
     },
   },
+  "/api/v1/groups/{id}/suggested-transfers": {
+    get: {
+      tags: ["Group Expenses"],
+      summary: "Get suggested settlement transfers",
+      description: "Turns the group's net balances into a greedy set of who-pays-whom transfers for the whole group (all pairs, both directions)",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+          description: "Group ID",
+        },
+      ],
+      responses: {
+        "200": {
+          description: "Suggested transfers",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  success: { type: "boolean", example: true },
+                  data: {
+                    type: "object",
+                    properties: {
+                      transfers: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            from: { type: "string", example: "507f1f77bcf86cd799439011" },
+                            to: { type: "string", example: "507f1f77bcf86cd799439012" },
+                            amount: { type: "number", example: 50.0 },
+                          },
+                        },
+                      },
+                    },
+                  },
+                  meta: { $ref: "#/components/schemas/ResponseMeta" },
+                },
+              },
+            },
+          },
+        },
+        "401": {
+          description: "Unauthorized",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/Error" },
+            },
+          },
+        },
+        "404": {
+          description: "Group not found",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/Error" },
+            },
+          },
+        },
+      },
+    },
+  },
 };

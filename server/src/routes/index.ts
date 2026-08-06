@@ -46,6 +46,7 @@ import {
   updateGroupExpense as updateGroupExpenseHandler,
   deleteGroupExpense as deleteGroupExpenseHandler,
   getGroupBalances,
+  getSuggestedTransfers,
 } from "@/controllers/groupExpense.controller";
 import {
   getSettlements,
@@ -66,13 +67,13 @@ import {
   deleteCategoryHandler,
   reorderCategoriesHandler,
 } from "@/controllers/category.controller";
-import { authenticateRequest } from "@/middleware/auth";
+import { authenticateRequest, requireAdmin } from "@/middleware/auth";
 import { notFoundResponse, internalErrorResponse } from "@/utils/response";
 import { logger } from "@/utils/logger";
 import type { RouteHandler } from "@/types";
 
 // Route definitions
-const routes: RouteHandler[] = [
+export const routes: RouteHandler[] = [
   // Health routes
   { path: "/health", method: "GET", handler: healthCheck },
   { path: "/ready", method: "GET", handler: readinessCheck },
@@ -85,12 +86,13 @@ const routes: RouteHandler[] = [
   { path: "/api/v1/auth/refresh", method: "POST", handler: refreshTokenHandler },
   { path: "/api/v1/auth/logout", method: "POST", handler: logout, protected: true },
 
-  // User routes (protected — admin-level management)
-  { path: "/api/v1/users", method: "GET", handler: getUsers, protected: true },
-  { path: "/api/v1/users", method: "POST", handler: createUser, protected: true },
-  { path: "/api/v1/users/:id", method: "GET", handler: getUser, protected: true },
-  { path: "/api/v1/users/:id", method: "PUT", handler: updateUser, protected: true },
-  { path: "/api/v1/users/:id", method: "DELETE", handler: deleteUser, protected: true },
+  // User routes — admin-level management of *other* users.
+  // No client calls these; they are operator tooling and must stay admin-gated.
+  { path: "/api/v1/users", method: "GET", handler: getUsers, protected: true, adminOnly: true },
+  { path: "/api/v1/users", method: "POST", handler: createUser, protected: true, adminOnly: true },
+  { path: "/api/v1/users/:id", method: "GET", handler: getUser, protected: true, adminOnly: true },
+  { path: "/api/v1/users/:id", method: "PUT", handler: updateUser, protected: true, adminOnly: true },
+  { path: "/api/v1/users/:id", method: "DELETE", handler: deleteUser, protected: true, adminOnly: true },
 
   // Profile routes (protected)
   { path: "/api/v1/profiles", method: "GET", handler: getProfiles, protected: true },
@@ -134,6 +136,7 @@ const routes: RouteHandler[] = [
 
   // Group balances route (protected)
   { path: "/api/v1/groups/:id/balances", method: "GET", handler: getGroupBalances, protected: true },
+  { path: "/api/v1/groups/:id/suggested-transfers", method: "GET", handler: getSuggestedTransfers, protected: true },
 
   // Settlement routes (protected)
   { path: "/api/v1/groups/:id/settlements", method: "GET", handler: getSettlements, protected: true },
@@ -212,9 +215,18 @@ export async function handleRequest(req: Request): Promise<Response> {
     }
 
     // Enforce authentication for protected routes
-    if (match.route.protected) {
+    if (match.route.protected || match.route.adminOnly) {
       const authError = await authenticateRequest(req);
       if (authError) return authError;
+    }
+
+    // Enforce admin role on top of authentication
+    if (match.route.adminOnly) {
+      const adminError = await requireAdmin(req);
+      if (adminError) {
+        logger.warn("Blocked non-admin access to admin route", { method, pathname });
+        return adminError;
+      }
     }
 
     return await match.route.handler(req, match.params);

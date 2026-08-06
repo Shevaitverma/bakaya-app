@@ -17,15 +17,10 @@ import { useAuth } from '../../context/AuthContext';
 import { Theme } from '../../constants/theme';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import type { HomeStackParamList } from '../../navigation/types';
-import { profileService } from '../../services/profileService';
-import { expenseService } from '../../services/expenseService';
-import { categoryService } from '../../services/categoryService';
-import { isFresh } from '../../lib/staleness';
-import { useRefetchOnForeground } from '../../hooks/useRefetchOnForeground';
+import { useProfiles, useExpenses, useCategories, useBalance } from '../../hooks/queries';
 import { formatCurrency } from '../../utils/currency';
-import type { Profile, ProfilesResponse } from '../../types/profile';
-import type { Expense, PersonalExpensesResponse, BalanceData } from '../../types/expense';
-import type { Category } from '../../types/category';
+import type { Profile } from '../../types/profile';
+import type { Expense } from '../../types/expense';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'Home'>;
 
@@ -105,123 +100,50 @@ const getProgressColor = (percentage: number): string => {
 const HomeScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<HomeScreenNavigationProp>();
-  const { logout, user, accessToken, refreshSession } = useAuth();
+  const { logout, user } = useAuth();
 
-  // Data states
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
-  const [balanceData, setBalanceData] = useState<BalanceData | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null); // null = "All"
-  const selectedProfileIdRef = useRef<string | null>(null);
-  const lastFetchTime = useRef<number>(0);
 
-  // Loading states (independent per section)
-  const [profilesLoading, setProfilesLoading] = useState(true);
-  const [expensesLoading, setExpensesLoading] = useState(true);
-  const [balanceLoading, setBalanceLoading] = useState(true);
+  const profilesQuery = useProfiles();
+  const expensesQuery = useExpenses(
+    selectedProfileId ? { profileId: selectedProfileId } : undefined,
+    1,
+    5
+  );
+  const balanceQuery = useBalance();
+  const categoriesQuery = useCategories();
+
+  const profiles = profilesQuery.data?.profiles ?? [];
+  const recentExpenses = expensesQuery.data?.expenses ?? [];
+  const balanceData = balanceQuery.data ?? null;
+
   const [refreshing, setRefreshing] = useState(false);
 
   // Logout dialog
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
 
-  const fetchAllData = useCallback(async () => {
-    if (!accessToken) return;
-
-    // Staleness check: skip fetch if data was fetched less than 30s ago.
-    // Pull-to-refresh bypasses this by resetting lastFetchTime to 0 before calling fetchAllData.
-    if (isFresh(lastFetchTime.current)) return;
-
-    const fetchProfiles = async () => {
-      try {
-        setProfilesLoading(true);
-        const response: ProfilesResponse = await profileService.getProfiles(accessToken);
-        if (response.success && response.data) {
-          setProfiles(response.data.profiles);
-        }
-      } catch (err: any) {
-        if (err?.statusCode === 401) throw err; // Propagate 401 to parent
-        console.error('Error fetching profiles:', err);
-      } finally {
-        setProfilesLoading(false);
-      }
-    };
-
-    const fetchExpenses = async () => {
-      try {
-        setExpensesLoading(true);
-        const profileFilter = selectedProfileIdRef.current;
-        const filters = profileFilter ? { profileId: profileFilter } : undefined;
-        const response: PersonalExpensesResponse = await expenseService.getPersonalExpenses(1, 5, accessToken, filters);
-        if (response.success && response.data) {
-          setRecentExpenses(response.data.expenses);
-        }
-      } catch (err: any) {
-        if (err?.statusCode === 401) throw err; // Propagate 401 to parent
-        console.error('Error fetching expenses:', err);
-      } finally {
-        setExpensesLoading(false);
-      }
-    };
-
-    const fetchCategories = async () => {
-      try {
-        const response = await categoryService.getCategories(accessToken);
-        if (response.success && response.data?.categories) {
-          setCategories(response.data.categories.filter((c) => c.isActive));
-        }
-      } catch (err: any) {
-        if (err?.statusCode === 401) throw err;
-        console.warn('Error fetching categories:', err);
-      }
-    };
-
-    const fetchBalance = async () => {
-      try {
-        setBalanceLoading(true);
-        const response = await expenseService.getBalance(accessToken);
-        if (response.success && response.data) {
-          setBalanceData(response.data);
-        }
-      } catch (err: any) {
-        if (err?.statusCode === 401) throw err;
-        console.error('Error fetching balance:', err);
-      } finally {
-        setBalanceLoading(false);
-      }
-    };
-
-    try {
-      // Stagger requests to avoid hitting server rate limits.
-      await Promise.all([fetchProfiles(), fetchExpenses(), fetchBalance()]);
-      await fetchCategories();
-      lastFetchTime.current = Date.now();
-    } catch (err: any) {
-      if (err?.statusCode === 401) {
-        // Attempt token refresh; a rejected refresh token already triggers
-        // logout via authedFetch's onSessionExpired.
-        await refreshSession();
-        // If refresh succeeded, the next useFocusEffect cycle will re-fetch with new token
-      }
-    }
-  }, [accessToken, refreshSession]);
-
-  // Refetch when screen comes into focus (also covers initial mount)
+  // Tab screens stay mounted, so `refetchOnMount` never fires on tab switch.
+  // Refetch on focus, but only what the 30s staleTime already marked stale —
+  // same throttle the old `isFresh(lastFetchTime)` guard gave us.
+  // `cancelRefetch: false` so this joins the mount fetch instead of doubling it.
+  const queriesRef = useRef<
+    { isStale: boolean; refetch: (opts?: { cancelRefetch?: boolean }) => unknown }[]
+  >([]);
+  queriesRef.current = [profilesQuery, expensesQuery, balanceQuery, categoriesQuery];
   useFocusEffect(
     useCallback(() => {
-      fetchAllData();
-    }, [fetchAllData])
+      queriesRef.current.forEach((q) => {
+        if (q.isStale) q.refetch({ cancelRefetch: false });
+      });
+    }, [])
   );
-
-  useRefetchOnForeground(fetchAllData);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    lastFetchTime.current = 0; // Bypass staleness check for pull-to-refresh
-    await fetchAllData();
+    await Promise.all(queriesRef.current.map((q) => q.refetch()));
     setRefreshing(false);
-  }, [fetchAllData]);
+  }, []);
 
   const handleAddExpense = () => {
     navigation.navigate('AddExpense', { type: 'expense' });
@@ -231,26 +153,8 @@ const HomeScreen = () => {
     navigation.navigate('AddExpense', { type: 'income' });
   };
 
-  const fetchExpensesForProfile = useCallback(async (profileId: string | null) => {
-    if (!accessToken) return;
-    try {
-      setExpensesLoading(true);
-      const filters = profileId ? { profileId } : undefined;
-      const response: PersonalExpensesResponse = await expenseService.getPersonalExpenses(1, 5, accessToken, filters);
-      if (response.success && response.data) {
-        setRecentExpenses(response.data.expenses);
-      }
-    } catch (err: any) {
-      console.error('Error fetching expenses:', err);
-    } finally {
-      setExpensesLoading(false);
-    }
-  }, [accessToken]);
-
   const handleProfilePress = (profileId: string | null) => {
     setSelectedProfileId(profileId);
-    selectedProfileIdRef.current = profileId;
-    fetchExpensesForProfile(profileId);
   };
 
   const handleAddProfile = () => {
@@ -372,11 +276,11 @@ const HomeScreen = () => {
   // Build category lookup map
   const categoryMap = React.useMemo(() => {
     const map: Record<string, { emoji: string; color: string }> = {};
-    categories.forEach((cat) => {
-      map[cat.name.toLowerCase()] = { emoji: cat.emoji, color: cat.color };
+    (categoriesQuery.data?.categories ?? []).forEach((cat) => {
+      if (cat.isActive) map[cat.name.toLowerCase()] = { emoji: cat.emoji, color: cat.color };
     });
     return map;
-  }, [categories]);
+  }, [categoriesQuery.data]);
 
   const renderExpenseRow = (expense: Expense, isLast: boolean) => {
     const profile = getExpenseProfile(expense);
@@ -490,7 +394,7 @@ const HomeScreen = () => {
       >
 
         {/* ===== Balance Summary Card ===== */}
-        {balanceLoading ? (
+        {balanceQuery.isLoading ? (
           <View style={styles.balanceLoadingContainer}>
             <ActivityIndicator size="small" color={Theme.colors.primary} />
           </View>
@@ -571,7 +475,7 @@ const HomeScreen = () => {
               </TouchableOpacity>
             )}
           </View>
-          {profilesLoading ? (
+          {profilesQuery.isLoading ? (
             renderSectionLoading()
           ) : profiles.length === 0 ? (
             <View style={styles.emptyStateRow}>
@@ -598,7 +502,7 @@ const HomeScreen = () => {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionHeaderLabel}>Recent Transactions</Text>
           </View>
-          {expensesLoading ? (
+          {expensesQuery.isLoading ? (
             renderSectionLoading()
           ) : recentExpenses.length === 0 ? (
             <View style={styles.emptyStateCard}>

@@ -30,6 +30,7 @@ import { formatCurrencyExact } from '../../utils/currency';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { HomeStackParamList } from '../../navigation/types';
 import type { Category } from '../../types/category';
+import type { SplitEntry, SplitType } from '../../types/group';
 
 type EditGroupExpenseScreenProps = NativeStackScreenProps<HomeStackParamList, 'EditGroupExpense'>;
 
@@ -53,7 +54,7 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
   const [paidBy, setPaidBy] = useState(currentUserId);
 
   // Split type: "equal" | "exact" | "percentage"
-  const [splitType, setSplitType] = useState<'equal' | 'exact' | 'percentage'>('equal');
+  const [splitType, setSplitType] = useState<SplitType>('equal');
 
   // Split between - default all members selected
   const [splitMembers, setSplitMembers] = useState<Set<string>>(
@@ -106,21 +107,21 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
             const memberIds = new Set(expense.splitAmong.map((s) => s.userId));
             setSplitMembers(memberIds);
 
-            // Check if it's equal split
-            const amounts = expense.splitAmong.map((s) => s.amount);
-            const allEqual = amounts.every((a) => Math.abs(a - (amounts[0] ?? 0)) < 0.02);
+            // Expenses written before split types existed have no splitType.
+            // Fall back to "exact" (not "equal") so an uneven legacy split
+            // round-trips instead of being silently re-split on save. Matches web.
+            setSplitType(expense.splitType ?? 'exact');
 
-            if (allEqual) {
-              setSplitType('equal');
-            } else {
-              // Default to exact mode with pre-populated amounts
-              setSplitType('exact');
-              const exactMap: Record<string, string> = {};
-              expense.splitAmong.forEach((s) => {
-                exactMap[s.userId] = String(s.amount);
-              });
-              setExactAmounts(exactMap);
-            }
+            // Always pre-fill the stored amounts so switching to Exact starts
+            // from the real split; percentages only exist on percentage splits.
+            const exactMap: Record<string, string> = {};
+            const pctMap: Record<string, string> = {};
+            expense.splitAmong.forEach((s) => {
+              exactMap[s.userId] = String(s.amount);
+              if (s.percentage !== undefined) pctMap[s.userId] = String(s.percentage);
+            });
+            setExactAmounts(exactMap);
+            setPercentages(pctMap);
           }
         }
       } catch (err) {
@@ -229,7 +230,7 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
     const amountNum = parseFloat(amount);
     const splitMemberIds = Array.from(splitMembers);
 
-    let splitAmong: { userId: string; amount: number }[];
+    let splitAmong: SplitEntry[];
 
     if (splitType === 'exact') {
       splitAmong = splitMemberIds.map((userId) => ({
@@ -237,26 +238,32 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
         amount: Math.round(parseFloat(exactAmounts[userId] || '0') * 100) / 100,
       }));
     } else if (splitType === 'percentage') {
-      // Convert percentages to amounts; assign rounding remainder to first member
+      // Convert percentages to amounts; assign rounding remainder to first member.
+      // The percentages ride along so a later edit can reopen them unchanged.
+      // Whole paise: flooring a binary float loses a paise on shares that are
+      // exact in decimal (0.58 * 50 === 28.999999999999996).
+      const totalPaise = Math.round(amountNum * 100);
       const rawAmounts = splitMemberIds.map((userId) => {
         const pct = parseFloat(percentages[userId] || '0');
-        return Math.floor(((amountNum * pct) / 100) * 100) / 100;
+        return Math.floor(Math.round(totalPaise * pct * 1e4) / 1e6) / 100;
       });
       const rawTotal = rawAmounts.reduce((s, a) => s + a, 0);
       const diff = Math.round((amountNum - rawTotal) * 100) / 100;
       splitAmong = splitMemberIds.map((userId, i) => ({
         userId,
         amount: i === 0 ? Math.round(((rawAmounts[i] ?? 0) + diff) * 100) / 100 : (rawAmounts[i] ?? 0),
+        percentage: parseFloat(percentages[userId] || '0'),
       }));
     } else {
       // Equal split
       const splitCount = splitMembers.size;
-      const baseAmount = Math.floor((amountNum / splitCount) * 100) / 100;
-      const remainder = Math.round((amountNum - baseAmount * splitCount) * 100) / 100;
+      // Whole paise, same reason as above.
+      const equalTotalPaise = Math.round(amountNum * 100);
+      const basePaise = Math.floor(equalTotalPaise / splitCount);
+      const remainderPaise = equalTotalPaise - basePaise * splitCount;
       splitAmong = splitMemberIds.map((userId, i) => ({
         userId,
-        // round to avoid FP drift
-        amount: i === 0 ? Math.round((baseAmount + remainder) * 100) / 100 : baseAmount,
+        amount: (i === 0 ? basePaise + remainderPaise : basePaise) / 100,
       }));
     }
 
@@ -271,6 +278,7 @@ const EditGroupExpenseScreen: React.FC<EditGroupExpenseScreenProps> = ({ navigat
           category: category.trim(),
           notes: notes.trim() || undefined,
           paidBy,
+          splitType,
           splitAmong,
         },
         accessToken

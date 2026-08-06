@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,16 +15,19 @@ import {
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { Theme } from '../../constants/theme';
 import { expenseService } from '../../services/expenseService';
-import { profileService } from '../../services/profileService';
-import { categoryService } from '../../services/categoryService';
-import { isFresh } from '../../lib/staleness';
-import { useRefetchOnForeground } from '../../hooks/useRefetchOnForeground';
-import type { Expense, PersonalExpensesResponse } from '../../types/expense';
+import { queryKeys } from '../../lib/queryKeys';
+import {
+  useInfiniteExpenses,
+  useProfiles,
+  useCategories,
+  useDeleteExpense,
+} from '../../hooks/queries';
+import type { Expense, ExpenseQueryParams, PersonalExpensesData } from '../../types/expense';
 import type { Profile } from '../../types/profile';
-import type { Category } from '../../types/category';
 import SwipeableExpenseItem from '../../components/SwipeableExpenseItem';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import DateRangePicker from '../../components/DateRangePicker';
@@ -45,225 +48,96 @@ const getProfileColor = (profile: Profile, index: number): string => {
   return profile.color ?? PROFILE_COLORS[index % PROFILE_COLORS.length] ?? '#D81B60';
 };
 
+/** Page size for the infinite expense list. */
+const PAGE_SIZE = 100;
+
 const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
 
   // Read optional category param passed from navigation (e.g. from analytics or home)
   const routeCategory = route.params?.category ?? null;
 
-  // Existing state
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [totalExpenseAmount, setTotalExpenseAmount] = useState(0);
   const [openSwipeableId, setOpenSwipeableId] = useState<string | null>(null);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState<{ id: string; title: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Summary state
-  const [totalIncome, setTotalIncome] = useState(0);
-  const [totalExpenses, setTotalExpenses] = useState(0);
-  const [balance, setBalance] = useState(0);
-
-  // Filter state
+  // Filter state. `searchText` is what the input shows; `search` is the
+  // debounced value the query actually keys on.
   const [searchText, setSearchText] = useState('');
+  const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'income' | 'expense' | null>(null);
   const [profileFilter, setProfileFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(routeCategory);
   const [startDate, setStartDate] = useState<string | undefined>(istMonthStart);
   const [endDate, setEndDate] = useState<string | undefined>(istToday);
 
-  // Refs for debounce and keeping filter values current
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const filtersRef = useRef({
-    search: '',
-    type: null as 'income' | 'expense' | null,
-    profileId: null as string | null,
-    category: routeCategory as string | null,
-    startDate: istMonthStart() as string | undefined,
-    endDate: istToday() as string | undefined,
-  });
-
-  // Guard: prevent overlapping expense fetches from piling up requests.
-  const fetchInFlightRef = useRef(false);
-  // Set when a fetch is requested while another is in flight; the in-flight
-  // fetch fires a trailing refetch from its `finally` block.
-  const pendingRefetchRef = useRef(false);
-
-  // Pagination state
-  const pageRef = useRef(1);
-  const hasNextRef = useRef(false);
-
-  // Staleness check: track the last successful fetch time so that
-  // useFocusEffect can skip redundant refetches when returning to the
-  // screen within a short window (30 seconds).
-  const lastFetchTimeRef = useRef<number>(0);
-  const STALE_THRESHOLD_MS = 30_000; // 30 seconds
 
   // CSV export state
   const [exporting, setExporting] = useState(false);
 
-  // -------------------------------------------------------------------
-  // Unified fetch function
-  // -------------------------------------------------------------------
-  const fetchExpenses = useCallback(async (overrides?: {
-    search?: string;
-    type?: 'income' | 'expense' | null;
-    profileId?: string | null;
-    category?: string | null;
-    startDate?: string;
-    endDate?: string;
-    /** Page to fetch; pages > 1 append to the existing list. */
-    page?: number;
-    /** When true, bypass the staleness check (used for active filter changes). */
-    force?: boolean;
-  }) => {
-    if (!accessToken) {
-      setError('Authentication required');
-      setLoading(false);
-      return;
-    }
+  // Empty values are omitted so the query key (and the request) stay clean.
+  const filters = useMemo(() => {
+    const f: Omit<ExpenseQueryParams, 'page' | 'limit'> = {};
+    if (search) f.search = search;
+    if (typeFilter) f.type = typeFilter;
+    if (profileFilter) f.profileId = profileFilter;
+    if (categoryFilter) f.category = categoryFilter;
+    if (startDate) f.startDate = startDate;
+    if (endDate) f.endDate = endDate;
+    return f;
+  }, [search, typeFilter, profileFilter, categoryFilter, startDate, endDate]);
 
-    const filters = {
-      search: overrides?.search ?? filtersRef.current.search,
-      type: overrides?.type !== undefined ? overrides.type : filtersRef.current.type,
-      profileId: overrides?.profileId !== undefined ? overrides.profileId : filtersRef.current.profileId,
-      category: overrides?.category !== undefined ? overrides.category : filtersRef.current.category,
-      startDate: overrides?.startDate !== undefined ? overrides.startDate : filtersRef.current.startDate,
-      endDate: overrides?.endDate !== undefined ? overrides.endDate : filtersRef.current.endDate,
-    };
+  const expensesQuery = useInfiniteExpenses(filters, PAGE_SIZE);
+  const profilesQuery = useProfiles();
+  const categoriesQuery = useCategories();
+  const deleteExpense = useDeleteExpense();
 
-    // Update ref before any guard so a dropped request's filters are still
-    // picked up by the trailing refetch.
-    filtersRef.current = { ...filters };
+  // A filter change re-keys the query, so `data` is undefined until it lands.
+  // The shared hook sets no `placeholderData`, so hold the last loaded pages —
+  // otherwise the list blanks and the summary zeroes mid-fetch, which the old
+  // imperative fetch (it only replaced state on success) never did.
+  const lastPagesRef = useRef<PersonalExpensesData[]>([]);
+  if (expensesQuery.data) lastPagesRef.current = expensesQuery.data.pages;
+  const pages = expensesQuery.data?.pages ?? lastPagesRef.current;
 
-    const page = overrides?.page ?? 1;
+  const expenses = useMemo(() => pages.flatMap((p) => p.expenses), [pages]);
+  const profiles = profilesQuery.data?.profiles ?? [];
 
-    // --- In-flight guard ---
-    // If a fetch is already running, queue a trailing refetch instead of
-    // silently dropping this request.
-    if (fetchInFlightRef.current) {
-      pendingRefetchRef.current = true;
-      return;
-    }
+  // Summary totals are window-wide, not per-page — read them off page 1.
+  const { totalIncome = 0, totalExpenses = 0, balance = 0 } = pages[0] ?? {};
 
-    // --- Staleness guard ---
-    // When `force` is false (e.g. useFocusEffect re-focus), skip the fetch
-    // if data was loaded less than 30 seconds ago to prevent duplicate requests.
-    const force = overrides?.force ?? false;
-    if (!force && isFresh(lastFetchTimeRef.current, STALE_THRESHOLD_MS)) {
-      return;
-    }
+  const loading = expensesQuery.isFetching;
+  const error = expensesQuery.error?.message ?? null;
 
-    try {
-      fetchInFlightRef.current = true;
-      setLoading(true);
-      setError(null);
+  // The old imperative fetch alerted on failure; keep that.
+  useEffect(() => {
+    if (expensesQuery.error) Alert.alert('Error', expensesQuery.error.message);
+  }, [expensesQuery.error]);
 
-      const apiFilters: Record<string, string> = {};
-      if (filters.search) apiFilters.search = filters.search;
-      if (filters.type) apiFilters.type = filters.type;
-      if (filters.profileId) apiFilters.profileId = filters.profileId;
-      if (filters.category) apiFilters.category = filters.category;
-      if (filters.startDate) apiFilters.startDate = filters.startDate;
-      if (filters.endDate) apiFilters.endDate = filters.endDate;
-
-      const response: PersonalExpensesResponse = await expenseService.getPersonalExpenses(
-        page,
-        100,
-        accessToken,
-        Object.keys(apiFilters).length > 0 ? apiFilters : undefined
-      );
-
-      if (response.success && response.data) {
-        const fetched = response.data.expenses;
-        setExpenses((prev) => (page > 1 ? [...prev, ...fetched] : fetched));
-        pageRef.current = page;
-        hasNextRef.current = response.data.pagination?.hasNext ?? false;
-        setTotalExpenseAmount(response.data.totalExpenseAmount);
-        setTotalIncome(response.data.totalIncome);
-        setTotalExpenses(response.data.totalExpenses);
-        setBalance(response.data.balance);
-      } else {
-        throw new Error('Failed to fetch expenses');
-      }
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'An error occurred while fetching expenses';
-      setError(errorMessage);
-      Alert.alert('Error', errorMessage);
-    } finally {
-      fetchInFlightRef.current = false;
-      lastFetchTimeRef.current = Date.now();
-      setLoading(false);
-      if (pendingRefetchRef.current) {
-        pendingRefetchRef.current = false;
-        fetchExpenses({ force: true });
-      }
-    }
-  }, [accessToken]);
-
-  const handleEndReached = useCallback(() => {
-    if (hasNextRef.current && !fetchInFlightRef.current) {
-      fetchExpenses({ page: pageRef.current + 1, force: true });
-    }
-  }, [fetchExpenses]);
-
-  const fetchProfiles = useCallback(async () => {
-    if (!accessToken) return;
-    try {
-      const response = await profileService.getProfiles(accessToken);
-      if (response.success && response.data?.profiles) {
-        setProfiles(response.data.profiles);
-      }
-    } catch (err) {
-      console.warn('Failed to load profiles:', err);
-    }
-  }, [accessToken]);
-
-  const fetchCategories = useCallback(async () => {
-    if (!accessToken) return;
-    try {
-      const response = await categoryService.getCategories(accessToken);
-      if (response.success && response.data?.categories) {
-        setCategories(response.data.categories.filter((c) => c.isActive));
-      }
-    } catch (err) {
-      console.warn('Failed to load categories:', err);
-    }
-  }, [accessToken]);
-
-  // --- Fix 2: Stagger API calls ---
-  // Fetch lightweight data (profiles + categories) first, then fetch
-  // the heavier expenses endpoint. This avoids all three hitting the
-  // server at the same instant and triggering 429 rate limits.
+  // Refetch on focus, but only what the 30s staleTime already marked stale —
+  // same throttle the old `isFresh(lastFetchTimeRef)` guard gave us.
+  // `cancelRefetch: false` so this joins the mount fetch instead of doubling it.
+  const queriesRef = useRef<
+    { isStale: boolean; refetch: (opts?: { cancelRefetch?: boolean }) => unknown }[]
+  >([]);
+  queriesRef.current = [expensesQuery, profilesQuery, categoriesQuery];
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
-
-      const loadData = async () => {
-        // 1. Lightweight lookups in parallel
-        await Promise.all([fetchProfiles(), fetchCategories()]);
-
-        // 2. Then fetch expenses (the heavy call)
-        if (!cancelled) {
-          await fetchExpenses();
-        }
-      };
-
-      loadData();
-
-      return () => {
-        cancelled = true;
-      };
-    }, [fetchExpenses, fetchProfiles, fetchCategories])
+      queriesRef.current.forEach((q) => {
+        if (q.isStale) q.refetch({ cancelRefetch: false });
+      });
+    }, [])
   );
 
-  useRefetchOnForeground(fetchExpenses);
+  const handleEndReached = useCallback(() => {
+    if (expensesQuery.hasNextPage && !expensesQuery.isFetchingNextPage) {
+      expensesQuery.fetchNextPage();
+    }
+  }, [expensesQuery.hasNextPage, expensesQuery.isFetchingNextPage, expensesQuery.fetchNextPage]);
 
   // -------------------------------------------------------------------
   // Search with 400ms debounce
@@ -273,54 +147,21 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-    searchTimeoutRef.current = setTimeout(() => {
-      fetchExpenses({ search: text, force: true });
-    }, 400);
-  }, [fetchExpenses]);
+    searchTimeoutRef.current = setTimeout(() => setSearch(text), 400);
+  }, []);
 
   const handleClearSearch = useCallback(() => {
     setSearchText('');
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-    fetchExpenses({ search: '', force: true });
-  }, [fetchExpenses]);
+    setSearch('');
+  }, []);
 
-  // -------------------------------------------------------------------
-  // Type filter
-  // -------------------------------------------------------------------
-  const handleTypeFilterChange = useCallback((type: 'income' | 'expense' | null) => {
-    setTypeFilter(type);
-    fetchExpenses({ type, force: true });
-  }, [fetchExpenses]);
-
-  // -------------------------------------------------------------------
-  // Profile filter
-  // -------------------------------------------------------------------
-  const handleProfileFilterChange = useCallback((profileId: string | null) => {
-    setProfileFilter(profileId);
-    fetchExpenses({ profileId, force: true });
-  }, [fetchExpenses]);
-
-  // -------------------------------------------------------------------
-  // Category filter
-  // -------------------------------------------------------------------
-  const handleCategoryFilterChange = useCallback((category: string | null) => {
-    setCategoryFilter(category);
-    fetchExpenses({ category, force: true });
-  }, [fetchExpenses]);
-
-  // -------------------------------------------------------------------
-  // Date range filter
-  // -------------------------------------------------------------------
   const handleDateRangeChange = useCallback((newStartDate?: string, newEndDate?: string) => {
     setStartDate(newStartDate);
     setEndDate(newEndDate);
-    // Write the ref directly: the fetch merge treats an undefined override as
-    // "keep previous", which would prevent clearing dates (e.g. "All Time").
-    filtersRef.current = { ...filtersRef.current, startDate: newStartDate, endDate: newEndDate };
-    fetchExpenses({ force: true });
-  }, [fetchExpenses]);
+  }, []);
 
   // -------------------------------------------------------------------
   // CSV Export (server-generated — full history, current filters)
@@ -334,15 +175,8 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
     setExporting(true);
 
     try {
-      const f = filtersRef.current;
-      const csvString = await expenseService.exportCSV(accessToken, {
-        search: f.search || undefined,
-        type: f.type ?? undefined,
-        profileId: f.profileId ?? undefined,
-        category: f.category ?? undefined,
-        startDate: f.startDate,
-        endDate: f.endDate,
-      });
+      // Not a query — a one-shot file download, so it stays on the service.
+      const csvString = await expenseService.exportCSV(accessToken, filters);
 
       // Use react-native Share API to let the user share/copy the CSV data
       await Share.share({
@@ -355,7 +189,7 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
     } finally {
       setExporting(false);
     }
-  }, [accessToken]);
+  }, [accessToken, filters]);
 
   // -------------------------------------------------------------------
   // Existing helpers (formatDate, formatTime, formatAmount, etc.)
@@ -405,34 +239,39 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
     }, 100);
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = () => {
     if (!accessToken || !expenseToDelete) {
       return;
     }
 
+    const { id } = expenseToDelete;
     setDeleteLoading(true);
 
-    const deletedExpense = expenses.find((exp) => exp._id === expenseToDelete.id);
-    if (deletedExpense) {
-      setExpenses((prevExpenses) => prevExpenses.filter((exp) => exp._id !== expenseToDelete.id));
-      setTotalExpenseAmount((prevTotal) => prevTotal - deletedExpense.amount);
-    }
+    // Optimistic removal. `useDeleteExpense` invalidates expenses.all on
+    // success, which refetches this page and corrects the summary totals.
+    queryClient.setQueryData<InfiniteData<PersonalExpensesData>>(
+      queryKeys.expenses.infinite({ ...filters, limit: PAGE_SIZE }),
+      (prev) =>
+        prev && {
+          ...prev,
+          pages: prev.pages.map((p) => ({
+            ...p,
+            expenses: p.expenses.filter((exp) => exp._id !== id),
+          })),
+        }
+    );
 
     setDeleteDialogVisible(false);
     setExpenseToDelete(null);
 
-    try {
-      await expenseService.deleteExpense(expenseToDelete.id, accessToken);
-      // Re-fetch to update summary values
-      fetchExpenses({ force: true });
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to delete expense';
-      fetchExpenses({ force: true });
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setDeleteLoading(false);
-    }
+    deleteExpense.mutate(id, {
+      onError: (err) => {
+        // Put the optimistically removed row back.
+        queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all });
+        Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete expense');
+      },
+      onSettled: () => setDeleteLoading(false),
+    });
   };
 
   const handleCancelDelete = () => {
@@ -464,11 +303,11 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
 
   const categoryMap = React.useMemo(() => {
     const map: Record<string, { emoji: string; color: string }> = {};
-    categories.forEach((cat) => {
-      map[cat.name.toLowerCase()] = { emoji: cat.emoji, color: cat.color };
+    (categoriesQuery.data?.categories ?? []).forEach((cat) => {
+      if (cat.isActive) map[cat.name.toLowerCase()] = { emoji: cat.emoji, color: cat.color };
     });
     return map;
-  }, [categories]);
+  }, [categoriesQuery.data]);
 
   const renderExpenseItem = ({ item, index }: { item: Expense; index: number }) => {
     const isLastItem = index === expenses.length - 1;
@@ -540,7 +379,7 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
               styles.typeChip,
               typeFilter === null && styles.typeChipActive,
             ]}
-            onPress={() => handleTypeFilterChange(null)}
+            onPress={() => setTypeFilter(null)}
             activeOpacity={0.7}
           >
             <Text style={[styles.typeChipText, typeFilter === null && styles.typeChipTextActive]}>
@@ -552,7 +391,7 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
               styles.typeChip,
               typeFilter === 'expense' && styles.typeChipActive,
             ]}
-            onPress={() => handleTypeFilterChange('expense')}
+            onPress={() => setTypeFilter('expense')}
             activeOpacity={0.7}
           >
             <Text style={[styles.typeChipText, typeFilter === 'expense' && styles.typeChipTextActive]}>
@@ -564,7 +403,7 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
               styles.typeChip,
               typeFilter === 'income' && styles.typeChipActive,
             ]}
-            onPress={() => handleTypeFilterChange('income')}
+            onPress={() => setTypeFilter('income')}
             activeOpacity={0.7}
           >
             <Text style={[styles.typeChipText, typeFilter === 'income' && styles.typeChipTextActive]}>
@@ -639,7 +478,7 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
                 styles.profileChip,
                 profileFilter === null && styles.profileChipActive,
               ]}
-              onPress={() => handleProfileFilterChange(null)}
+              onPress={() => setProfileFilter(null)}
               activeOpacity={0.7}
             >
               <View style={[styles.profileDot, { backgroundColor: Theme.colors.primary }]} />
@@ -666,7 +505,7 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
                     styles.profileChip,
                     isSelected && styles.profileChipActive,
                   ]}
-                  onPress={() => handleProfileFilterChange(profile._id)}
+                  onPress={() => setProfileFilter(profile._id)}
                   activeOpacity={0.7}
                 >
                   <View style={[styles.profileDot, { backgroundColor: color }]} />
@@ -719,7 +558,7 @@ const ExpenseDetailScreen: React.FC<ExpenseDetailScreenProps> = ({ navigation, r
           solid
         />
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => fetchExpenses({ force: true })}>
+        <TouchableOpacity style={styles.retryButton} onPress={() => expensesQuery.refetch()}>
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>

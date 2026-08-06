@@ -8,11 +8,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
 import { Theme } from '../constants/theme';
-import { useAuth } from '../context/AuthContext';
-import { invitationService } from '../services/invitationService';
-import { queryKeys } from '../lib/queryKeys';
+import { useMyInvitations } from '../hooks/queries';
 import type {
   MainTabParamList,
   HomeStackParamList,
@@ -150,15 +147,8 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export const MainTabNavigator: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const { accessToken } = useAuth();
-  const { data: pendingCount = 0 } = useQuery({
-    queryKey: queryKeys.invitations.mine('pending'),
-    queryFn: async () => {
-      const response = await invitationService.listMyInvitations(accessToken!, 'pending');
-      return response.data?.invitations?.length ?? 0;
-    },
-    enabled: !!accessToken,
-  });
+  const { data: invitations } = useMyInvitations();
+  const pendingCount = invitations?.invitations?.length ?? 0;
 
   // Bottom padding = the device inset, but floored and capped so it looks right
   // everywhere: Android edge-to-edge can under-report (needs the 12 floor), and

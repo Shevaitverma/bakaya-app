@@ -8,7 +8,6 @@
 
 import { API_CONFIG } from '../constants/api';
 import { authedFetch } from '../lib/authedFetch';
-import { markDataChanged } from '../lib/staleness';
 import type {
   InvitationResponse,
   InvitationsResponse,
@@ -68,7 +67,6 @@ class InvitationService {
   ): Promise<InvitationResponse> {
     const endpoint = API_CONFIG.ENDPOINTS.INVITATIONS.ACCEPT(invitationId);
     const res = await authedFetch<InvitationResponse>(endpoint, { method: 'POST', token });
-    markDataChanged();
     return res;
   }
 
@@ -78,7 +76,6 @@ class InvitationService {
   ): Promise<InvitationResponse> {
     const endpoint = API_CONFIG.ENDPOINTS.INVITATIONS.DECLINE(invitationId);
     const res = await authedFetch<InvitationResponse>(endpoint, { method: 'POST', token });
-    markDataChanged();
     return res;
   }
 }

@@ -3,7 +3,7 @@
  * Shows group balances, expenses, and settlements
  */
 
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,27 +19,30 @@ import {
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Theme } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
-import { groupService } from '../../services/groupService';
-import { invitationService } from '../../services/invitationService';
-import { categoryService } from '../../services/categoryService';
-import { isFresh } from '../../lib/staleness';
-import { useRefetchOnForeground } from '../../hooks/useRefetchOnForeground';
+import {
+  useGroup,
+  useGroupExpenses,
+  useGroupBalances,
+  useSettlements,
+  useGroupInvitations,
+  useCategories,
+  useDeleteGroupExpense,
+  useDeleteSettlement,
+  useDeleteGroup,
+  useRemoveGroupMember,
+  useSendInvitation,
+  useCancelInvitation,
+} from '../../hooks/queries';
+import { queryKeys } from '../../lib/queryKeys';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import { formatCurrency } from '../../utils/currency';
 import type { HomeStackParamList } from '../../navigation/types';
-import type {
-  GroupData,
-  GroupExpense,
-  GroupBalance,
-  Settlement,
-  PopulatedUser,
-} from '../../types/group';
+import type { GroupExpense, PopulatedUser } from '../../types/group';
 import { getPopulatedUserName } from '../../types/group';
-import type { GroupInvitation } from '../../types/invitation';
-import type { Category } from '../../types/category';
 
 type GroupDetailScreenProps = NativeStackScreenProps<HomeStackParamList, 'GroupDetail'>;
 
@@ -62,53 +65,57 @@ const formatDate = (dateString: string): string => {
 const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route }) => {
   const { groupId, groupName } = route.params;
   const insets = useSafeAreaInsets();
-  const { accessToken, user } = useAuth();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  // Data states
-  const [group, setGroup] = useState<GroupData | null>(null);
-  const [expenses, setExpenses] = useState<GroupExpense[]>([]);
-  const [balances, setBalances] = useState<GroupBalance>({});
-  const [settlements, setSettlements] = useState<Settlement[]>([]);
-  const [totalAmount, setTotalAmount] = useState(0);
-  const [categories, setCategories] = useState<Category[]>([]);
+  // Data queries — everything under this group invalidates together
+  const groupQuery = useGroup(groupId);
+  const expensesQuery = useGroupExpenses(groupId);
+  const balancesQuery = useGroupBalances(groupId);
+  const settlementsQuery = useSettlements(groupId);
+  // Admin-only endpoint; members just get no data back
+  const invitationsQuery = useGroupInvitations(groupId, 'pending');
+  const categoriesQuery = useCategories();
 
-  // Loading states
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const group = groupQuery.data ?? null;
+  const expenses = expensesQuery.data?.expenses ?? [];
+  const totalAmount = expensesQuery.data?.totalAmount ?? 0;
+  const balances = balancesQuery.data?.balances ?? {};
+  const settlements = settlementsQuery.data?.settlements ?? [];
+  const pendingInvitations = invitationsQuery.data?.invitations ?? [];
+
+  // Mutations
+  const deleteExpense = useDeleteGroupExpense();
+  const deleteSettlementMutation = useDeleteSettlement();
+  const deleteGroupMutation = useDeleteGroup();
+  const removeMember = useRemoveGroupMember();
+  const sendInvitation = useSendInvitation();
+  const cancelInvitation = useCancelInvitation();
 
   // Delete dialog
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState<{ id: string; title: string } | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Invite member state
   const [showAddMember, setShowAddMember] = useState(false);
   const [memberEmail, setMemberEmail] = useState('');
   const [inviteMessage, setInviteMessage] = useState('');
-  const [isAddingMember, setIsAddingMember] = useState(false);
   const [addMemberError, setAddMemberError] = useState('');
-
-  // Pending invitations
-  const [pendingInvitations, setPendingInvitations] = useState<GroupInvitation[]>([]);
 
   // Cancel invitation dialog
   const [cancelInvitationDialogVisible, setCancelInvitationDialogVisible] = useState(false);
   const [invitationToCancel, setInvitationToCancel] = useState<{ id: string; email: string } | null>(null);
-  const [cancelInvitationLoading, setCancelInvitationLoading] = useState(false);
 
   // Remove member dialog
   const [removeMemberDialogVisible, setRemoveMemberDialogVisible] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<{ id: string; name: string } | null>(null);
-  const [removeMemberLoading, setRemoveMemberLoading] = useState(false);
 
   // Delete settlement dialog
   const [deleteSettlementDialogVisible, setDeleteSettlementDialogVisible] = useState(false);
   const [settlementToDelete, setSettlementToDelete] = useState<{ id: string; description: string } | null>(null);
-  const [deleteSettlementLoading, setDeleteSettlementLoading] = useState(false);
 
   // Delete group dialog
   const [deleteGroupDialogVisible, setDeleteGroupDialogVisible] = useState(false);
-  const [deleteGroupLoading, setDeleteGroupLoading] = useState(false);
 
   // Map userId to a display name from group members.
   // Falls back to a generic "Unknown member" instead of echoing the raw ObjectId,
@@ -148,119 +155,82 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
       .filter((m): m is { userId: string; name: string } => m !== null);
   }, [group]);
 
-  const lastFetchTime = useRef<number>(0);
+  // The group, its expenses, balances and settlements load as one unit
+  const loading =
+    groupQuery.isLoading ||
+    expensesQuery.isLoading ||
+    balancesQuery.isLoading ||
+    settlementsQuery.isLoading;
 
-  const fetchAllData = useCallback(async () => {
-    if (!accessToken) return;
-    if (isFresh(lastFetchTime.current)) return;
+  const loadError =
+    groupQuery.error ?? expensesQuery.error ?? balancesQuery.error ?? settlementsQuery.error;
 
-    try {
-      if (!group) setLoading(true);
-      const [groupRes, expensesRes, balancesRes, settlementsRes, invitationsRes, categoriesRes] = await Promise.all([
-        groupService.getGroup(groupId, accessToken),
-        groupService.getGroupExpenses(groupId, 1, 50, accessToken),
-        groupService.getGroupBalances(groupId, accessToken),
-        groupService.getSettlements(groupId, accessToken),
-        // Admin-only endpoint; swallow 403/401 silently so non-admins see nothing
-        invitationService
-          .listGroupInvitations(groupId, accessToken, 'pending')
-          .catch(() => null),
-        categoryService.getCategories(accessToken).catch(() => null),
-      ]);
-
-      if (groupRes.success && groupRes.data) {
-        setGroup(groupRes.data);
-      }
-      if (expensesRes.success && expensesRes.data) {
-        setExpenses(expensesRes.data.expenses);
-        setTotalAmount(expensesRes.data.totalAmount);
-      }
-      if (balancesRes.success && balancesRes.data) {
-        setBalances(balancesRes.data.balances);
-      }
-      if (settlementsRes.success && settlementsRes.data) {
-        setSettlements(settlementsRes.data.settlements);
-      }
-      if (invitationsRes && invitationsRes.success && invitationsRes.data) {
-        setPendingInvitations(invitationsRes.data.invitations ?? []);
-      } else {
-        setPendingInvitations([]);
-      }
-      if (categoriesRes && categoriesRes.success && categoriesRes.data?.categories) {
-        setCategories(categoriesRes.data.categories.filter((c) => c.isActive));
-      }
-      lastFetchTime.current = Date.now();
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to load group details';
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (loadError) {
+      Alert.alert('Error', loadError.message || 'Failed to load group details');
     }
-  }, [accessToken, groupId, group]);
+  }, [loadError]);
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchAllData();
-    }, [fetchAllData])
-  );
-
-  useRefetchOnForeground(fetchAllData);
+  // Local flag so the pull-to-refresh spinner only shows for an actual pull,
+  // not for the background refetches the cache does on its own.
+  const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    lastFetchTime.current = 0;
-    await fetchAllData();
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.groups.detail(groupId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories.all }),
+    ]);
     setRefreshing(false);
-  }, [fetchAllData]);
+  }, [queryClient, groupId]);
+
+  // Add/edit expense and settle-up still write through the service layer, so
+  // returning from them has to invalidate. Drop this once they use mutations.
+  useFocusEffect(
+    useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.groups.detail(groupId) });
+    }, [queryClient, groupId])
+  );
 
   const handleDeleteExpense = (expenseId: string, title: string) => {
     setExpenseToDelete({ id: expenseId, title });
     setDeleteDialogVisible(true);
   };
 
-  const handleConfirmDelete = async () => {
-    if (!accessToken || !expenseToDelete) return;
+  const handleConfirmDelete = () => {
+    if (!expenseToDelete) return;
+    const target = expenseToDelete;
 
-    setDeleteLoading(true);
-
-    // Optimistically remove from list
-    const deletedIndex = expenses.findIndex((e) => e._id === expenseToDelete.id);
-    const deletedExpense = deletedIndex >= 0 ? expenses[deletedIndex] : undefined;
-    setExpenses((prev) => prev.filter((e) => e._id !== expenseToDelete.id));
-    if (deletedExpense) {
-      setTotalAmount((t) => t - deletedExpense.amount);
-    }
+    // Optimistically drop the row from every cached expenses page.
+    // The snapshot restores the exact previous list (and total) on failure.
+    const expensesKey = queryKeys.groups.expenses(groupId);
+    const snapshot = queryClient.getQueriesData({ queryKey: expensesKey });
+    const deleted = expenses.find((e) => e._id === target.id);
+    queryClient.setQueriesData({ queryKey: expensesKey }, (old: any) =>
+      old?.expenses
+        ? {
+            ...old,
+            expenses: old.expenses.filter((e: GroupExpense) => e._id !== target.id),
+            totalAmount: old.totalAmount - (deleted?.amount ?? 0),
+          }
+        : old
+    );
     setDeleteDialogVisible(false);
     setExpenseToDelete(null);
 
-    try {
-      await groupService.deleteGroupExpense(groupId, expenseToDelete.id, accessToken);
-      // Refresh balances after deletion
-      const balancesRes = await groupService.getGroupBalances(groupId, accessToken);
-      if (balancesRes.success && balancesRes.data) {
-        setBalances(balancesRes.data.balances);
+    deleteExpense.mutate(
+      { groupId, expenseId: target.id },
+      {
+        onError: (err) => {
+          snapshot.forEach(([key, data]) => queryClient.setQueryData(key, data));
+          Alert.alert('Error', err.message || 'Failed to delete expense');
+        },
       }
-    } catch (err) {
-      // Revert optimistic removal at its original position
-      if (deletedExpense) {
-        setExpenses((prev) => {
-          const next = [...prev];
-          next.splice(Math.min(deletedIndex, next.length), 0, deletedExpense);
-          return next;
-        });
-        setTotalAmount((t) => t + deletedExpense.amount);
-      }
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to delete expense';
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setDeleteLoading(false);
-    }
+    );
   };
 
   const handleCancelDelete = () => {
-    if (!deleteLoading) {
+    if (!deleteExpense.isPending) {
       setDeleteDialogVisible(false);
       setExpenseToDelete(null);
     }
@@ -290,33 +260,28 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
     });
   };
 
-  const handleAddMember = async () => {
-    if (!accessToken || isAddingMember || !memberEmail.trim()) return;
-
+  const handleAddMember = () => {
     const trimmedEmail = memberEmail.trim();
-    setIsAddingMember(true);
-    setAddMemberError('');
+    if (sendInvitation.isPending || !trimmedEmail) return;
 
-    try {
-      const res = await invitationService.sendInvitation(groupId, trimmedEmail, accessToken, inviteMessage);
-      if (res.success && res.data?.invitation) {
-        setPendingInvitations((prev) => [res.data.invitation, ...prev]);
+    setAddMemberError('');
+    sendInvitation.mutate(
+      { groupId, email: trimmedEmail, message: inviteMessage },
+      {
+        onSuccess: () => {
+          setMemberEmail('');
+          setInviteMessage('');
+          setShowAddMember(false);
+          Alert.alert(
+            'Invitation sent',
+            `We've sent an invitation to ${trimmedEmail}.`,
+            [{ text: 'OK' }]
+          );
+        },
+        onError: (err) =>
+          setAddMemberError(err.message || 'Unable to send invitation. Please try again.'),
       }
-      setMemberEmail('');
-      setInviteMessage('');
-      setShowAddMember(false);
-      Alert.alert(
-        'Invitation sent',
-        `We've sent an invitation to ${trimmedEmail}.`,
-        [{ text: 'OK' }]
-      );
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Unable to send invitation. Please try again.';
-      setAddMemberError(errorMessage);
-    } finally {
-      setIsAddingMember(false);
-    }
+    );
   };
 
   const handleCancelInvitation = (invitationId: string, email: string) => {
@@ -324,26 +289,23 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
     setCancelInvitationDialogVisible(true);
   };
 
-  const handleConfirmCancelInvitation = async () => {
-    if (!accessToken || !invitationToCancel) return;
+  const handleConfirmCancelInvitation = () => {
+    if (!invitationToCancel) return;
 
-    setCancelInvitationLoading(true);
-    try {
-      await invitationService.cancelInvitation(groupId, invitationToCancel.id, accessToken);
-      setPendingInvitations((prev) => prev.filter((i) => i._id !== invitationToCancel.id));
-      setCancelInvitationDialogVisible(false);
-      setInvitationToCancel(null);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to cancel invitation';
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setCancelInvitationLoading(false);
-    }
+    cancelInvitation.mutate(
+      { groupId, invitationId: invitationToCancel.id },
+      {
+        onSuccess: () => {
+          setCancelInvitationDialogVisible(false);
+          setInvitationToCancel(null);
+        },
+        onError: (err) => Alert.alert('Error', err.message || 'Failed to cancel invitation'),
+      }
+    );
   };
 
   const handleCancelCancelInvitation = () => {
-    if (!cancelInvitationLoading) {
+    if (!cancelInvitation.isPending) {
       setCancelInvitationDialogVisible(false);
       setInvitationToCancel(null);
     }
@@ -366,30 +328,23 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
     setRemoveMemberDialogVisible(true);
   };
 
-  const handleConfirmRemoveMember = async () => {
-    if (!accessToken || !memberToRemove) return;
+  const handleConfirmRemoveMember = () => {
+    if (!memberToRemove) return;
 
-    setRemoveMemberLoading(true);
-    try {
-      await groupService.removeMember(groupId, memberToRemove.id, accessToken);
-      setRemoveMemberDialogVisible(false);
-      setMemberToRemove(null);
-      // Refresh group data
-      const groupRes = await groupService.getGroup(groupId, accessToken);
-      if (groupRes.success && groupRes.data) {
-        setGroup(groupRes.data);
+    removeMember.mutate(
+      { groupId, memberId: memberToRemove.id },
+      {
+        onSuccess: () => {
+          setRemoveMemberDialogVisible(false);
+          setMemberToRemove(null);
+        },
+        onError: (err) => Alert.alert('Error', err.message || 'Failed to remove member'),
       }
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to remove member';
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setRemoveMemberLoading(false);
-    }
+    );
   };
 
   const handleCancelRemoveMember = () => {
-    if (!removeMemberLoading) {
+    if (!removeMember.isPending) {
       setRemoveMemberDialogVisible(false);
       setMemberToRemove(null);
     }
@@ -406,16 +361,15 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
         {
           text: 'Leave',
           style: 'destructive',
-          onPress: async () => {
-            if (!accessToken || !user?.id) return;
-            try {
-              await groupService.removeMember(groupId, user.id, accessToken);
-              navigation.goBack();
-            } catch (err) {
-              const msg =
-                err instanceof Error ? err.message : 'Failed to leave group';
-              Alert.alert('Error', msg);
-            }
+          onPress: () => {
+            if (!user?.id) return;
+            removeMember.mutate(
+              { groupId, memberId: user.id },
+              {
+                onSuccess: () => navigation.goBack(),
+                onError: (err) => Alert.alert('Error', err.message || 'Failed to leave group'),
+              }
+            );
           },
         },
       ]
@@ -427,36 +381,23 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
     setDeleteSettlementDialogVisible(true);
   };
 
-  const handleConfirmDeleteSettlement = async () => {
-    if (!accessToken || !settlementToDelete) return;
+  const handleConfirmDeleteSettlement = () => {
+    if (!settlementToDelete) return;
 
-    setDeleteSettlementLoading(true);
-    try {
-      await groupService.deleteSettlement(groupId, settlementToDelete.id, accessToken);
-      setDeleteSettlementDialogVisible(false);
-      setSettlementToDelete(null);
-      // Refresh settlements and balances
-      const [settlementsRes, balancesRes] = await Promise.all([
-        groupService.getSettlements(groupId, accessToken),
-        groupService.getGroupBalances(groupId, accessToken),
-      ]);
-      if (settlementsRes.success && settlementsRes.data) {
-        setSettlements(settlementsRes.data.settlements);
+    deleteSettlementMutation.mutate(
+      { groupId, settlementId: settlementToDelete.id },
+      {
+        onSuccess: () => {
+          setDeleteSettlementDialogVisible(false);
+          setSettlementToDelete(null);
+        },
+        onError: (err) => Alert.alert('Error', err.message || 'Failed to delete settlement'),
       }
-      if (balancesRes.success && balancesRes.data) {
-        setBalances(balancesRes.data.balances);
-      }
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to delete settlement';
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setDeleteSettlementLoading(false);
-    }
+    );
   };
 
   const handleCancelDeleteSettlement = () => {
-    if (!deleteSettlementLoading) {
+    if (!deleteSettlementMutation.isPending) {
       setDeleteSettlementDialogVisible(false);
       setSettlementToDelete(null);
     }
@@ -470,29 +411,18 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
     setDeleteGroupDialogVisible(true);
   };
 
-  const handleConfirmDeleteGroup = async () => {
-    if (!accessToken) return;
-
-    setDeleteGroupLoading(true);
-    try {
-      const response = await groupService.deleteGroup(groupId, accessToken);
-      if (response.success) {
+  const handleConfirmDeleteGroup = () => {
+    deleteGroupMutation.mutate(groupId, {
+      onSuccess: () => {
         setDeleteGroupDialogVisible(false);
         navigation.goBack();
-      } else {
-        throw new Error('Failed to delete group');
-      }
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to delete group';
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setDeleteGroupLoading(false);
-    }
+      },
+      onError: (err) => Alert.alert('Error', err.message || 'Failed to delete group'),
+    });
   };
 
   const handleCancelDeleteGroup = () => {
-    if (!deleteGroupLoading) {
+    if (!deleteGroupMutation.isPending) {
       setDeleteGroupDialogVisible(false);
     }
   };
@@ -503,11 +433,13 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
   // Build category name -> emoji/color lookup map
   const categoryMap = useMemo(() => {
     const map: Record<string, { emoji: string; color: string }> = {};
-    categories.forEach((cat) => {
-      map[cat.name.toLowerCase()] = { emoji: cat.emoji, color: cat.color };
-    });
+    (categoriesQuery.data?.categories ?? [])
+      .filter((cat) => cat.isActive)
+      .forEach((cat) => {
+        map[cat.name.toLowerCase()] = { emoji: cat.emoji, color: cat.color };
+      });
     return map;
-  }, [categories]);
+  }, [categoriesQuery.data]);
 
   const getSettlementUserName = (settlementUser: PopulatedUser): string => {
     return getPopulatedUserName(settlementUser);
@@ -1010,17 +942,17 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  editable={!isAddingMember}
+                  editable={!sendInvitation.isPending}
                 />
                 <TouchableOpacity
                   style={[
                     styles.addMemberSubmitButton,
-                    (!memberEmail.trim() || isAddingMember) && styles.addMemberSubmitButtonDisabled,
+                    (!memberEmail.trim() || sendInvitation.isPending) && styles.addMemberSubmitButtonDisabled,
                   ]}
                   onPress={handleAddMember}
-                  disabled={!memberEmail.trim() || isAddingMember}
+                  disabled={!memberEmail.trim() || sendInvitation.isPending}
                   activeOpacity={0.8}>
-                  {isAddingMember ? (
+                  {sendInvitation.isPending ? (
                     <ActivityIndicator size="small" color={Theme.colors.white} />
                   ) : (
                     <Text style={styles.addMemberSubmitButtonText}>Invite</Text>
@@ -1034,7 +966,7 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
                 value={inviteMessage}
                 onChangeText={setInviteMessage}
                 multiline
-                editable={!isAddingMember}
+                editable={!sendInvitation.isPending}
               />
             </View>
           )}
@@ -1337,7 +1269,7 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
         cancelText="Cancel"
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
-        loading={deleteLoading}
+        loading={deleteExpense.isPending}
         variant="danger"
       />
 
@@ -1354,7 +1286,7 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
         cancelText="Cancel"
         onConfirm={handleConfirmRemoveMember}
         onCancel={handleCancelRemoveMember}
-        loading={removeMemberLoading}
+        loading={removeMember.isPending}
         variant="danger"
       />
 
@@ -1371,7 +1303,7 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
         cancelText="Cancel"
         onConfirm={handleConfirmDeleteSettlement}
         onCancel={handleCancelDeleteSettlement}
-        loading={deleteSettlementLoading}
+        loading={deleteSettlementMutation.isPending}
         variant="danger"
       />
 
@@ -1384,7 +1316,7 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
         cancelText="Cancel"
         onConfirm={handleConfirmDeleteGroup}
         onCancel={handleCancelDeleteGroup}
-        loading={deleteGroupLoading}
+        loading={deleteGroupMutation.isPending}
         variant="danger"
       />
 
@@ -1401,7 +1333,7 @@ const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({ navigation, route
         cancelText="Keep"
         onConfirm={handleConfirmCancelInvitation}
         onCancel={handleCancelCancelInvitation}
-        loading={cancelInvitationLoading}
+        loading={cancelInvitation.isPending}
         variant="danger"
       />
     </View>

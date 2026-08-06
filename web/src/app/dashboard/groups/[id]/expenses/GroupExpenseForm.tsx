@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { ApiError } from "@/lib/api-client";
 import { formatCurrencyExact } from "@/utils/currency";
 import type { Category } from "@/lib/api/categories";
-import type { Group, GroupExpense, GroupExpenseSplit } from "@/lib/api/groups";
+import type { Group, GroupExpense, GroupExpenseSplit, SplitType } from "@/lib/api/groups";
 import styles from "./new/page.module.css";
 
 export interface GroupExpenseFormValues {
@@ -13,6 +13,7 @@ export interface GroupExpenseFormValues {
   category: string;
   notes?: string;
   paidBy: string;
+  splitType: SplitType;
   splitAmong: GroupExpenseSplit[];
 }
 
@@ -64,15 +65,11 @@ export function GroupExpenseForm({
 
   const [paidBy, setPaidBy] = useState(initial?.paidBy.id ?? "");
 
-  // An initial expense whose splits are all (near-)equal reads as an equal
-  // split; anything else starts in exact mode with the amounts prefilled.
-  const initialAmounts = initial?.splitAmong.map((s) => s.amount) ?? [];
-  const initialIsEqual =
-    !initial ||
-    initialAmounts.every((a) => Math.abs(a - (initialAmounts[0] ?? 0)) < 0.02);
-
-  const [splitType, setSplitType] = useState<"equal" | "exact" | "percentage">(
-    initialIsEqual ? "equal" : "exact"
+  // The server persists splitType, so just reopen it. Expenses written before
+  // it existed have none; those are plain stored amounts, so start in exact
+  // mode rather than silently re-splitting them equally on save.
+  const [splitType, setSplitType] = useState<SplitType>(
+    initial ? initial.splitType ?? "exact" : "equal"
   );
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(
     () =>
@@ -83,11 +80,17 @@ export function GroupExpenseForm({
       )
   );
   const [exactAmounts, setExactAmounts] = useState<Record<string, string>>(() =>
-    initial && !initialIsEqual
-      ? Object.fromEntries(initial.splitAmong.map((s) => [s.userId, String(s.amount)]))
-      : {}
+    Object.fromEntries(
+      (initial?.splitAmong ?? []).map((s) => [s.userId, String(s.amount)])
+    )
   );
-  const [percentages, setPercentages] = useState<Record<string, string>>({});
+  const [percentages, setPercentages] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      (initial?.splitAmong ?? [])
+        .filter((s) => s.percentage !== undefined)
+        .map((s) => [s.userId, String(s.percentage)])
+    )
+  );
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -197,7 +200,7 @@ export function GroupExpenseForm({
   };
 
   /** Handle split type change, reset custom inputs */
-  const handleSplitTypeChange = (type: "equal" | "exact" | "percentage") => {
+  const handleSplitTypeChange = (type: SplitType) => {
     setSplitType(type);
     if (errors.splitAmong) {
       setErrors((prev) => ({ ...prev, splitAmong: undefined }));
@@ -287,23 +290,30 @@ export function GroupExpenseForm({
       }));
     } else if (splitType === "percentage") {
       // Convert percentages to amounts; handle rounding by assigning remainder to first member
+      // Whole paise: flooring a binary float loses a paise on shares that are
+      // exact in decimal (0.58 * 50 === 28.999999999999996).
+      const totalPaise = Math.round(totalAmount * 100);
       const rawAmounts = memberIds.map((userId) => {
         const pct = parseFloat(percentages[userId] || "0");
-        return Math.floor((totalAmount * pct) / 100 * 100) / 100;
+        return Math.floor(Math.round(totalPaise * pct * 1e4) / 1e6) / 100;
       });
       const rawTotal = rawAmounts.reduce((s, a) => s + a, 0);
       const diff = Math.round((totalAmount - rawTotal) * 100) / 100;
       splitAmong = memberIds.map((userId, idx) => ({
         userId,
         amount: idx === 0 ? Math.round((rawAmounts[idx]! + diff) * 100) / 100 : rawAmounts[idx]!,
+        // Persisted so an edit can reopen the exact percentages.
+        percentage: parseFloat(percentages[userId] || "0"),
       }));
     } else {
       // Equal split
-      const splitPerPerson = Math.floor((totalAmount * 100) / memberIds.length) / 100;
-      const remainder = Math.round((totalAmount - splitPerPerson * memberIds.length) * 100) / 100;
+      // Whole paise, same reason as above.
+      const equalTotalPaise = Math.round(totalAmount * 100);
+      const basePaise = Math.floor(equalTotalPaise / memberIds.length);
+      const remainderPaise = equalTotalPaise - basePaise * memberIds.length;
       splitAmong = memberIds.map((userId, idx) => ({
         userId,
-        amount: idx === 0 ? Math.round((splitPerPerson + remainder) * 100) / 100 : splitPerPerson,
+        amount: (idx === 0 ? basePaise + remainderPaise : basePaise) / 100,
       }));
     }
 
@@ -314,6 +324,7 @@ export function GroupExpenseForm({
         category: category.trim(),
         notes: notes.trim() || undefined,
         paidBy,
+        splitType,
         splitAmong,
       });
     } catch (error) {

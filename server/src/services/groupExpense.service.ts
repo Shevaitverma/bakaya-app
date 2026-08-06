@@ -7,6 +7,91 @@ import mongoose from "mongoose";
 import { logger } from "@/utils/logger";
 import { sendToUsers, getUserDisplayName } from "@/services/notification.service";
 
+// Floor every share to paise and hand the leftover paise to the first member,
+// so the parts always add up to `amount` exactly. All arithmetic is in whole
+// paise: flooring a binary float shaves a paise off shares that are exact in
+// decimal (`(0.58 / 2) * 100 === 28.999999999999996`).
+export function splitEqually(amount: number, userIds: string[]) {
+  const n = userIds.length;
+  const totalPaise = Math.round(amount * 100);
+  if (totalPaise < n) {
+    throw new Error("Expense amount is too small to split");
+  }
+  const basePaise = Math.floor(totalPaise / n);
+  const remainderPaise = totalPaise - basePaise * n;
+  return userIds.map((userId, i) => ({
+    userId,
+    amount: (i === 0 ? basePaise + remainderPaise : basePaise) / 100,
+  }));
+}
+
+// Same floor-plus-remainder trick, driven by stored percentages instead of an
+// even share. Percentages are carried through so an edit can reopen them.
+export function splitByPercentage(
+  amount: number,
+  entries: Array<{ userId: string; percentage: number }>
+) {
+  const totalPaise = Math.round(amount * 100);
+  const splits = entries.map((e) => ({
+    userId: e.userId,
+    percentage: e.percentage,
+    // Snap the product to 1e-6 of a paise before flooring, for the same reason.
+    amount: Math.floor(Math.round(totalPaise * e.percentage * 1e4) / 1e6) / 100,
+  }));
+  const assigned = splits.reduce((sum, s) => sum + s.amount, 0);
+  const remainder = Math.round((amount - assigned) * 100) / 100;
+  if (splits[0]) {
+    splits[0].amount = Math.round((splits[0].amount + remainder) * 100) / 100;
+  }
+  return splits;
+}
+
+export interface SuggestedTransfer {
+  from: string;
+  to: string;
+  amount: number;
+}
+
+// Greedy largest-debtor / largest-creditor matching: at most N-1 transfers, but
+// NOT the provably minimum-cashflow plan (that problem is NP-hard). Mirrors the
+// matcher the mobile client has always used.
+export function suggestTransfers(balances: Record<string, number>): SuggestedTransfer[] {
+  const debtors: Array<{ userId: string; amount: number }> = [];
+  const creditors: Array<{ userId: string; amount: number }> = [];
+
+  // ±0.01 tolerance so FP drift around zero doesn't produce ghost rows.
+  for (const [userId, amount] of Object.entries(balances)) {
+    if (amount < -0.01) debtors.push({ userId, amount: -amount });
+    else if (amount > 0.01) creditors.push({ userId, amount });
+  }
+
+  // Largest debts/credits matched first
+  debtors.sort((a, b) => b.amount - a.amount);
+  creditors.sort((a, b) => b.amount - a.amount);
+
+  const transfers: SuggestedTransfer[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < debtors.length && j < creditors.length) {
+    const debtor = debtors[i]!;
+    const creditor = creditors[j]!;
+    const amount = Math.min(debtor.amount, creditor.amount);
+    if (amount > 0.01) {
+      transfers.push({
+        from: debtor.userId,
+        to: creditor.userId,
+        amount: Math.round(amount * 100) / 100,
+      });
+    }
+    debtor.amount -= amount;
+    creditor.amount -= amount;
+    if (debtor.amount < 0.01) i++;
+    if (creditor.amount < 0.01) j++;
+  }
+
+  return transfers;
+}
+
 export async function createGroupExpense(
   groupId: string,
   paidBy: string,
@@ -26,18 +111,11 @@ export async function createGroupExpense(
 
   // Default: split equally among all members if splitAmong not provided
   let splitAmong = input.splitAmong;
+  // An explicit splitAmong with no declared type is a set of exact amounts.
+  let splitType = input.splitType ?? "exact";
   if (!splitAmong || splitAmong.length === 0) {
-    const n = group.members.length;
-    if (input.amount / n < 0.01) {
-      throw new Error("Expense amount is too small to split");
-    }
-    const baseAmount = Math.floor((input.amount / n) * 100) / 100;
-    const remainder = Math.round((input.amount - baseAmount * n) * 100) / 100;
-    splitAmong = group.members.map((m, i) => ({
-      userId: m.userId.toString(),
-      // round to avoid FP drift
-      amount: i === 0 ? Math.round((baseAmount + remainder) * 100) / 100 : baseAmount,
-    }));
+    splitType = "equal";
+    splitAmong = splitEqually(input.amount, group.members.map((m) => m.userId.toString()));
   } else {
     const uniqueUserIds = new Set(splitAmong.map((s) => s.userId));
     if (uniqueUserIds.size !== splitAmong.length) {
@@ -55,6 +133,10 @@ export async function createGroupExpense(
     if (Math.abs(splitSum - input.amount) > 0.01) {
       throw new Error(`Split amounts (${splitSum}) must equal the expense total (${input.amount})`);
     }
+    // Percentages only mean something on a percentage split — drop stale ones.
+    if (splitType !== "percentage") {
+      splitAmong = splitAmong.map(({ userId, amount }) => ({ userId, amount }));
+    }
   }
 
   const expense = await GroupExpense.create({
@@ -64,6 +146,7 @@ export async function createGroupExpense(
     amount: input.amount,
     category: input.category,
     notes: input.notes,
+    splitType,
     splitAmong,
   });
 
@@ -164,20 +247,19 @@ export async function updateGroupExpense(
   // EXISTING participants, not all group members.
   if (input.amount !== undefined && !input.splitAmong) {
     const currentParticipants = expense.splitAmong.map((s) => s.userId.toString());
-    const n = currentParticipants.length || group.members.length;
-    if (input.amount / n < 0.01) {
-      throw new Error("Expense amount is too small to split");
-    }
-    const baseAmount = Math.floor((input.amount / n) * 100) / 100;
-    const remainder = Math.round((input.amount - baseAmount * n) * 100) / 100;
     const participants = currentParticipants.length > 0
       ? currentParticipants
       : group.members.map((m) => m.userId.toString());
-    input.splitAmong = participants.map((uid, i) => ({
-      userId: uid,
-      // round to avoid FP drift
-      amount: i === 0 ? Math.round((baseAmount + remainder) * 100) / 100 : baseAmount,
-    }));
+    // A percentage split keeps its percentages when the total changes.
+    if (expense.splitType === "percentage" && expense.splitAmong.every((s) => typeof s.percentage === "number")) {
+      input.splitAmong = splitByPercentage(
+        input.amount,
+        expense.splitAmong.map((s) => ({ userId: s.userId.toString(), percentage: s.percentage! }))
+      );
+    } else {
+      input.splitAmong = splitEqually(input.amount, participants);
+      input.splitType = "equal";
+    }
   } else if (input.splitAmong) {
     const uniqueUserIds = new Set(input.splitAmong.map((s) => s.userId));
     if (uniqueUserIds.size !== input.splitAmong.length) {
@@ -199,6 +281,12 @@ export async function updateGroupExpense(
     const splitSum = input.splitAmong.reduce((sum, s) => sum + s.amount, 0);
     if (Math.abs(splitSum - total) > 0.01) {
       throw new Error(`Split amounts (${splitSum}) must equal the expense total (${total})`);
+    }
+    // An explicit splitAmong with no declared type is a set of exact amounts.
+    input.splitType = input.splitType ?? "exact";
+    // Percentages only mean something on a percentage split — drop stale ones.
+    if (input.splitType !== "percentage") {
+      input.splitAmong = input.splitAmong.map(({ userId, amount }) => ({ userId, amount }));
     }
   }
 

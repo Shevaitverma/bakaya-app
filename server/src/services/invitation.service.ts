@@ -17,6 +17,40 @@ function isGroupAdmin(group: { members: Array<{ userId: mongoose.Types.ObjectId 
   );
 }
 
+/**
+ * A "pending" invitation whose expiry has passed.
+ *
+ * These are not merely cosmetic: the unique partial index on
+ * {groupId, invitedUserId, status:"pending"} keeps counting them, so a lapsed
+ * invitation permanently blocks re-inviting that person to that group until it
+ * is moved out of "pending".
+ */
+export function isStalePending(
+  invitation: { status: GroupInvitationStatus; expiresAt?: Date | null },
+  now: Date = new Date()
+): boolean {
+  return (
+    invitation.status === "pending" &&
+    !!invitation.expiresAt &&
+    invitation.expiresAt.getTime() <= now.getTime()
+  );
+}
+
+/**
+ * Transitions lapsed invitations to "expired", freeing the unique index slot.
+ *
+ * Done lazily at the two points where a stale row is actually harmful rather
+ * than on a timer — no scheduler to own, and it self-heals rows that lapsed
+ * before this existed.
+ */
+async function expireStalePending(filter: Record<string, unknown>): Promise<number> {
+  const result = await GroupInvitation.updateMany(
+    { ...filter, status: "pending", expiresAt: { $lte: new Date() } },
+    { $set: { status: "expired" } }
+  );
+  return result.modifiedCount ?? 0;
+}
+
 export async function createInvitation(
   groupId: string,
   inviterUserId: string,
@@ -42,6 +76,9 @@ export async function createInvitation(
     (m) => m.userId.toString() === invitedUser._id.toString()
   );
   if (alreadyMember) throw new Error("User is already a member");
+
+  // Retire any lapsed invitation first, otherwise it blocks this re-invite forever.
+  await expireStalePending({ groupId: group._id, invitedUserId: invitedUser._id });
 
   const existingPending = await GroupInvitation.findOne({
     groupId: group._id,
@@ -101,6 +138,9 @@ export async function listGroupInvitations(
   if (!isGroupAdmin(group, requestingUserId)) {
     throw new Error("Only admins can view invitations");
   }
+
+  // Keep the admin list honest — a lapsed invitation should not read as "pending".
+  await expireStalePending({ groupId: group._id });
 
   const filter: Record<string, unknown> = { groupId: group._id };
   if (options.status) filter.status = options.status;

@@ -2,7 +2,7 @@
  * Profiles Screen - Manage user profiles
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,116 +16,92 @@ import {
 } from 'react-native';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Theme } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
-import { profileService } from '../../services/profileService';
+import { useProfiles, useDeleteProfile } from '../../hooks/queries';
+import { queryKeys } from '../../lib/queryKeys';
 import { expenseService } from '../../services/expenseService';
-import { isFresh } from '../../lib/staleness';
-import { useRefetchOnForeground } from '../../hooks/useRefetchOnForeground';
 import { formatCurrency } from '../../utils/currency';
 import { istMonthStart, istToday } from '../../utils/istDate';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
-import type { Profile } from '../../types/profile';
+import type { Profile, ProfilesResponse } from '../../types/profile';
 import type { MeStackParamList } from '../../navigation/types';
 
 type ProfilesScreenProps = NativeStackScreenProps<MeStackParamList, 'Profiles'>;
 
+/**
+ * Month-to-date totals per profile. No shared hook: it is an N+1 fan-out only
+ * this screen needs. Keyed under `profiles.all` so profile mutations (which
+ * invalidate that prefix) refresh it too.
+ */
+function useProfileTotals(profiles: Profile[]) {
+  const { accessToken } = useAuth();
+  const ids = profiles.map((p) => p._id);
+
+  return useQuery({
+    queryKey: [...queryKeys.profiles.all, 'totals', ids],
+    queryFn: async () => {
+      const totals: Record<string, { totalSpent: number; balance: number }> = {};
+
+      // Fetch sequentially to avoid rate limits
+      for (const id of ids) {
+        try {
+          const response = await expenseService.getPersonalExpenses(1, 1, accessToken!, {
+            profileId: id,
+            startDate: istMonthStart(),
+            endDate: istToday(),
+          });
+          if (response.success && response.data) {
+            totals[id] = {
+              totalSpent: response.data.totalExpenseAmount ?? 0,
+              balance: response.data.balance ?? 0,
+            };
+          }
+        } catch (err) {
+          // Silently skip — leave this profile without totals
+          console.warn(`[ProfilesScreen] Failed to fetch totals for profile ${id}`, err);
+        }
+      }
+
+      return totals;
+    },
+    // Keep the old totals on screen while the ids change (e.g. after a delete)
+    placeholderData: (prev) => prev,
+    enabled: !!accessToken && ids.length > 0,
+  });
+}
+
 const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { logout } = useAuth();
+  const { accessToken, user, logout } = useAuth();
+  const queryClient = useQueryClient();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
-  const { accessToken, user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [profileToDelete, setProfileToDelete] = useState<{ id: string; name: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [profileTotals, setProfileTotals] = useState<Record<string, { totalSpent: number; balance: number }>>({});
-  const [totalsLoading, setTotalsLoading] = useState(false);
-  const lastFetchTime = useRef<number>(0);
 
-  const fetchProfileTotals = useCallback(async (profilesList: Profile[]) => {
-    if (!accessToken || profilesList.length === 0) return;
+  const { data, isLoading, isError, error, refetch, isRefetching } = useProfiles();
+  const profiles = data?.profiles ?? [];
+  const {
+    data: profileTotals = {},
+    isFetching: totalsLoading,
+    refetch: refetchTotals,
+  } = useProfileTotals(profiles);
+  const deleteProfile = useDeleteProfile();
 
-    setTotalsLoading(true);
-    const totals: Record<string, { totalSpent: number; balance: number }> = {};
-
-    // Fetch sequentially to avoid rate limits
-    for (const profile of profilesList) {
-      try {
-        const response = await expenseService.getPersonalExpenses(1, 1, accessToken, {
-          profileId: profile._id,
-          startDate: istMonthStart(),
-          endDate: istToday(),
-        });
-        if (response.success && response.data) {
-          totals[profile._id] = {
-            totalSpent: response.data.totalExpenseAmount ?? 0,
-            balance: response.data.balance ?? 0,
-          };
-        }
-      } catch (err) {
-        // Silently skip — leave this profile without totals
-        console.warn(`[ProfilesScreen] Failed to fetch totals for profile ${profile._id}`, err);
-      }
+  useEffect(() => {
+    if (isError) {
+      Alert.alert('Error', error instanceof Error ? error.message : 'An error occurred while fetching profiles');
     }
+  }, [isError, error]);
 
-    setProfileTotals(totals);
-    setTotalsLoading(false);
-  }, [accessToken]);
-
-  const fetchProfiles = useCallback(async () => {
-    if (!accessToken) {
-      setError('Authentication required');
-      setLoading(false);
-      return;
-    }
-    if (isFresh(lastFetchTime.current)) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await profileService.getProfiles(accessToken);
-
-      if (response.success && response.data) {
-        setProfiles(response.data.profiles);
-        lastFetchTime.current = Date.now();
-        // Fetch totals in the background — don't block profile list rendering
-        fetchProfileTotals(response.data.profiles);
-      } else {
-        throw new Error('Failed to fetch profiles');
-      }
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'An error occurred while fetching profiles';
-      setError(errorMessage);
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, [accessToken, fetchProfileTotals]);
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchProfiles();
-    }, [fetchProfiles])
-  );
-
-  useRefetchOnForeground(() => {
-    fetchProfiles();
-  });
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    lastFetchTime.current = 0;
-    await fetchProfiles();
-    setRefreshing(false);
-  }, [fetchProfiles]);
+  const onRefresh = () => {
+    refetch();
+    refetchTotals();
+  };
 
   const handleDeleteProfile = (profileId: string) => {
     if (!accessToken) {
@@ -151,31 +127,33 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
     }, 100);
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = () => {
     if (!accessToken || !profileToDelete) {
       return;
     }
 
     setDeleteLoading(true);
 
-    // Optimistically update UI
-    const prevProfiles = profiles;
-    setProfiles((prev) => prev.filter((p) => p._id !== profileToDelete.id));
+    // Optimistically update the cached list
+    const listKey = queryKeys.profiles.list();
+    const prevData = queryClient.getQueryData<ProfilesResponse['data']>(listKey);
+    queryClient.setQueryData<ProfilesResponse['data']>(listKey, (old) =>
+      old ? { ...old, profiles: old.profiles.filter((p) => p._id !== profileToDelete.id) } : old
+    );
 
     // Close dialog immediately
     setDeleteDialogVisible(false);
     setProfileToDelete(null);
 
-    try {
-      await profileService.deleteProfile(profileToDelete.id, accessToken);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to delete profile';
-      setProfiles(prevProfiles);
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setDeleteLoading(false);
-    }
+    deleteProfile.mutate(profileToDelete.id, {
+      onError: (err) => {
+        const errorMessage =
+          err instanceof Error ? err.message : 'Failed to delete profile';
+        queryClient.setQueryData(listKey, prevData);
+        Alert.alert('Error', errorMessage);
+      },
+      onSettled: () => setDeleteLoading(false),
+    });
   };
 
   const handleCancelDelete = () => {
@@ -277,7 +255,7 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
     );
   };
 
-  if (loading && !refreshing) {
+  if (isLoading) {
     return (
       <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
         <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
@@ -287,7 +265,7 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
     );
   }
 
-  if (error && profiles.length === 0) {
+  if (isError && profiles.length === 0) {
     return (
       <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
         <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
@@ -297,8 +275,10 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
           color={Theme.colors.error}
           solid
         />
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchProfiles}>
+        <Text style={styles.errorText}>
+          {error instanceof Error ? error.message : 'An error occurred while fetching profiles'}
+        </Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -348,7 +328,7 @@ const ProfilesScreen: React.FC<ProfilesScreenProps> = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
+              refreshing={isRefetching}
               onRefresh={onRefresh}
               colors={[Theme.colors.primary]}
               tintColor={Theme.colors.primary}

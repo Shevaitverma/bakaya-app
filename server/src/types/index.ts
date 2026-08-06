@@ -30,6 +30,8 @@ export interface RouteHandler {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   handler: (req: Request, params?: Record<string, string>) => Promise<Response>;
   protected?: boolean;
+  /** Requires the authenticated user to have role "admin". Implies `protected`. */
+  adminOnly?: boolean;
 }
 
 export interface PaginationParams {

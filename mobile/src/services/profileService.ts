@@ -6,7 +6,6 @@
 
 import { API_CONFIG } from '../constants/api';
 import { authedFetch } from '../lib/authedFetch';
-import { markDataChanged } from '../lib/staleness';
 import type {
   ProfilesResponse,
   ProfileResponse,
@@ -48,7 +47,6 @@ class ProfileService {
       token,
       body: JSON.stringify(data),
     });
-    markDataChanged();
     return res;
   }
 
@@ -62,7 +60,6 @@ class ProfileService {
       token,
       body: JSON.stringify(data),
     });
-    markDataChanged();
     return res;
   }
 
@@ -78,7 +75,6 @@ class ProfileService {
       method: 'DELETE',
       token,
     });
-    markDataChanged();
     return res;
   }
 }

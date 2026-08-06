@@ -51,9 +51,13 @@ export interface UpdateGroupInput {
   description?: string;
 }
 
+export type SplitType = "equal" | "exact" | "percentage";
+
 export interface GroupExpenseSplit {
   userId: string;
   amount: number;
+  /** Only set on percentage splits; `amount` stays the source of truth for balances. */
+  percentage?: number;
 }
 
 export interface GroupExpense {
@@ -70,6 +74,8 @@ export interface GroupExpense {
   amount: number;
   category?: string;
   notes?: string;
+  /** Absent on expenses written before split types existed — treat as "equal". */
+  splitType?: SplitType;
   splitAmong: GroupExpenseSplit[];
   createdAt: string;
   updatedAt: string;
@@ -87,6 +93,7 @@ export interface CreateGroupExpenseInput {
   category?: string;
   notes?: string;
   paidBy?: string;
+  splitType?: SplitType;
   splitAmong?: GroupExpenseSplit[];
 }
 
@@ -96,11 +103,22 @@ export interface UpdateGroupExpenseInput {
   category?: string;
   notes?: string;
   paidBy?: string;
+  splitType?: SplitType;
   splitAmong?: GroupExpenseSplit[];
 }
 
 export interface GroupBalances {
   balances: Record<string, number>;
+}
+
+export interface SuggestedTransfer {
+  from: string;
+  to: string;
+  amount: number;
+}
+
+export interface SuggestedTransfersData {
+  transfers: SuggestedTransfer[];
 }
 
 export interface SettlementsData {
@@ -177,6 +195,10 @@ export const groupsApi = {
 
   getBalances(groupId: string): Promise<GroupBalances> {
     return api.get<GroupBalances>(`/api/v1/groups/${groupId}/balances`);
+  },
+
+  getSuggestedTransfers(groupId: string): Promise<SuggestedTransfersData> {
+    return api.get<SuggestedTransfersData>(`/api/v1/groups/${groupId}/suggested-transfers`);
   },
 
   getSettlements(groupId: string): Promise<SettlementsData> {

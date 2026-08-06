@@ -11,6 +11,7 @@ import {
   useGroup,
   useGroupExpenses,
   useGroupBalances,
+  useSuggestedTransfers,
   useGroupSettlements,
   useCategoriesMap,
   useDeleteGroupExpense,
@@ -40,7 +41,7 @@ function getMemberDisplayName(member: {
 interface SettleUpTarget {
   userId: string;
   userName: string;
-  amount: number; // positive = they owe you, negative = you owe them
+  amount: number; // what the current user pays, from the suggested plan
 }
 
 /* ---------- Inline SVG Icons ---------- */
@@ -221,13 +222,20 @@ export default function GroupDetailPage() {
   const { data: group, isLoading: isGroupLoading } = useGroup(groupId);
   const { data: expensesData, isLoading: isExpensesLoading } = useGroupExpenses(groupId);
   const { data: balances, isLoading: isBalancesLoading } = useGroupBalances(groupId);
+  const { data: transfersData, isLoading: isTransfersLoading } = useSuggestedTransfers(groupId);
   const { data: settlementsData, isLoading: isSettlementsLoading } = useGroupSettlements(groupId);
   const { data: categoriesMap = {} } = useCategoriesMap();
 
   const expenses = expensesData?.expenses ?? [];
   const settlements = settlementsData?.settlements ?? [];
+  const transfers = transfersData?.transfers ?? [];
 
-  const isLoading = isGroupLoading || isExpensesLoading || isBalancesLoading || isSettlementsLoading;
+  const isLoading =
+    isGroupLoading ||
+    isExpensesLoading ||
+    isBalancesLoading ||
+    isTransfersLoading ||
+    isSettlementsLoading;
 
   // Mutation hooks
   const deleteExpenseMutation = useDeleteGroupExpense(groupId);
@@ -611,11 +619,12 @@ export default function GroupDetailPage() {
                       // Positive = they are owed money.
                       // Negative = they owe money.
                       const otherOwes = entry.amount < 0;
-                      const myBalance =
-                        balances?.balances[currentUserId] ?? 0;
-                      // Show settle-up button when current user owes money
-                      // and the other user is owed money
-                      const canSettle = myBalance < 0 && entry.amount > 0;
+                      // The suggested plan decides who the current user pays and
+                      // how much — it is already capped at the pairwise balance
+                      // the server will accept.
+                      const myTransfer = transfers.find(
+                        (t) => t.from === currentUserId && t.to === entry.userId
+                      );
                       const color = avatarColorFor(
                         entry.userId || entry.userName
                       );
@@ -666,11 +675,16 @@ export default function GroupDetailPage() {
                                 </p>
                               )}
                             </div>
-                            {canSettle && (
+                            {myTransfer && (
                               <button
                                 type="button"
                                 className={styles.pillBtn}
-                                onClick={() => handleSettleUp(entry)}
+                                onClick={() =>
+                                  handleSettleUp({
+                                    ...entry,
+                                    amount: myTransfer.amount,
+                                  })
+                                }
                               >
                                 Settle Up
                               </button>
@@ -769,6 +783,80 @@ export default function GroupDetailPage() {
                   </div>
                 </div>
               )}
+            </section>
+
+            {/* ---------- Suggested Transfers Section ---------- */}
+            <section className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>Suggested Transfers</h2>
+              </div>
+
+              <div className={styles.card}>
+                {transfers.length === 0 ? (
+                  <div className={styles.emptyState}>
+                    <div className={styles.emptyIcon} aria-hidden>
+                      <IconHandshake size={48} />
+                    </div>
+                    <p className={styles.emptyPrimary}>Everyone is settled up</p>
+                    <p className={styles.emptySecondary}>
+                      The payments needed to clear all balances will appear here
+                    </p>
+                  </div>
+                ) : (
+                  <div className={styles.rowList}>
+                    {transfers.map((t, idx) => {
+                      const fromName = resolveUserName(t.from);
+                      const toName = resolveUserName(t.to);
+                      const isMine = t.from === currentUserId;
+                      const color = avatarColorFor(t.from);
+                      const isLast = idx === transfers.length - 1;
+                      return (
+                        <div
+                          key={`${t.from}-${t.to}`}
+                          className={`${styles.row} ${
+                            isLast ? styles.rowLast : ""
+                          }`}
+                        >
+                          <div
+                            className={styles.avatarSquare}
+                            style={{ background: color.bg, color: color.fg }}
+                            aria-hidden
+                          >
+                            <IconHandshake size={20} />
+                          </div>
+                          <div className={styles.rowMain}>
+                            <p className={styles.rowTitle}>
+                              <strong>{isMine ? "You" : fromName}</strong>{" "}
+                              {isMine ? "pay" : "pays"}{" "}
+                              <strong>
+                                {t.to === currentUserId ? "you" : toName}
+                              </strong>
+                            </p>
+                            <p className={styles.rowSubtitle}>
+                              {formatCurrencyExact(t.amount)}
+                            </p>
+                          </div>
+                          {isMine && (
+                            <button
+                              type="button"
+                              className={styles.pillBtn}
+                              onClick={() =>
+                                handleSettleUp({
+                                  userId: t.to,
+                                  userName: toName,
+                                  amount: t.amount,
+                                })
+                              }
+                            >
+                              Settle Up
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </section>
 
             {/* ---------- Settlements Section ---------- */}

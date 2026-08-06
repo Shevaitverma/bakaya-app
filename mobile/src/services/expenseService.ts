@@ -7,7 +7,6 @@
 
 import { API_CONFIG } from '../constants/api';
 import { authedFetch } from '../lib/authedFetch';
-import { markDataChanged } from '../lib/staleness';
 import type {
   PersonalExpensesResponse,
   SingleExpenseResponse,
@@ -78,7 +77,6 @@ class ExpenseService {
       token,
       body: JSON.stringify(expenseData),
     });
-    markDataChanged();
     return res;
   }
 
@@ -96,7 +94,6 @@ class ExpenseService {
       token,
       body: JSON.stringify(expenseData),
     });
-    markDataChanged();
     return res;
   }
 
@@ -112,7 +109,6 @@ class ExpenseService {
       method: 'DELETE',
       token,
     });
-    markDataChanged();
     return res;
   }
 

@@ -2,7 +2,7 @@
  * Groups List Screen - Dedicated screen for listing and managing all groups
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -18,11 +18,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Theme } from '../../constants/theme';
-import { useAuth } from '../../context/AuthContext';
-import { groupService } from '../../services/groupService';
-import { isFresh } from '../../lib/staleness';
-import { useRefetchOnForeground } from '../../hooks/useRefetchOnForeground';
-import type { GroupData, GroupsResponse } from '../../types/group';
+import { useGroups } from '../../hooks/queries';
+import type { GroupData } from '../../types/group';
 import type { GroupsStackParamList } from '../../navigation/types';
 
 type GroupsListScreenProps = NativeStackScreenProps<GroupsStackParamList, 'GroupsList'>;
@@ -58,61 +55,27 @@ const getGroupIconColor = (name: string): string => {
 
 const GroupsListScreen: React.FC<GroupsListScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { accessToken, refreshSession } = useAuth();
 
-  const [groups, setGroups] = useState<GroupData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading, error, refetch } = useGroups();
+  const groups = data?.groups ?? [];
+
+  // Local flag so the pull-to-refresh spinner only shows for an actual pull,
+  // not for the background refetches the cache does on its own.
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const lastFetchTime = useRef<number>(0);
-
-  const fetchGroups = useCallback(async () => {
-    if (!accessToken) {
-      setError('Authentication required');
-      setLoading(false);
-      return;
-    }
-    if (isFresh(lastFetchTime.current)) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-      const response: GroupsResponse = await groupService.getGroups(1, 50, accessToken);
-
-      if (response.success && response.data) {
-        setGroups(response.data.groups);
-      } else {
-        throw new Error('Failed to fetch groups');
-      }
-      lastFetchTime.current = Date.now();
-    } catch (err: any) {
-      if (err?.statusCode === 401) {
-        await refreshSession();
-        // Token refreshed, next focus will re-fetch
-        return;
-      }
-      const errorMessage =
-        err instanceof Error ? err.message : 'An error occurred while fetching groups';
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, [accessToken, refreshSession]);
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchGroups();
-    }, [fetchGroups])
-  );
-
-  useRefetchOnForeground(fetchGroups);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    lastFetchTime.current = 0;
-    await fetchGroups();
+    await refetch();
     setRefreshing(false);
-  }, [fetchGroups]);
+  }, [refetch]);
+
+  // CreateGroup still writes through the service layer, so coming back from it
+  // has to refetch. Drop this once that screen uses the mutation hook.
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
 
   const handleGroupPress = (group: GroupData) => {
     navigation.navigate('GroupDetail', {
@@ -238,7 +201,7 @@ const GroupsListScreen: React.FC<GroupsListScreenProps> = ({ navigation }) => {
   );
 
   // --- Full-screen loading state ---
-  if (loading && groups.length === 0) {
+  if (isLoading) {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
@@ -259,6 +222,7 @@ const GroupsListScreen: React.FC<GroupsListScreenProps> = ({ navigation }) => {
 
   // --- Full-screen error state ---
   if (error && groups.length === 0) {
+    const errorMessage = error.message || 'An error occurred while fetching groups';
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor={Theme.colors.primary} />
@@ -275,8 +239,8 @@ const GroupsListScreen: React.FC<GroupsListScreenProps> = ({ navigation }) => {
               color={Theme.colors.error}
               solid
             />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={fetchGroups}>
+            <Text style={styles.errorText}>{errorMessage}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
               <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
           </View>

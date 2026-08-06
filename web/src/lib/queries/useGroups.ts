@@ -39,6 +39,14 @@ export function useGroupBalances(groupId: string) {
   });
 }
 
+export function useSuggestedTransfers(groupId: string) {
+  return useQuery({
+    queryKey: queryKeys.groups.suggestedTransfers(groupId),
+    queryFn: () => groupsApi.getSuggestedTransfers(groupId),
+    enabled: !!groupId,
+  });
+}
+
 export function useGroupSettlements(groupId: string) {
   return useQuery({
     queryKey: queryKeys.groups.settlements(groupId),

@@ -32,7 +32,15 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": ""
+        "EXPO_PUBLIC_API_URL": "https://she-bakaya.zoef.org",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyBhpHDayPeTHvyz_wD5W6OsVQvSNICVhBc",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "ztas-bakaya-app.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "ztas-bakaya-app",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "ztas-bakaya-app.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "620625375728",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:620625375728:android:8efe60e04788147a26ad35",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "620625375728-7kfiqncl330uq8le05va9mbu16iaekfk.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "620625375728-hnvdhflj4aftqf2ffpjgs2dvbbb9oaph.apps.googleusercontent.com"
       }
     }
   }

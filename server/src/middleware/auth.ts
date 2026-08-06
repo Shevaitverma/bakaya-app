@@ -1,5 +1,6 @@
 import { verifyAccessToken, type JwtPayload } from "@/utils/jwt";
-import { unauthorizedResponse } from "@/utils/response";
+import { unauthorizedResponse, forbiddenResponse } from "@/utils/response";
+import { User } from "@/models/User";
 
 const authStore = new WeakMap<Request, JwtPayload>();
 
@@ -17,6 +18,23 @@ export async function authenticateRequest(req: Request): Promise<Response | null
   } catch {
     return unauthorizedResponse("Invalid or expired token");
   }
+}
+
+/**
+ * Authorises admin-only routes. Must run after `authenticateRequest`.
+ *
+ * The role is read from the database rather than the JWT on purpose: a token
+ * issued before a demotion would otherwise keep admin access until it expired.
+ * These routes are rare, so the extra read is not worth optimising away.
+ */
+export async function requireAdmin(req: Request): Promise<Response | null> {
+  const { userId } = getAuthUser(req);
+  const user = await User.findById(userId).select("role isActive").lean();
+
+  if (!user || !user.isActive || user.role !== "admin") {
+    return forbiddenResponse("Admin access required");
+  }
+  return null;
 }
 
 export function getAuthUser(req: Request): JwtPayload {

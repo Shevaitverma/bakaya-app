@@ -33,6 +33,9 @@ export const queryKeys = {
     detail: (id: string) => ["groups", id] as const,
     expenses: (groupId: string) => ["groups", groupId, "expenses"] as const,
     balances: (groupId: string) => ["groups", groupId, "balances"] as const,
+    // Nested under balances so every balance invalidation refreshes the plan too.
+    suggestedTransfers: (groupId: string) =>
+      ["groups", groupId, "balances", "transfers"] as const,
     settlements: (groupId: string) => ["groups", groupId, "settlements"] as const,
   },
 
