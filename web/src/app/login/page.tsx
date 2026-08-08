@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api/auth";
 import { ApiError, setToken, setRefreshToken } from "@/lib/api-client";
+import { startGoogleSignIn, completeGoogleRedirect } from "@/lib/google-auth";
 import styles from "./page.module.css";
 
 export default function LoginPage() {
@@ -20,6 +21,29 @@ export default function LoginPage() {
     server?: string;
   }>({});
 
+  // Installed PWAs sign in by redirect, so the result arrives on the way back
+  // rather than from the click handler. Keep the spinner up while we check.
+  useEffect(() => {
+    let cancelled = false;
+    setIsGoogleLoading(true);
+    completeGoogleRedirect()
+      .then((signedIn) => {
+        if (cancelled) return;
+        if (signedIn) router.push("/dashboard");
+        else setIsGoogleLoading(false);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setErrors({
+          server: error instanceof ApiError ? error.message : "Google sign-in failed. Please try again.",
+        });
+        setIsGoogleLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
   const handleGoogleSignIn = async () => {
     if (isGoogleLoading || isLoading) return;
 
@@ -27,17 +51,8 @@ export default function LoginPage() {
     setErrors({});
 
     try {
-      const { signInWithPopup } = await import("firebase/auth");
-      const { auth, googleProvider } = await import("@/lib/firebase");
-      const result = await signInWithPopup(auth, googleProvider);
-      const idToken = await result.user.getIdToken();
-
-      const { user, accessToken, refreshToken } = await authApi.googleLogin({
-        credential: idToken,
-      });
-      setToken(accessToken);
-      setRefreshToken(refreshToken);
-      localStorage.setItem("bakaya_user", JSON.stringify(user));
+      const signedIn = await startGoogleSignIn();
+      if (!signedIn) return; // redirecting away — leave the spinner up
       router.push("/dashboard");
     } catch (error) {
       if (error instanceof ApiError) {
@@ -47,7 +62,6 @@ export default function LoginPage() {
       } else {
         setErrors({ server: "Google sign-in failed. Please try again." });
       }
-    } finally {
       setIsGoogleLoading(false);
     }
   };
