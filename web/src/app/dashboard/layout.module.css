@@ -257,7 +257,9 @@
 
   .main {
     margin-left: 0;
-    padding: 0 0 80px;
+    /* Must clear the fixed nav, which is now 64px TALLER than the home-indicator
+       inset — without the env() term the last row hides behind the bar. */
+    padding: 0 0 calc(80px + env(safe-area-inset-bottom, 0px));
   }
 
   /* Bottom Navigation Bar — visible on mobile */
@@ -268,7 +270,11 @@
     left: 0;
     right: 0;
     z-index: 9999;
-    height: 64px;
+    /* box-sizing is border-box globally, so a plain `height: 64px` would make
+       the safe-area padding EAT the tab row instead of extending the bar —
+       squeezing icons and labels into ~30px on a home-indicator iPhone. Adding
+       the inset to the height keeps a full 64px of tabs above it. */
+    height: calc(64px + env(safe-area-inset-bottom, 0px));
     background: var(--color-white);
     border-top: 1px solid rgba(0, 0, 0, 0.04);
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.04);
