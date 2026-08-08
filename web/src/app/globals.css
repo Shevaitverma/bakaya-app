@@ -529,7 +529,14 @@ button:active, [role="button"]:active {
 }
 
 @media (max-width: 768px) {
-  .btn-fab { bottom: 80px; right: 16px; }
+  /* Must clear the fixed bottom nav, which is 64px PLUS the home-indicator
+     inset. A bare 80px leaves the FAB behind the bar on notched iPhones (the
+     nav's z-index is far higher), which is why it only breaks in the PWA —
+     a browser tab has no inset, so env() is 0 and 80px happens to work. */
+  .btn-fab {
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    right: 16px;
+  }
 }
 
 /* --- Icon button (square, subtle) --- */

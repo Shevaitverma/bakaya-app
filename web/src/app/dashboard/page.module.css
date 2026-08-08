@@ -467,7 +467,9 @@
   .header { padding: 24px 20px 52px; }
   .contentSheet { padding: 24px 20px 140px; }
   .title { font-size: 24px; }
-  .fab { bottom: 80px; right: 20px; }
+  /* Same clearance as .btn-fab in globals.css — the nav is 64px + the
+     home-indicator inset, so a bare 80px hides the FAB behind it in the PWA. */
+  .fab { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); right: 20px; }
 }
 
 /* Small phones */
