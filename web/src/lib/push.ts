@@ -17,7 +17,7 @@ function getDeviceId(): string {
 
 /** Service workers can't read process.env, so pass the (non-secret, public)
  * Firebase web config to the SW via query params. */
-function serviceWorkerUrl(): string {
+export function serviceWorkerUrl(): string {
   const params = new URLSearchParams();
   for (const [k, v] of Object.entries(firebaseConfig)) {
     if (v) params.set(k, v);

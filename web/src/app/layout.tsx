@@ -21,12 +21,22 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  themeColor: "#D81B60",
+  // Let content extend behind the iPhone notch when installed to the home screen.
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
   title: "Bakaya — Expense Management",
   description:
     "Track expenses, split bills with groups, and manage your finances effortlessly.",
+  // iOS ignores the manifest's display mode; these are what make an installed
+  // home-screen app launch standalone instead of inside Safari chrome.
+  appleWebApp: {
+    capable: true,
+    title: "Bakaya",
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({
