@@ -215,10 +215,21 @@ export default function AnalyticsPage() {
               <p className={styles.cardValueRed}>
                 {formatCurrency(totalSpent)}
               </p>
-              <p className={styles.cardStatusGreen}>
+              {/* This is SPEND, so the colour inverts against the usual rule:
+                  spending more than last month is bad (red), less is good
+                  (green). Previously always green, which contradicted the \u2197. */}
+              <p
+                className={
+                  changePercent === null || changePercent === 0
+                    ? styles.cardStatusNeutral
+                    : changePercent > 0
+                      ? styles.cardStatusRed
+                      : styles.cardStatusGreen
+                }
+              >
                 {changePercent !== null ? (
                   <>
-                    {changePercent >= 0 ? "\u2197" : "\u2198"}{" "}
+                    {changePercent > 0 ? "\u2197" : changePercent < 0 ? "\u2198" : "\u2192"}{" "}
                     {Math.abs(changePercent)}% from last month
                   </>
                 ) : (
@@ -260,8 +271,12 @@ export default function AnalyticsPage() {
               <p className={styles.cardValueRed}>
                 {formatCurrency(avgDaily)}
               </p>
-              <p className={styles.cardStatusGreen}>
-                Within budget
+              {/* Was a hardcoded green "Within budget" — this page fetches no
+                  budget at all, so it asserted something it cannot know (and
+                  read as reassuring while the user was well over). Neutral and
+                  factual until a budget is actually available here. */}
+              <p className={styles.cardStatusNeutral}>
+                Across the selected period
               </p>
             </div>
           </>

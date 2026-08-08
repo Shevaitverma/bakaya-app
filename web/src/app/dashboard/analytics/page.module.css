@@ -208,10 +208,28 @@
   white-space: nowrap;
 }
 
-/* Card status line colors */
+/* Card status line colors.
+   12px text, so these use the AA-passing *-text tokens rather than the
+   --color-success/--color-error swatches (2.54:1 and 3.76:1 on white). */
 .cardStatusGreen {
   font-size: 12px;
-  color: var(--color-success);
+  color: var(--color-success-text);
+  font-weight: 500;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.cardStatusRed {
+  font-size: 12px;
+  color: var(--color-error-text);
+  font-weight: 500;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.cardStatusNeutral {
+  font-size: 12px;
+  color: var(--color-text-secondary);
   font-weight: 500;
   margin: 0;
   line-height: 1.4;
