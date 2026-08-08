@@ -142,6 +142,27 @@ export default function ProfilesPage() {
                 ? `${relationship.toUpperCase()} GROUP`
                 : "PERSONAL";
 
+            /* `balance` is income − expenses for the month, not a debt figure.
+               The server routes all income to the default profile, so every
+               other profile's balance is just −spend. The default row therefore
+               shows TOTAL SPENT (its own label) and the rest show BALANCE. */
+            const totals = profileTotals[profile._id];
+            const balance = totals?.balance ?? 0;
+            // ±0.01 epsilon, matching the tolerance group balances already use,
+            // so floating-point dust doesn't render as "₹0.00" in debt red.
+            const isSettled = Math.abs(balance) <= 0.01;
+            const amountClass = profile.isDefault
+              ? styles.amountRed
+              : isSettled
+                ? styles.amountNeutral
+                : balance > 0
+                  ? styles.amountGreen
+                  : styles.amountRed;
+            // No +/- glyph: magnitude only, direction carried by colour and label.
+            const amountText = profile.isDefault
+              ? formatCurrency(totals?.totalSpent ?? 0)
+              : formatCurrency(isSettled ? 0 : Math.abs(balance));
+
             return (
               <div key={profile._id}>
                 <Link
@@ -168,20 +189,11 @@ export default function ProfilesPage() {
                   </div>
                   <div className={styles.profileRight}>
                     <span className={styles.profileRightLabel}>
-                      BALANCE
+                      {profile.isDefault ? "TOTAL SPENT" : "BALANCE"}
                     </span>
-                    {profileTotals[profile._id] ? (
-                      <span className={`${styles.profileRightAmount} ${
-                        profile.isDefault
-                          ? styles.amountRed
-                          : (profileTotals[profile._id]?.balance ?? 0) >= 0
-                            ? styles.amountGreen
-                            : styles.amountRed
-                      }`}>
-                        {profile.isDefault
-                          ? formatCurrency(profileTotals[profile._id]?.totalSpent ?? 0)
-                          : `${(profileTotals[profile._id]?.balance ?? 0) >= 0 ? "+" : "-"}${formatCurrency(Math.abs(profileTotals[profile._id]?.balance ?? 0))}`
-                        }
+                    {totals ? (
+                      <span className={`${styles.profileRightAmount} ${amountClass}`}>
+                        {amountText}
                       </span>
                     ) : (
                       <span className={styles.profileRightAmount} style={{ color: "#9CA3AF" }}>...</span>
@@ -219,7 +231,10 @@ export default function ProfilesPage() {
       </div>
 
       {/* Install as app — renders nothing when already installed or unsupported */}
-      <InstallAppButton className={styles.installBtn} label="&#x2B07; Install app" />
+      <InstallAppButton
+        className={styles.installBtn}
+        label={<><span aria-hidden="true">&#x2B07;</span> Install app</>}
+      />
 
       {/* Sign Out */}
       <button className={styles.signOutBtn} onClick={handleLogout}>

@@ -56,7 +56,7 @@ export function InstallAppButton({
   label = "Install app",
 }: {
   className?: string;
-  label?: string;
+  label?: React.ReactNode;
 }) {
   const [mode, setMode] = useState<"hidden" | "prompt" | "ios">("hidden");
   const [showSteps, setShowSteps] = useState(false);
@@ -102,13 +102,27 @@ export function InstallAppButton({
 
   return (
     <>
-      <button type="button" className={className} onClick={handleClick}>
-        {label}
+      <button
+        type="button"
+        className={className}
+        onClick={handleClick}
+        // On iOS this is a disclosure, not an install action — say so, rather
+        // than promising an install that the platform gives us no API for.
+        aria-expanded={mode === "ios" ? showSteps : undefined}
+        aria-controls={mode === "ios" ? "install-steps" : undefined}
+      >
+        {mode === "ios" ? (
+          <>
+            <span aria-hidden="true">&#x2B07;</span> How to install
+          </>
+        ) : (
+          label
+        )}
       </button>
       {showSteps && (
         // color:inherit so this reads correctly on both the dark hero and the
         // light profile page without either caller passing extra styles.
-        <p style={{ margin: "8px 0 0", fontSize: 13, lineHeight: 1.5, color: "inherit", opacity: 0.75 }}>
+        <p id="install-steps" style={{ margin: "8px 0 0", fontSize: 13, lineHeight: 1.5, color: "inherit", opacity: 0.75 }}>
           In Safari, tap the Share button, scroll down, then tap{" "}
           <strong>Add to Home Screen</strong>.
         </p>

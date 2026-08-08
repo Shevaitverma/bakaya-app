@@ -69,7 +69,10 @@ export default function Home() {
                 flex item instead of two siblings in the CTA row. Renders
                 nothing unless the app is actually installable. */}
             <div className={styles.heroInstall}>
-              <InstallAppButton className={styles.heroCtaInstall} label="&#x2B07; Install app" />
+              <InstallAppButton
+                className={styles.heroCtaInstall}
+                label={<><span aria-hidden="true">&#x2B07;</span> Install app</>}
+              />
             </div>
           </div>
           <p className={styles.heroTrust}>

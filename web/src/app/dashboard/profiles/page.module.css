@@ -212,12 +212,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Text variants of the success/error tokens. The swatch values (#10B981 /
+   #EF4444) are only ~2.5:1 and ~3.8:1 on the white card — below AA 4.5:1 for
+   this 17px/700 text, which is under the 18.66px bold large-text threshold. */
 .amountRed {
-  color: #EF4444;
+  color: var(--color-error-text);
 }
 
 .amountGreen {
-  color: #22C55E;
+  color: var(--color-success-text);
+}
+
+.amountNeutral {
+  color: var(--color-text-secondary);
 }
 
 /* Dialog */

@@ -135,6 +135,11 @@ html {
   --color-success-tint: rgba(16, 185, 129, 0.10);
   --color-error-dark: #DC2626;
   --color-error-tint: rgba(239, 68, 68, 0.10);
+  /* AA-passing text variants. --color-success/--color-error are swatch colours
+     (2.54:1 and 3.76:1 on white) and fail WCAG AA for body-sized text; use
+     these whenever the colour IS the text. Fills and badges keep the swatches. */
+  --color-success-text: #15803D;
+  --color-error-text: #DC2626;
   --color-surface-alt: #F5F5F5;
   --color-teal: #14B8A6;
   --focus-ring: 0 0 0 3px rgba(216, 27, 96, 0.12);

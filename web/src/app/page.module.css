@@ -627,6 +627,13 @@
     padding: 14px 24px;
   }
 
+  /* The install button's width:100% (inherited via composes) resolves against
+     this wrapper, which shrink-wraps — without this it sits narrower than the
+     two CTAs above it. */
+  .heroInstall {
+    align-self: stretch;
+  }
+
   .features,
   .howItWorks {
     padding: 56px 0;
