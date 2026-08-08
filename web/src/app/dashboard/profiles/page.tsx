@@ -13,6 +13,7 @@ import { queryKeys } from "@/lib/queries";
 import { formatCurrency } from "@/utils/currency";
 import type { Profile } from "@/types/profile";
 import { Skeleton } from "@/components/Skeleton";
+import { InstallAppButton } from "@/components/InstallAppButton";
 import styles from "./page.module.css";
 
 export default function ProfilesPage() {
@@ -216,6 +217,9 @@ export default function ProfilesPage() {
           </div>
         </div>
       </div>
+
+      {/* Install as app — renders nothing when already installed or unsupported */}
+      <InstallAppButton className={styles.installBtn} label="&#x2B07; Install app" />
 
       {/* Sign Out */}
       <button className={styles.signOutBtn} onClick={handleLogout}>

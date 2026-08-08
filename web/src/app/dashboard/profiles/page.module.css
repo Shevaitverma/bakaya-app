@@ -535,6 +535,30 @@
   word-break: break-all;
 }
 
+/* --- Install as app --- */
+/* display:flex (not inline-flex) so it takes its own line above Sign Out, which
+   is inline-flex and would otherwise sit beside it. */
+.installBtn {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 8px;
+  margin-top: 28px;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-primary);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  transition: opacity 150ms ease;
+}
+
+.installBtn:hover {
+  opacity: 0.8;
+}
+
 /* --- Sign Out --- */
 .signOutBtn {
   display: inline-flex;

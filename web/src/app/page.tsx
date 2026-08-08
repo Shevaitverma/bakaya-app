@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { InstallAppButton } from "@/components/InstallAppButton";
 import styles from "./page.module.css";
 
 export default function Home() {
@@ -64,6 +65,12 @@ export default function Home() {
             <a href="#how-it-works" className={styles.heroCtaSecondary}>
               See How It Works
             </a>
+            {/* Wrapper keeps the button and the iOS help text stacked as one
+                flex item instead of two siblings in the CTA row. Renders
+                nothing unless the app is actually installable. */}
+            <div className={styles.heroInstall}>
+              <InstallAppButton className={styles.heroCtaInstall} label="&#x2B07; Install app" />
+            </div>
           </div>
           <p className={styles.heroTrust}>
             No credit card required &bull; Free forever

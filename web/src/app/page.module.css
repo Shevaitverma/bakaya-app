@@ -263,6 +263,27 @@
   color: var(--color-white);
 }
 
+/* --- Install app CTA (only rendered when installable) --- */
+.heroInstall {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Same look as the secondary CTA, plus the bits a <button> needs that an <a>
+   inherits for free. */
+.heroCtaInstall {
+  composes: heroCtaSecondary;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.heroCtaInstall:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  color: var(--color-white);
+}
+
 .heroTrust {
   font-size: var(--font-size-sm);
   color: rgba(255, 255, 255, 0.4);
